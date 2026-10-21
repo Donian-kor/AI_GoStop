@@ -191,6 +191,20 @@ test('AI 는 사람이 둔 뒤에 반응해서 카드를 낸다', async () => {
     if (!played2) {
       await c.post(`/api/room/${code}/action`, { type: 'flipOnly' }).catch(function () {});
     }
+    // 후속 선택(바닥·뒤집기·보너스·고/스톱)이 뜨면 해결한다
+    for (var pr = 0; pr < 6; pr++) {
+      var sp = await c.get(`/api/room/${code}/state`);
+      if (sp.state.currentSeat !== 0) break;
+      var pp = sp.state.prompt;
+      if (!pp || pp.seat !== 0) break;
+      if (pp.type === 'goStop') await c.post(`/api/room/${code}/action`, { type: 'stop' });
+      else if (pp.type === 'floorChoice') await c.post(`/api/room/${code}/action`, { type: 'floorChoice', payload: { choice: 0 } });
+      else if (pp.type === 'flipChoice') await c.post(`/api/room/${code}/action`, { type: 'flipChoice', payload: { ordinal: 0 } });
+      else if (pp.type === 'bonusDraw') {
+        var opt = pp.options[pp.options.length - 1];
+        await c.post(`/api/room/${code}/action`, { type: 'bonusDraw', payload: { stockIndex: opt.stockIndex } });
+      } else break;
+    }
   }
 
   // AI 가 그에 반응해 카드를 낸다
