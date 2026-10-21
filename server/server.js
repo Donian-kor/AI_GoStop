@@ -30,7 +30,7 @@ const MAX_FX = 200;
  * 빌드 버전 — 화면·엔진·자산을 바꿀 때마다 올린다.
  * 클라이언트가 이 값을 비교해 오래된 화면이면 자동으로 새로고침한다.
  */
-const BUILD_VERSION = '2026-10-21-4';
+const { GAME_VERSION, BUILD_VERSION } = require('./version');
 
 /** 방 목록 */
 const rooms = new Map();
@@ -124,7 +124,8 @@ function serveStatic(req, res, urlPath) {
           res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not Found');
           return;
         }
-        res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' }).end(buf);
+        const html = buf.toString('utf8').replace(/\{\{GAME_VERSION\}\}/g, GAME_VERSION);
+        res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' }).end(html);
       });
       return;
     }
@@ -133,6 +134,20 @@ function serveStatic(req, res, urlPath) {
     // 코드는 자주 고치므로 캐시하지 않는다. 이미지·사운드만 캐시한다.
     const noCache = ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json';
     headers['Cache-Control'] = noCache ? 'no-store' : 'public, max-age=86400';
+
+    // HTML에는 버전 표시를 끼워 넣는다(화면과 서버 버전이 어긋나지 않게)
+    if (ext === '.html') {
+      fs.readFile(filePath, (e2, buf) => {
+        if (e2) {
+          res.writeHead(404).end('Not Found');
+          return;
+        }
+        const html = buf.toString('utf8').replace(/\{\{GAME_VERSION\}\}/g, GAME_VERSION);
+        res.writeHead(200, headers).end(html);
+      });
+      return;
+    }
+
     res.writeHead(200, headers);
     fs.createReadStream(filePath).pipe(res);
   });
@@ -190,7 +205,7 @@ async function handleApi(req, res, url) {
 
   // GET /api/version — 빌드 버전 (클라이언트 자동 갱신용)
   if (segments.length === 2 && segments[1] === 'version' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: BUILD_VERSION });
+    return sendJson(res, 200, { ok: true, version: BUILD_VERSION, gameVersion: GAME_VERSION });
   }
 
   // POST /api/room — 방 만들기
