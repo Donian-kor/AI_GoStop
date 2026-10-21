@@ -14,6 +14,8 @@
     "test:server": "node tests/server_test.js",
     "test:ai": "node tests/ai_test.js",
     "test:disconnect": "node tests/disconnect_test.js",
+    "test:jokbo": "node tests/jokbo_test.js",
+    "test:deal": "node tests/deal_finish_test.js",
     "check:es5": "node tools/check-es5.js",
     "fetch-assets": "node tools/fetch-assets.js"
   },
