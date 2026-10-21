@@ -99,12 +99,24 @@ async function download(url, dest, attempt = 1) {
     const buf = Buffer.from(await res.arrayBuffer());
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, buf);
+    if (dest.endsWith('.svg')) stripFixedSize(dest);
     return buf.length;
   } catch (err) {
     if (attempt >= 3) throw err;
     await new Promise((r) => setTimeout(r, 600 * attempt));
     return download(url, dest, attempt + 1);
   }
+}
+
+/**
+ * SVG의 고정 크기(width/height) 속성을 제거한다.
+ * 고정 크기가 있으면 브라우저가 내재 크기로 래스터화한 뒤 확대해
+ * 고DPR 기기에서 뿌옇게 보이기 때문이다.
+ */
+function stripFixedSize(file) {
+  const text = fs.readFileSync(file, 'utf8');
+  const fixed = text.replace(/<svg\s+width="[^"]*"\s+height="[^"]*"/, '<svg');
+  if (fixed !== text) fs.writeFileSync(file, fixed, 'utf8');
 }
 
 async function main() {

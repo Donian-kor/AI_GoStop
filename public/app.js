@@ -9,6 +9,8 @@
 (() => {
   const POLL_MS = 1200;
   const CARD_IMG = 'assets/hwatu/svg/';
+  // 자산 버전 — SVG 내용(고정 크기 제거 등)이 바뀌면 올린다(브라우저 캐시 무효화)
+  const ASSET_VER = 2;
 
   const $ = (id) => document.getElementById(id);
   const el = {
@@ -202,7 +204,7 @@
   // ── 렌더링 ──────────────────────────────────────────────────────────────
 
   function cardImg(card) {
-    return `${CARD_IMG}${card.imageKey || card.id}.svg`;
+    return `${CARD_IMG}${card.imageKey || card.id}.svg?v=${ASSET_VER}`;
   }
 
   const KIND_LABEL = {
