@@ -13,6 +13,6 @@
 //                 어떤 파일이든 바뀌면 올리면, 폰이 알아서 새 화면을 받는다.
 
 const GAME_VERSION = 'v0.1';
-const BUILD_VERSION = '2026-10-21-5';
+const BUILD_VERSION = '2026-10-21-6';
 
 module.exports = { GAME_VERSION, BUILD_VERSION };

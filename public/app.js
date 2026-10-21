@@ -103,6 +103,23 @@
   function getJson(url, onOk, onErr) { request('GET', url, null, onOk, onErr); }
   function postJson(url, body, onOk, onErr) { request('POST', url, body, onOk, onErr); }
 
+  // ── 이름 기억 ────────────────────────────────────────────────────────────
+  // 한 번 입력한 이름을 저장해 두면 새로고침·재접속 때 다시 입력하지 않아도 된다.
+  function savedName() {
+    try { return localStorage.getItem('gs_user') || ''; } catch (e) { return ''; }
+  }
+
+  function rememberName(name) {
+    try { localStorage.setItem('gs_user', name || ''); } catch (e) {}
+  }
+
+  function currentName() {
+    var n = el.nameInput.value.replace(/^\s+|\s+$/g, '');
+    if (!n) n = savedName();
+    if (n) el.nameInput.value = n;
+    return n || '나';
+  }
+
   // ── 자동 갱신 (구버전 화면이면 자동으로 새로고침) ────────────────────────
 
   function checkBuild() {
@@ -123,8 +140,10 @@
 
   // ── 입장 ────────────────────────────────────────────────────────────────
 
+  el.nameInput.addEventListener('input', function () { rememberName(this.value.replace(/^\s+|\s+$/g, '')); });
+
   el.createBtn.addEventListener('click', function () {
-    var name = el.nameInput.value.replace(/^\s+|\s+$/g, '') || '나';
+    var name = currentName();
     el.lobbyError.textContent = '';
     var parts = el.modeSelect.value.split('-');
     var mode = parts[0];
@@ -147,7 +166,7 @@
   });
 
   el.joinGoBtn.addEventListener('click', function () {
-    var name = el.nameInput.value.replace(/^\s+|\s+$/g, '') || '나';
+    var name = currentName();
     var code = el.codeInput.value.replace(/^\s+|\s+$/g, '').toUpperCase();
     if (code.length !== 6) { el.lobbyError.textContent = '방 코드는 6자리입니다.'; return; }
     el.lobbyError.textContent = '';
@@ -202,9 +221,8 @@
     var saved = null;
     try { saved = sessionStorage.getItem('gs_room'); } catch (e) { saved = null; }
     if (!saved) return;
-    var savedName = '';
-    try { savedName = sessionStorage.getItem('gs_name') || ''; } catch (e) { savedName = ''; }
-    postJson('/api/room/' + saved + '/join', { name: savedName }, function (res) {
+    var savedName2 = savedName();
+    postJson('/api/room/' + saved + '/join', { name: savedName2 }, function (res) {
       if (res && res.code) {
         enterRoom(res.code, res.seat);
       } else {
@@ -839,6 +857,9 @@
       if (Ctx) { var c = new Ctx(); if (c.resume) c.resume(); }
     } catch (e) {}
   }, false);
+
+  var remembered = savedName();
+  if (remembered) el.nameInput.value = remembered;
 
   if (Fx) {
     el.muteBtn.innerHTML = Fx.isMuted() ? '🔇' : '🔊';
