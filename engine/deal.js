@@ -16,6 +16,7 @@ const { KIND } = require('./cards');
 const DEAL_CONFIGS = {
   2: { playerCount: 2, handSize: 10, floorSize: 8 },
   3: { playerCount: 3, handSize: 7, floorSize: 6 },
+  4: { playerCount: 4, handSize: 7, floorSize: 6 }, // 4인 광팔기: 4×7 + 바닥 6
 };
 
 /** 손패 정렬 기준 (THwatuKind ordinal). */

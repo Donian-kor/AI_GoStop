@@ -252,6 +252,12 @@
     showBanner(text, def.style);
     playSound(def.sound);
 
+    // 크게 외치는 이벤트는 컷인 + 진동
+    if (CUTIN_KINDS.has(fx.kind)) {
+      cutIn(text, def.style);
+      vibrate(fx.kind === 'bomb' || fx.kind === 'stop' ? [30, 40, 30] : [25]);
+    }
+
     // 피 뺏기 — 빼앗긴 사람 패널에 표시
     if (fx.kind === 'piSteal' && ctx.seatEl && fx.victimSeat >= 0) {
       flashPlayer(ctx.seatEl(fx.victimSeat), '피 -1');
@@ -295,12 +301,61 @@
     return bgmOn;
   }
 
+  // ── 컷인 · 햅틱 ──────────────────────────────────────────────────────────
+
+  /** 크게 외치는 이벤트(쪽/따닥/폭탄/뻑/고/스톱/총통)의 컷인 연출. */
+  const CUTIN_KINDS = new Set(['jjok', 'ttadak', 'bomb', 'bbeok', 'chongtong', 'go', 'reverseGo', 'stop', 'sseul', 'goStopPrompt']);
+
+  function cutIn(text, style = 'gold') {
+    const el = ensureBanner();
+    el.textContent = text;
+    el.className = `banner show cutin ${style}`;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => {
+      el.className = 'banner';
+    }, 1500);
+
+    // 화면 흔들림
+    if (document.body.animate) {
+      const strong = style === 'red' ? 12 : 7;
+      document.body.animate(
+        [
+          { transform: 'translate3d(0,0,0)' },
+          { transform: `translate3d(${-strong}px,${strong / 2}px,0)` },
+          { transform: `translate3d(${strong}px,${-strong / 2}px,0)` },
+          { transform: `translate3d(${-strong / 2}px,${strong / 3}px,0)` },
+          { transform: 'translate3d(0,0,0)' },
+        ],
+        { duration: 320, easing: EASE.out }
+      );
+    }
+    // 화면 플래시
+    const flash = document.createElement('div');
+    flash.className = `cutin-flash ${style}`;
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 420);
+  }
+
+  /** 진동(햅틱) 피드백. 지원하지 않으면 조용히 무시. */
+  function vibrate(pattern) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch {
+      /* 무시 */
+    }
+  }
+
   window.GostopFx = {
     EASE,
     EFFECTS,
     animateCardFlight,
     animateCapturedTransfers,
     showBanner,
+    cutIn,
+    vibrate,
     flashPlayer,
     playSound,
     setMuted,
@@ -308,5 +363,6 @@
     handleFx,
     toggleBgm,
     isBgmOn,
+    CUTIN_KINDS,
   };
 })();

@@ -54,7 +54,7 @@ const TARGETS = [
     repo: 'hwatu',
     prefix: 'apps/web/public/audio/effects/',
     ext: '.wav',
-    exclude: (n) => n === 'verification.json',
+    exclude: (n) => n === 'verification.json' || n === 'mission.wav',
   },
   // itsent-lab: 추가 효과음 MP3 (CC0) + 국악 배경음악 (CC BY 4.0)
   {

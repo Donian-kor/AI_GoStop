@@ -175,9 +175,127 @@ button:disabled { opacity: .5; cursor: default; }
 
 .chip.icon.on { border-color: var(--gold); color: var(--gold); }
 
-.table-wrap {
+/* ── 카드 디자인 (현대적 벡터 재해석) ───────────────────
+   전통 그림은 그대로 두되, 모바일에서 한눈에 보이도록
+   · 상단에 '월' 색상 띠 (해당 월의 전통 색)
+   · 우하단에 족보 종류 배지 (광/열/띠/피)
+   를 얹어 식별 속도를 높인다. */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: attr(data-month-label);
+  position: absolute; top: 0; left: 0; right: 0;
+  height: var(--band-h, 13px);
+  background: var(--mc, #6b7f70);
+  color: #fff; font-size: var(--band-fs, 9px); line-height: var(--band-h, 13px);
+  text-align: center; font-weight: 800; letter-spacing: .5px;
+}
+.card::after {
+  content: attr(data-kind);
+  position: absolute; right: 2px; bottom: 2px;
+  background: rgba(255, 255, 255, .92); color: var(--mc, #333);
+  border-radius: 3px; padding: 0 3px;
+  font-size: var(--kind-fs, 9px); font-weight: 800; line-height: 1.35;
+}
+.card.small { --band-h: 10px; --band-fs: 8px; --kind-fs: 8px; }
+
+/* 12개월 전통 색 */
+.m01 { --mc: #2f7d4f; } .m02 { --mc: #d1558f; } .m03 { --mc: #ef8fb0; }
+.m04 { --mc: #2b4a3f; } .m05 { --mc: #7b5ea7; } .m06 { --mc: #b9a98a; }
+.m07 { --mc: #cf3b3b; } .m08 { --mc: #c9992e; } .m09 { --mc: #d8bb32; }
+.m10 { --mc: #dd6f2c; } .m11 { --mc: #8a6cb8; } .m12 { --mc: #3f74b8; }
+
+/* 손패 — 선택 가능한 카드는 살짝 위로 튀어오른다 */
+.hand .card.pick { transition: transform .14s ease, box-shadow .14s ease; }
+.hand .card.pick:hover { transform: translateY(-8px); box-shadow: 0 6px 14px rgba(0, 0, 0, .55); }
+.hand .card.pick:active { transform: translateY(-4px) scale(.97); }
+.prompt .card.pick:hover, #hand .card.pick:focus-visible { transform: translateY(-6px); }
+
+/* ── 컷인 ─────────────────────────────────────────────── */
+.banner.cutin {
+  font-size: 40px;
+  padding: 22px 44px;
+  border-width: 3px;
+  box-shadow: 0 0 40px rgba(232, 196, 106, .35);
+}
+.banner.cutin.red { box-shadow: 0 0 40px rgba(226, 104, 95, .35); }
+
+.cutin-flash {
+  position: fixed; inset: 0; z-index: 25; pointer-events: none;
+  background: radial-gradient(circle at 50% 34%, rgba(232, 196, 106, .32), transparent 62%);
+  animation: cutinFlash .42s ease-out forwards;
+}
+.cutin-flash.red { background: radial-gradient(circle at 50% 34%, rgba(226, 104, 95, .34), transparent 62%); }
+@keyframes cutinFlash { from { opacity: 1; } to { opacity: 0; } }
+
+/* ── 족보 패널 (실시간 달성 상태) ───────────────────────
+   텍스트 한 줄이 아니라 실제 고스톱 탭의 정보판처럼 박스형 타일로 구성한다. */
+.score-panel {
+  display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
+  padding: 8px 12px; background: var(--bg2);
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+.score-panel::-webkit-scrollbar { display: none; }
+.score-panel .sp {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 5px;
+  min-width: 74px; justify-content: center;
+  padding: 7px 10px; border-radius: 10px;
+  background: linear-gradient(180deg, #2b4a36, #223a2b);
+  border: 1px solid #46654e;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 4px rgba(0, 0, 0, .3);
+  font-size: 13px; white-space: nowrap;
+}
+.score-panel .sp b { font-variant-numeric: tabular-nums; font-weight: 700; }
+.score-panel .sp .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0, 0, 0, .3); }
+.score-panel .sp .need { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.score-panel .sp.done {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, #4a5230, #38422a);
+  box-shadow: inset 0 0 0 1px rgba(232, 196, 106, .25), 0 0 10px rgba(232, 196, 106, .18);
+}
+.score-panel .sp.done .need { color: var(--gold); }
+.score-panel .sp.big { min-width: 84px; }
+.score-panel .sp.big b { font-size: 24px; color: var(--gold); line-height: 1; }
+.score-panel .sp.big span { font-size: 12px; color: var(--muted); }
+.score-panel .sp:not(.big) b { font-size: 14px; }
+
+/* 획득 요약 (광/열/띠/피 개수) */
+.captured-sum { display: flex; gap: 3px; justify-content: center; margin-top: 3px; flex-wrap: wrap; }
+.captured-sum i {
+  font-style: normal; font-size: 10px; padding: 1px 4px; border-radius: 4px;
+  background: rgba(0, 0, 0, .25); color: var(--muted);
+}
+.captured-sum i.on { color: #10241a; font-weight: 700; }
+.captured-sum i.guang.on { background: #e8c46a; }
+.captured-sum i.ribbon.on { background: #7fb2e8; }
+.captured-sum i.junk.on { background: #b9c4bb; }
+
+/* ── 테이블(초록 felt) ─────────────────────────────────
+   실제 고스톱 탭처럼 초록 천 위에 카드가 놓이는 느낌. */
+.table-field {
   flex: 1 1 auto; min-height: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  display: flex; flex-direction: column;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, .07), transparent 60%),
+    radial-gradient(ellipse at 20% 80%, rgba(0, 0, 0, .18), transparent 55%),
+    linear-gradient(160deg, #3f6b3c 0%, #2f5a2f 45%, #24492a 100%);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+/* 천의 결(가로줄) */
+.table-field::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .045) 0 2px, transparent 2px 5px);
+  opacity: .5;
+}
+
+.table-wrap {
+  flex: 1 1 auto; min-height: 0; position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; padding: 12px 8px; overflow: hidden;
 }
 .table { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; max-width: 96vw; }

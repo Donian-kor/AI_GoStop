@@ -10,11 +10,13 @@
 //   mode = 'solo'  → 0번 자리는 사람, 나머지는 AI (혼자 치기 / 2인 맞고)
 
 const { TurnEngine, EngineError, PHASE, EVENT } = require('../engine/play');
+const { KIND, displayName } = require('../engine/cards');
 const { shuffledDeck } = require('../engine/deck');
-const { pickSeon } = require('../engine/deal');
+const { pickSeon, deal } = require('../engine/deal');
 const { normalizeSettings, toScoreOptions, DEFAULT_SETTINGS } = require('../engine/settings');
 const { settleGame, applyToBalances } = require('../engine/settlement');
 const { chooseAiMove, chooseAiGoStop, chooseAiFloorMatch } = require('../engine/ai');
+const fourplayer = require('../engine/fourplayer');
 
 /** 방 코드에 사용할 문자 (혼동되는 I·O·0·1 제외). */
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -23,6 +25,7 @@ const CODE_LENGTH = 6;
 /** 방 단계. */
 const ROOM_PHASE = {
   LOBBY: 'lobby', // 대기실
+  NEGOTIATE: 'negotiate', // 4인 광팔기 협상
   SEON: 'seon', // 선(先) 결정
   PLAY: 'play', // 대국 중
   SETTLE: 'settle', // 정산 후
@@ -40,6 +43,30 @@ function randomCode() {
   let code = '';
   for (let i = 0; i < CODE_LENGTH; i++) code += CODE_CHARS[bytes[i] % CODE_CHARS.length];
   return code;
+}
+
+/** 카드 종류별 개수 (획득 요약판용). */
+function countKinds(cards) {
+  const out = { bright: 0, animal: 0, ribbon: 0, junk: 0, doubleJunk: 0, bonus: 0, total: cards.length };
+  for (const c of cards) {
+    if (out[c.kind] !== undefined) out[c.kind]++;
+  }
+  return out;
+}
+
+/** 족보 달성 진행도 (족보 패널용). */
+function setProgress(cards) {
+  const tag = (t) => cards.filter((c) => c.tags && c.tags.includes(t)).length;
+  return {
+    bright: cards.filter((c) => c.kind === KIND.BRIGHT).length,
+    animal: cards.filter((c) => c.kind === KIND.ANIMAL).length,
+    ribbon: cards.filter((c) => c.kind === KIND.RIBBON).length,
+    junk: cards.filter((c) => c.kind === KIND.JUNK || c.kind === KIND.DOUBLE_JUNK || c.kind === KIND.BONUS).length,
+    godori: tag('godori'),
+    hongdan: tag('hongdan'),
+    cheongdan: tag('cheongdan'),
+    chodan: tag('chodan'),
+  };
 }
 
 /** 사람이 읽는 로그로 남길 이벤트 종류. */
@@ -84,6 +111,14 @@ class Room {
     this.log = []; // 텍스트 로그
     this.lastActivity = Date.now();
     this.result = null; // 마지막 판 결과
+
+    // 4인 광팔기
+    this.playSeats = null; // 실제로 치는 3명의 물리 좌석 (엔진 플레이어 순서)
+    this.negotiation = null; // 광팔기 협상 상태
+    this.lastSitOutSeat = -1; // 직전 판에 빠진 자리 (연사 방지)
+    this.gwangSale = null; // 직전 판 광팔기 정산 내역
+    this.version = 0; // 상태 변경 횟수 (긴 폴링용)
+    this.changeWaiters = []; // 상태 변경을 기다리는 요청들
 
     if (this.settings.mode === 'solo') this.setupAiSeats();
   }
@@ -148,6 +183,7 @@ class Room {
     }
 
     this.touch();
+    this.bump();
     return { seat, player };
   }
 
@@ -157,6 +193,21 @@ class Room {
 
   playerAt(seat) {
     return this.seats[seat] || null;
+  }
+
+  /**
+   * 물리 좌석 → 엔진 플레이어 인덱스.
+   * 4인 광팔기는 실제로 치는 3명이 한 자리를 비우므로 매핑이 필요하다.
+   */
+  engineSeatOf(physicalSeat) {
+    if (!this.playSeats) return physicalSeat;
+    return this.playSeats.indexOf(physicalSeat);
+  }
+
+  /** 엔진 플레이어 인덱스 → 물리 좌석. */
+  physicalSeatOf(engineSeat) {
+    if (!this.playSeats) return engineSeat;
+    return this.playSeats[engineSeat] ?? engineSeat;
   }
 
   /** 사람이 앉아 있는 자리 수. */
@@ -179,11 +230,50 @@ class Room {
       p.connected = false;
       p.lastSeen = Date.now();
       this.touch();
+    this.bump();
     }
   }
 
   touch() {
     this.lastActivity = Date.now();
+  }
+
+  /** 상태가 바뀌었다고 알린다 — 기다리는 폴링 요청을 깨운다. */
+  bump() {
+    this.version++;
+    const waiters = this.changeWaiters;
+    this.changeWaiters = [];
+    for (const w of waiters) {
+      try {
+        w();
+      } catch {
+        /* 무시 */
+      }
+    }
+  }
+
+  /**
+   * 상태가 바뀌거나 타임아웃할 때까지 기다린다 (긴 폴링).
+   * @param {number} timeoutMs 최대 대기 시간
+   * @returns {Promise<boolean>} 상태가 바뀌었으면 true
+   */
+  waitForChange(timeoutMs) {
+    return new Promise((resolve) => {
+      const startVersion = this.version;
+      const startTime = Date.now();
+      const check = () => {
+        if (this.version !== startVersion) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startTime >= timeoutMs) {
+          resolve(false);
+          return;
+        }
+        this.changeWaiters.push(check);
+      };
+      this.changeWaiters.push(check);
+    });
   }
 
   get isEmpty() {
@@ -209,6 +299,37 @@ class Room {
 
     this.deck = shuffledDeck(this.settings.bonusPack);
 
+    // 4인 광팔기 — 먼저 포기/광팔기 협상을 한다
+    if (this.settings.playerCount === 4) {
+      // 4인 딜: 4×7장 + 바닥 6장 (뒷패 17장). 광을 팔 사람은 자기 손패를 봐야 한다.
+      const dealt = deal(this.deck, 4, 0);
+      this.seats.forEach((p, i) => {
+        if (p) p.hand = dealt.hands[i];
+      });
+      this.fourFloor = dealt.floor;
+      this.fourStock = dealt.stock;
+      this.playSeats = null;
+      this.negotiation = {
+        decisions: {}, // 좌석 → 'join' | 'giveup' | 'sell'
+        p2GiveUp: false,
+        p3GiveUp: false,
+        p4Sell: false,
+        order: [1, 2, 3], // P2 → P3 → P4 순서로 결정
+      };
+      this.seonCandidates = this.seats.map(() => null);
+      this.seonPicked = this.seats.map(() => -1);
+      this.engine = null;
+      this.settle = null;
+      this.result = null;
+      this.prompt = null;
+      this.deadline = null;
+      this.phase = ROOM_PHASE.NEGOTIATE;
+      this.logEvent('4인 광팔기 — 참가 여부를 정합니다. (선은 반드시 참가)');
+      this.touch();
+    this.bump();
+      return;
+    }
+
     // 선 결정용 후보 3장씩 (덱에서 뽑으면 실제 딜 덱에서 빠진다)
     // AI 자리도 후보를 갖는다 — 화면에는 비추지만 동점 판정에는 필요하다.
     this.seonCandidates = this.seats.map((p) =>
@@ -225,6 +346,143 @@ class Room {
     this.phase = ROOM_PHASE.SEON;
     this.logEvent('새 판을 시작합니다. 선을 정해 주세요.');
     this.touch();
+    this.bump();
+  }
+
+  // ── 4인 광팔기 협상 ──────────────────────────────────────────────────────
+
+  /** 현재 결정할 차례의 좌석 (없으면 -1). */
+  negotiateWaitingSeat() {
+    if (!this.negotiation) return -1;
+    const n = this.negotiation;
+    // P2 가 포기했으면 P3·P4 자동 참가 → 협상 종료
+    if (n.p2GiveUp) return -1;
+    // P3 가 포기했으면 P4 자동 참가 → 협상 종료
+    if (n.p3GiveUp) return -1;
+    for (const seat of n.order) {
+      if (n.decisions[seat] === undefined) return seat;
+    }
+    return -1;
+  }
+
+  /**
+   * 협상 결정. P2·P3 은 'join'/'giveup', P4 는 'join'/'sell'(광팔기).
+   */
+  negotiateDecision(seat, decision) {
+    if (this.phase !== ROOM_PHASE.NEGOTIATE || !this.negotiation) {
+      throw new EngineError('지금은 협상 단계가 아닙니다.');
+    }
+    const n = this.negotiation;
+    const waiting = this.negotiateWaitingSeat();
+    if (seat !== waiting) throw new EngineError('아직 내 차례가 아닙니다.');
+
+    if (seat === 1) {
+      // P2: 참가 또는 포기
+      if (decision !== 'join' && decision !== 'giveup') throw new EngineError('잘못된 선택입니다.');
+      n.decisions[1] = decision;
+      n.p2GiveUp = decision === 'giveup';
+    } else if (seat === 2) {
+      if (decision !== 'join' && decision !== 'giveup') throw new EngineError('잘못된 선택입니다.');
+      n.decisions[2] = decision;
+      n.p3GiveUp = decision === 'giveup';
+    } else if (seat === 3) {
+      // P4: 참가(그냥 빠짐) 또는 광팔기
+      if (decision !== 'join' && decision !== 'sell') throw new EngineError('잘못된 선택입니다.');
+      n.decisions[3] = decision;
+      n.p4Sell = decision === 'sell';
+    } else {
+      throw new EngineError('선은 반드시 참가해야 합니다.');
+    }
+
+    const player = this.seats[seat];
+    this.logEvent(
+      decision === 'giveup'
+        ? `${player ? player.name : ''}님이 이번 판에 빠집니다.`
+        : decision === 'sell'
+          ? `${player ? player.name : ''}님이 광을 팝니다.`
+          : `${player ? player.name : ''}님이 참가합니다.`
+    );
+
+    if (this.negotiateWaitingSeat() === -1) this.resolveNegotiation();
+    this.touch();
+    this.bump();
+    return true;
+  }
+
+  /** 협상이 끝나면 3인 게임을 만든다. */
+  resolveNegotiation() {
+    const n = this.negotiation;
+    const sellerHand = this.seats[3] ? this.seats[3].hand || [] : [];
+    const round = fourplayer.resolve({
+      p2GiveUp: n.p2GiveUp,
+      p3GiveUp: n.p3GiveUp,
+      p4Sell: n.p4Sell,
+      unitPrice: this.settings.moneyPerPoint,
+      sellerHand,
+      options: toScoreOptions(this.settings),
+    });
+
+    this.playSeats = round.playSeats;
+    this.lastSitOutSeat = round.sitOutSeat;
+    this.gwangSale = round.gwang;
+
+    // 광값 선불 — 선(0)을 제외한 참가자가 낸다
+    if (round.gwang.sold && round.gwang.valuePerPayer > 0) {
+      for (const payer of round.gwang.payerSeats) {
+        const p = this.seats[payer];
+        if (p) p.money = Math.max(0, p.money - round.gwang.valuePerPayer);
+      }
+      const seller = this.seats[round.gwang.sellerSeat];
+      if (seller) seller.money += round.gwang.valuePerPayer * round.gwang.payerSeats.length;
+      this.logEvent(
+        `광값 ${round.gwang.gwangCount}광 × ${this.settings.moneyPerPoint}P = ` +
+          `${round.gwang.valuePerPayer}P 씌(선 제외 ${round.gwang.payerSeats.length}명이 선불)`
+      );
+    }
+
+    // 빠진 사람의 손패는 뒷패로 편입하고 섞는다
+    const stock = this.fourStock.slice();
+    const sitOutHand = this.seats[round.sitOutSeat] ? this.seats[round.sitOutSeat].hand || [] : [];
+    stock.push(...sitOutHand);
+    for (let i = stock.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = stock[i];
+      stock[i] = stock[j];
+      stock[j] = tmp;
+    }
+
+    // 3인 엔진 — 치는 3명의 손패를 순서대로 넘긴다
+    const names = round.playSeats.map((s) => (this.seats[s] ? this.seats[s].name : `${s + 1}번`));
+    this.engine = new TurnEngine({
+      playerCount: 3,
+      names,
+      options: toScoreOptions(this.settings),
+    });
+    this.engine.startGameFromDealt({
+      hands: round.playSeats.map((s) => (this.seats[s] ? this.seats[s].hand || [] : [])),
+      floor: this.fourFloor,
+      stock,
+      seon: 0, // 4인 광팔기는 선이 항상 P1
+    });
+
+    // 빠진 자리의 손패는 비운다 (이제 뒷패에 있다)
+    const sitOut = this.seats[round.sitOutSeat];
+    if (sitOut) sitOut.hand = [];
+
+    this.negotiation = null;
+    this.fourFloor = null;
+    this.fourStock = null;
+    this.phase = ROOM_PHASE.PLAY;
+    this.prompt = null;
+    this.deadline = null;
+    this.settle = null;
+    this.result = null;
+    this.pushFxFromEngine();
+    this.logEvent('참가자가 정해졌습니다. 대국을 시작합니다.');
+    this.syncPrompt();
+    this.scheduleAiTurn();
+    this.touch();
+    this.bump();
   }
 
   /** 선 결정: 후보 카드 중 하나를 고른다. */
@@ -239,6 +497,7 @@ class Room {
 
     this.seonPicked[seat] = cardIndex;
     this.touch();
+    this.bump();
 
     // 사람이 모두 골랐으면 선을 확정한다
     this.maybeResolveSeon();
@@ -305,6 +564,7 @@ class Room {
     this.syncPrompt();
     this.scheduleAiTurn();
     this.touch();
+    this.bump();
   }
 
   /** 엔진 이벤트를 이펙트 로그로 옮긴다. */
@@ -344,10 +604,12 @@ class Room {
    */
   act(player, type, payload = {}) {
     this.touch();
+    this.bump();
 
     switch (type) {
       case 'ready':
         player.ready = !player.ready;
+        this.bump();
         return { ok: true, ready: player.ready };
 
       case 'start':
@@ -362,6 +624,11 @@ class Room {
 
       case 'seonPick':
         this.pickSeonCard(player.seat, payload.cardIndex);
+        return { ok: true };
+
+      case 'negotiate':
+        // 4인 광팔기 — 참가/포기/광팔기 결정
+        this.negotiateDecision(player.seat, payload.decision);
         return { ok: true };
 
       case 'playCard':
@@ -440,7 +707,7 @@ class Room {
     if (this.phase !== ROOM_PHASE.PLAY || !this.engine) {
       throw new EngineError('지금은 대국할 수 없습니다.');
     }
-    if (this.engine.state.current !== player.seat) {
+    if (this.engine.state.current !== this.engineSeatOf(player.seat)) {
       throw new EngineError('아직 내 차례가 아닙니다.');
     }
     const result = fn();
@@ -465,6 +732,7 @@ class Room {
     if (this.engine.state.phase === PHASE.FINISHED) this.finishRound();
     else this.scheduleAiTurn();
     this.touch();
+    this.bump();
   }
 
   /** 보너스패 보충 후보(뒷패 맨 위 몇 장). */
@@ -516,7 +784,8 @@ class Room {
   scheduleAiTurn() {
     if (this.phase !== ROOM_PHASE.PLAY || !this.engine) return;
     if (this.aiTimer) return;
-    const seat = this.engine.state.current;
+    const engineSeat = this.engine.state.current;
+    const seat = this.physicalSeatOf(engineSeat);
     const p = this.seats[seat];
     if (!p || p.type !== 'ai') return;
 
@@ -533,17 +802,20 @@ class Room {
 
   /** AI가 실제로 수를 둔다. */
   runAiTurn(seat) {
-    if (!this.engine || this.engine.state.current !== seat) return;
+    if (!this.engine) return;
+    const engineSeat = this.engineSeatOf(seat);
+    if (this.engine.state.current !== engineSeat) return;
     const p = this.seats[seat];
     if (!p || p.type !== 'ai') return;
 
+    const player = this.engine.state.players[engineSeat];
     const difficulty = p.difficulty || this.settings.aiDifficulty;
     const prompt = this.prompt;
 
     // 대기 중인 선택이 있으면 그것부터 처리
     if (prompt && prompt.seat === seat) {
       if (prompt.type === 'goStop') {
-        const choice = chooseAiGoStop(this.engine, seat, difficulty);
+        const choice = chooseAiGoStop(this.engine, engineSeat, difficulty);
         if (choice === 'go') this.engine.declareGo();
         else this.engine.declareStop();
         this.afterAction(null);
@@ -554,7 +826,7 @@ class Room {
         const options = prompt.options || [];
         let best = 0;
         if (options.length === 2) {
-          const view = this.engine.state.players[seat];
+          const view = this.engine.state.players[engineSeat];
           const value = (c) => c.junkValue + (c.kind === 'bright' ? 8 : 0);
           best = value(options[1]) > value(options[0]) ? 1 : 0;
         }
@@ -583,7 +855,7 @@ class Room {
     }
 
     // 일반 수
-    const move = chooseAiMove(this.engine, seat, difficulty);
+    const move = chooseAiMove(this.engine, engineSeat, difficulty);
     if (!move) return;
 
     if (move.kind === 'card') {
@@ -594,7 +866,7 @@ class Room {
       this.afterAction(null);
     } else if (move.kind === 'shake') {
       this.engine.declareShake(move.month);
-      const idx = this.engine.state.players[seat].hand.findIndex((c) => c.month === move.month);
+      const idx = this.engine.state.players[engineSeat].hand.findIndex((c) => c.month === move.month);
       if (idx >= 0) {
         const result = this.engine.playHandCard(idx, null);
         this.afterAction(result);
@@ -697,6 +969,8 @@ class Room {
       players: this.seats
         .map((p, seat) => {
           if (!p) return null;
+          const e = this.engineSeatOf(seat);
+          const inGame = this.engine && e >= 0;
           return {
             seat: p.seat,
             name: p.name,
@@ -704,10 +978,12 @@ class Room {
             money: p.money,
             ready: p.ready,
             connected: p.connected,
-            handCount: this.engine ? this.engine.state.players[p.seat].hand.length : 0,
-            score: this.engine ? this.engine.scoreOf(p.seat).total : 0,
-            goCount: this.engine ? this.engine.state.players[p.seat].goCount : 0,
-            shakeCount: this.engine ? this.engine.state.players[p.seat].shakeCount : 0,
+            handCount: inGame ? this.engine.state.players[e].hand.length : p.hand ? p.hand.length : 0,
+            score: inGame ? this.engine.scoreOf(e).total : 0,
+            goCount: inGame ? this.engine.state.players[e].goCount : 0,
+            shakeCount: inGame ? this.engine.state.players[e].shakeCount : 0,
+            captured: inGame ? countKinds(this.engine.state.players[e].captured) : countKinds(p.hand || []),
+            sittingOut: Boolean(this.lastSitOutSeat === seat && this.phase === ROOM_PHASE.PLAY),
           };
         })
         .filter(Boolean),
@@ -731,13 +1007,43 @@ class Room {
       return base;
     }
 
+    if (this.phase === ROOM_PHASE.NEGOTIATE) {
+      // 협상 중에는 바닥 1장만 공개한다 (나머지 5장을 보면 치팅이 된다)
+      const openFloor = this.fourFloor && this.fourFloor.length ? [this.fourFloor[0]] : [];
+      base.table = openFloor.map((c) => this.engine ? this.engine.describeCard(c) : { id: c.id, imageKey: c.imageKey, month: c.month });
+      base.deckCount = this.fourStock ? this.fourStock.length : 0;
+      base.negotiation = {
+        waitingSeat: this.negotiateWaitingSeat(),
+        decisions: { ...this.negotiation.decisions },
+        p4Sell: this.negotiation.p4Sell,
+        mySaleCards:
+          this.negotiateWaitingSeat() === 3 && this.seats[3]
+            ? fourplayer.saleCards(this.seats[3].hand || [], toScoreOptions(this.settings)).map((c) => ({
+                uid: c.uid,
+                id: c.id,
+                imageKey: c.imageKey,
+                month: c.month,
+                name: displayName(c),
+              }))
+            : [],
+        gwangCount:
+          this.negotiateWaitingSeat() === 3 && this.seats[3]
+            ? fourplayer.gwangCount(this.seats[3].hand || [], toScoreOptions(this.settings))
+            : 0,
+      };
+      base.myHand = viewerSeat >= 0 && this.seats[viewerSeat] ? (this.seats[viewerSeat].hand || []).map((c) => this.engine ? this.engine.describeCard(c) : { id: c.id, imageKey: c.imageKey, month: c.month, name: displayName(c) }) : [];
+      return base;
+    }
+
     if (this.engine) {
-      base.currentSeat = this.engine.state.current;
+      base.currentSeat = this.physicalSeatOf(this.engine.state.current);
       base.table = this.engine.state.floor.map((c) => this.engine.describeCard(c));
       base.deckCount = this.engine.state.stock.length;
       base.winnerSeat = this.engine.state.winner;
       if (viewerSeat >= 0) {
-        base.myHand = this.engine.state.players[viewerSeat].hand.map((c) => this.engine.describeCard(c));
+        const e = this.engineSeatOf(viewerSeat);
+        base.myHand = e >= 0 ? this.engine.state.players[e].hand.map((c) => this.engine.describeCard(c)) : [];
+        base.mySets = e >= 0 ? setProgress(this.engine.state.players[e].captured) : null;
       }
     }
     return base;

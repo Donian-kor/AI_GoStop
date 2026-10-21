@@ -17,6 +17,7 @@
       <select id="modeSelect">
         <option value="multi-3">3명 (가족과 함께)</option>
         <option value="multi-2">2인 맞고</option>
+        <option value="multi-4">4인 광팔기</option>
         <option value="solo-2">혼자 · AI와 2인</option>
         <option value="solo-3">혼자 · AI와 3인</option>
       </select>
@@ -66,10 +67,14 @@
       </label>
     </div>
 
-    <div id="tableWrap" class="table-wrap">
-      <div id="table" class="table"></div>
-      <p id="tableHint" class="hint"></p>
-      <div id="deckStack" class="deck-stack"></div>
+    <div id="scorePanel" class="score-panel"></div>
+
+    <div class="table-field">
+      <div id="tableWrap" class="table-wrap">
+        <div id="deckStack" class="deck-stack"></div>
+        <div id="table" class="table"></div>
+        <p id="tableHint" class="hint"></p>
+      </div>
     </div>
 
     <div id="promptBox" class="prompt hidden"></div>

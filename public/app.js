@@ -28,6 +28,7 @@
     muteBtn: $('muteBtn'),
     bgmBtn: $('bgmBtn'),
     deckStack: $('deckStack'),
+    scorePanel: $('scorePanel'),
     players: $('players'),
     settingsRow: $('settingsRow'),
     timeLimitSelect: $('timeLimitSelect'),
@@ -45,7 +46,9 @@
   let roomCode = null;
   let mySeat = -1;
   let lastFxSeq = 0;
+  let lastVersion = -1;
   let pollTimer = null;
+  let pollPending = false;
   let lastState = null;
   let busy = false; // 액션 처리 중 잠금(중복 전송 방지)
 
@@ -164,20 +167,28 @@
   // ── 폴링 ────────────────────────────────────────────────────────────────
 
   function startPolling() {
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(pollNow, POLL_MS);
-    pollNow();
+    if (pollTimer) clearTimeout(pollTimer);
+    // 긴 폴링 — 서버가 상태가 바뀌면 즉시 응답한다 (지연 없음)
+    const loop = async () => {
+      await pollNow();
+      if (roomCode) pollTimer = setTimeout(loop, 50);
+    };
+    loop();
   }
 
   async function pollNow() {
-    if (!roomCode) return;
+    if (!roomCode || pollPending) return;
+    pollPending = true;
     let res;
     try {
-      res = await api(`/api/room/${roomCode}/state?since=${lastFxSeq}`);
+      res = await api(`/api/room/${roomCode}/state?since=${lastFxSeq}&v=${lastVersion}`);
     } catch {
-      return; // 네트워크 흔들림은 무시하고 다음 주기에 다시 시도
+      pollPending = false;
+      return; // 네트워크 흔들림은 무시하고 다시 시도
     }
+    pollPending = false;
     if (!res || !res.ok) return;
+    if (typeof res.version === 'number') lastVersion = res.version;
 
     for (const fx of res.fx || []) {
       lastFxSeq = Math.max(lastFxSeq, fx.seq);
@@ -193,6 +204,112 @@
   function cardImg(card) {
     return `${CARD_IMG}${card.imageKey || card.id}.svg`;
   }
+
+  const KIND_LABEL = {
+    bright: '광',
+    animal: '열꽃',
+    ribbon: '띠',
+    junk: '피',
+    doubleJunk: '쌍피',
+    bonus: '보너스',
+  };
+
+  /**
+   * 카드 요소 — 전통 그림 위에 '월' 색상 띠와 종류 배지를 얹는다.
+   * (모바일에서 한눈에 월/종류를 읽을 수 있게 하는 현대적 재해석)
+   */
+  function makeCardEl(card, extraClass = '') {
+    const d = document.createElement('div');
+    d.className = `card ${extraClass}`.trim();
+    d.style.backgroundImage = `url(${cardImg(card)})`;
+    if (card.month >= 1 && card.month <= 12) {
+      d.classList.add('m' + String(card.month).padStart(2, '0'));
+      d.dataset.monthLabel = card.month + '월';
+    }
+    d.dataset.kind = KIND_LABEL[card.kind] || '';
+    return d;
+  }
+
+  /** 획득 요약 (광/열꽃/띠/피 개수). */
+  function capturedSummary(sum) {
+    const wrap = document.createElement('div');
+    wrap.className = 'captured-sum';
+    if (!sum) return wrap;
+    const items = [
+      ['guang', '광', sum.bright],
+      ['', '열', sum.animal],
+      ['ribbon', '띠', sum.ribbon],
+      ['junk', '피', sum.junk + sum.doubleJunk + sum.bonus],
+    ];
+    for (const [cls, label, n] of items) {
+      const i = document.createElement('i');
+      i.className = `${cls} ${n > 0 ? 'on' : ''}`.trim();
+      i.textContent = `${label}${n}`;
+      wrap.append(i);
+    }
+    return wrap;
+  }
+
+  /** 족보 패널 — 실제 고스톱 탭처럼 박스형 타일로 구성한다(텍스트 한 줄로 늘어놓지 않는다). */
+  function renderScorePanel(state) {
+    const s = state.mySets;
+    el.scorePanel.innerHTML = '';
+    if (!s) return;
+
+    const me = state.players[mySeat];
+    const total = me ? me.score : 0;
+
+    // 큰 점수 타일
+    const scoreTile = document.createElement('div');
+    scoreTile.className = 'sp big';
+    scoreTile.innerHTML = `<b>${total}</b><span>점</span>`;
+    el.scorePanel.append(scoreTile);
+
+    // 획득 장수 타일
+    const countTile = document.createElement('div');
+    countTile.className = 'sp';
+    const captured = me && me.captured ? me.captured.total : 0;
+    countTile.innerHTML = `<b>${captured}</b><span>개</span>`;
+    el.scorePanel.append(countTile);
+
+    // 족보별 진행 타일
+    const items = [
+      { label: '광', n: s.bright, need: 3, cls: 'guang' },
+      { label: '고도리', n: s.godori, need: 3, cls: 'godori' },
+      { label: '홍단', n: s.hongdan, need: 3, cls: 'hong' },
+      { label: '청단', n: s.cheongdan, need: 3, cls: 'cheong' },
+      { label: '초단', n: s.chodan, need: 3, cls: 'cho' },
+      { label: '열꽃', n: s.animal, need: 5, cls: 'animal' },
+      { label: '띠', n: s.ribbon, need: 5, cls: 'ribbon' },
+      { label: '피', n: s.junk, need: 10, cls: 'junk' },
+    ];
+
+    for (const it of items) {
+      const d = document.createElement('div');
+      d.className = 'sp' + (it.n >= it.need ? ' done' : '');
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = DOT_COLOR[it.cls] || 'var(--muted)';
+      const b = document.createElement('b');
+      b.textContent = it.label;
+      const need = document.createElement('span');
+      need.className = 'need';
+      need.textContent = `${it.n}/${it.need}`;
+      d.append(dot, b, need);
+      el.scorePanel.append(d);
+    }
+  }
+
+  const DOT_COLOR = {
+    guang: '#e8c46a',
+    godori: '#8fe0a8',
+    hong: '#ef8fb0',
+    cheong: '#7fb2e8',
+    cho: '#9ed48a',
+    animal: '#c9a0e8',
+    ribbon: '#7fd4c4',
+    junk: '#b9c4bb',
+  };
 
   /** 손패 카드가 화면폭에 맞춰 보이도록 크기를 정한다. */
   function fitHandCards(count) {
@@ -259,6 +376,7 @@
       money.textContent = `${p.money.toLocaleString()}P`;
 
       div.append(name, meta, money);
+      div.append(capturedSummary(p.captured));
 
       // 상대 손패는 뒷장으로 보여준다 (내 손패는 공개)
       if (p.seat !== mySeat && p.handCount > 0) {
@@ -279,6 +397,21 @@
       el.players.append(div);
     }
 
+    // ── 4인 광팔기 협상 ──
+    if (state.phase === 'negotiate') {
+      el.table.innerHTML = '';
+      for (const c of state.table) el.table.append(makeCardEl(c, 'small'));
+      el.tableHint.textContent = '바닥 1장만 공개됩니다 (협상 중)';
+      el.hand.innerHTML = '';
+      for (const c of state.myHand) el.hand.append(makeCardEl(c, ''));
+      el.turnInfo.textContent = '4인 광팔기 — 참가 여부 협상 중';
+      el.timer.textContent = '';
+      el.startBtn.classList.add('hidden');
+      el.overlay.classList.add('hidden');
+      renderNegotiation(state);
+      return;
+    }
+
     // ── 선 결정 단계 ──
     if (state.phase === 'seon') {
       el.table.innerHTML = '';
@@ -295,10 +428,7 @@
     // ── 바닥 ──
     el.table.innerHTML = '';
     for (const c of state.table) {
-      const d = document.createElement('div');
-      d.className = 'card small';
-      d.style.backgroundImage = `url(${cardImg(c)})`;
-      el.table.append(d);
+      el.table.append(makeCardEl(c, 'small'));
     }
     el.tableHint.textContent = state.table.length ? `바닥 ${state.table.length}장` : '';
 
@@ -320,21 +450,29 @@
     }
 
     // ── 내 손패 ──
+    // 내 차례가 아니거나 선택 대기 중이면 카드를 눌러도 안 된다(서버가 거절하고 오류가 뜬다)
+    const myTurn = state.currentSeat === mySeat && !state.prompt;
     fitHandCards(state.myHand.length);
     el.hand.innerHTML = '';
     state.myHand.forEach((c, i) => {
-      const d = document.createElement('div');
-      d.className = 'card pick';
+      const d = makeCardEl(c, myTurn ? 'pick' : '');
       d.dataset.cardId = c.id;
-      d.style.backgroundImage = `url(${cardImg(c)})`;
-      d.addEventListener('click', () => playCard(d, i));
+      if (myTurn) d.addEventListener('click', () => playCard(d, i));
       el.hand.append(d);
     });
+    el.hand.classList.toggle('waiting', !myTurn && state.phase === 'play');
 
     renderPrompt(state);
+    renderScorePanel(state);
 
     const cur = state.players[state.currentSeat];
-    el.turnInfo.textContent = state.phase === 'settle' ? '판이 끝났습니다.' : cur ? `${cur.name} 차례` : '';
+    el.turnInfo.textContent = state.phase === 'settle'
+      ? '판이 끝났습니다.'
+      : cur
+        ? state.currentSeat === mySeat
+          ? '내 차례입니다'
+          : `${cur.name} 차례`
+        : '';
 
     // ── 방장 시작 버튼 ──
     const canStart = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
@@ -376,6 +514,10 @@
   /** 카드를 낸다 — 카드가 손패에서 바닥으로 날아가는 애니메이션을 먼저 보여준다. */
   async function playCard(cardEl, index) {
     if (busy) return;
+    // 마지막으로 받은 상태가 "내 차례"가 아니면 보내지 않는다.
+    // (긴 폴링이라 상태는 거의 실시간이지만, 클릭 직전 확인이 안전망이 된다)
+    if (!lastState || lastState.currentSeat !== mySeat || lastState.prompt) return;
+
     const target = el.table;
     Fx.animateCardFlight(cardEl, target, -6, 260);
     // 애니메이션이 진행되는 동안 잠깐 대기 → 손에서 카드가 "빠지는" 느낌
@@ -385,6 +527,61 @@
 
   function seatEl(seat) {
     return el.players.querySelector(`.player[data-seat="${seat}"]`);
+  }
+
+  /** 4인 광팔기 협상 화면. */
+  function renderNegotiation(state) {
+    const n = state.negotiation || {};
+    const waiting = n.waitingSeat;
+    el.promptBox.classList.remove('hidden');
+    el.promptBox.innerHTML = '';
+
+    // 이미 결정한 사람들
+    const done = Object.entries(n.decisions || {});
+    if (done.length) {
+      const info = document.createElement('span');
+      info.textContent = done
+        .map(([seat, d]) => `${state.players[seat]?.name || ''}: ${d === 'giveup' ? '포기' : d === 'sell' ? '광팔기' : '참가'}`)
+        .join(' · ');
+      el.promptBox.append(info);
+    }
+
+    if (waiting !== mySeat) {
+      const w = document.createElement('span');
+      w.textContent = waiting < 0 ? '협상이 끝났습니다.' : `${state.players[waiting]?.name || ''} 님이 결정하는 중…`;
+      el.promptBox.append(w);
+      return;
+    }
+
+    const title = document.createElement('strong');
+    title.textContent = '참가하시겠습니까?';
+    el.promptBox.append(title);
+
+    const join = document.createElement('button');
+    join.className = 'primary';
+    join.textContent = '참가';
+    join.addEventListener('click', () => act('negotiate', { decision: 'join' }));
+    el.promptBox.append(join);
+
+    // P4(4번째)만 광을 팔 수 있다
+    if (mySeat === 3) {
+      const sell = document.createElement('button');
+      sell.textContent = `광을 판다 (${n.gwangCount || 0}광)`;
+      sell.addEventListener('click', () => act('negotiate', { decision: 'sell' }));
+      el.promptBox.append(sell);
+
+      if (n.mySaleCards && n.mySaleCards.length) {
+        const label = document.createElement('span');
+        label.textContent = '팔 패:';
+        el.promptBox.append(label);
+        for (const c of n.mySaleCards) el.promptBox.append(makeCardEl(c, 'small'));
+      }
+    } else {
+      const giveup = document.createElement('button');
+      giveup.textContent = '포기';
+      giveup.addEventListener('click', () => act('negotiate', { decision: 'giveup' }));
+      el.promptBox.append(giveup);
+    }
   }
 
   function renderSeon(state) {

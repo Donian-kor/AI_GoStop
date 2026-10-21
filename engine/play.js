@@ -395,6 +395,26 @@ class TurnEngine {
     }
   }
 
+  /**
+   * 이미 나눠 놓은 패로 대국을 시작한다 (4인 광팔기처럼 딜을 미리 한 경우).
+   * @param {object} d { hands, floor, stock, seon }
+   */
+  startGameFromDealt({ hands, floor, stock, seon = 0 }) {
+    for (let i = 0; i < this.state.players.length; i++) {
+      this.state.players[i].hand = hands[i] || [];
+    }
+    this.state.floor = floor || [];
+    this.state.stock = stock || [];
+    this.state.current = seon;
+    this.state.phase = PHASE.PLAYING;
+
+    this.applyFloorBonus();
+    if (!this.applyFloorChongtong()) {
+      this.applyHandChongtong();
+      this.applyFloorBbeok();
+    }
+  }
+
   /** 딜 직후 바닥의 보너스패는 선이 획득하고, 뒷패에서 일반패로 보충한다. */
   applyFloorBonus() {
     if (this.state.phase !== PHASE.PLAYING || this.state.playCount > 0) return;

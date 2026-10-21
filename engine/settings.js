@@ -63,7 +63,7 @@ function normalizeSettings(input = {}) {
   s.timeLimit = { ...DEFAULT_SETTINGS.timeLimit, ...(input.timeLimit || {}) };
   s.bak = { ...DEFAULT_SETTINGS.bak, ...(input.bak || {}) };
 
-  if (![2, 3].includes(Number(s.playerCount))) s.playerCount = DEFAULT_SETTINGS.playerCount;
+  if (![2, 3, 4].includes(Number(s.playerCount))) s.playerCount = DEFAULT_SETTINGS.playerCount;
   if (![48, 50, 51].includes(Number(s.bonusPack))) s.bonusPack = DEFAULT_SETTINGS.bonusPack;
   s.playerCount = Number(s.playerCount);
   s.bonusPack = Number(s.bonusPack);

@@ -188,7 +188,7 @@ async function handleApi(req, res, url) {
     // 방 모드: 'multi' = 사람끼리 / 'solo' = 나 혼자 + AI
     const options = {
       mode: body.mode === 'solo' ? 'solo' : 'multi',
-      playerCount: Number(body.playerCount) === 2 ? 2 : 3,
+      playerCount: [2, 3, 4].includes(Number(body.playerCount)) ? Number(body.playerCount) : 3,
       aiDifficulty: body.aiDifficulty,
     };
     const room = createRoom(options);
@@ -233,12 +233,19 @@ async function handleApi(req, res, url) {
     );
   }
 
-  // GET /api/room/:code/state — 상태 조회(폴링)
+  // GET /api/room/:code/state — 상태 조회(긴 폴링)
   if (segments.length === 4 && segments[3] === 'state' && req.method === 'GET') {
     if (playerId) room.markSeen(playerId);
     const player = playerId ? room.findPlayer(playerId) : null;
     const seat = player ? player.seat : -1;
     const since = Number(url.searchParams.get('since') || 0);
+    const clientVersion = Number(url.searchParams.get('v') || -1);
+
+    // 긴 폴링 — 상태가 바뀌면 즉시 응답한다(지연 없음).
+    // 바뀌지 않으면 20초 뒤 현재 상태로 응답한다(하트비트).
+    if (clientVersion >= 0 && clientVersion === room.version) {
+      await room.waitForChange(20000);
+    }
 
     const fx = room.fx.filter((e) => e.seq > since);
     return sendJson(res, 200, {
@@ -246,6 +253,7 @@ async function handleApi(req, res, url) {
       state: room.snapshot(seat, playerId),
       fx,
       log: room.log.slice(-30),
+      version: room.version,
     });
   }
 
