@@ -251,10 +251,13 @@ async function handleApi(req, res, url) {
     const headers = id !== playerId
       ? { 'Set-Cookie': `gs_id=${id}; Path=/; SameSite=Lax; Max-Age=86400` }
       : {};
+    // joined 의 형태가 두 가지다: 새로 들어온 경우 { seat, player }, 이미 있던 경우 플레이어 객체
+    const seat = joined.seat;
+    const name = joined.player ? joined.player.name : joined.name;
     return sendJson(
       res,
       200,
-      { ok: true, code: room.code, seat: joined.seat, name: joined.player.name, playerCount: room.playerCount },
+      { ok: true, code: room.code, seat, name, playerCount: room.playerCount },
       headers
     );
   }

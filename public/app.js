@@ -1,22 +1,32 @@
 'use strict';
 
-// 고스톱 클라이언트 — 바닐라 JS, 빌드 없음.
-//
-// 흐름: 입장 → 방 코드 입력 → 폴링으로 상태 갱신 → 카드를 탭해서 내기.
-// 서버가 규칙을 전부 판정하므로 여기는 "보여주기"와 "의도 전달"만 한다.
-// 이펙트/애니메이션/사운드는 fx.js 가 담당한다.
+/*
+ * 고스톱 클라이언트 — ES5 문법으로 작성 (Android 4.4 등 구형 브라우저 대응)
+ *
+ * 사용하지 않는 것:
+ *   let/const,箭头함수, 템플릿리터럴, async/await, Promise, fetch,
+ *   객체/배열 전개, 기본 매개변수, 구조분해, ?. / ??, Object.assign,
+ *   Array.find/includes, String.padStart/includes
+ *
+ * 벤치마킹: itsent-lab/hwatu 의 apps/web/src/lib/effects.ts (Web Animations API 카드 비행)
+ */
 
-(() => {
-  const POLL_MS = 1200;
-  // 카드 이미지: PNG(600x978 미리 래스터화)를 쓴다.
-  //   SVG(103x168 내재 크기)는 고DPR 기기에서 103px로 래스터화돼 확대 시 흐려진다.
-  //   PNG 는 어떤 기기 픽셀비에서도 선명하다.
-  const CARD_IMG = 'assets/hwatu/png/';
-  // 자산 버전 — 서버 빌드 버전과 맞춰 쓴다(자산이 바뀌면 URL 이 달라져 캐시가 무효화된다)
-  let buildVersion = '1';
+(function () {
+  var CARD_IMG = 'assets/hwatu/png/';
+  var buildVersion = '1';
+  var roomCode = null;
+  var mySeat = -1;
+  var lastFxSeq = 0;
+  var lastVersion = -1;
+  var pollTimer = null;
+  var pollPending = false;
+  var lastState = null;
+  var busy = false;
+  var Fx = window.GostopFx;
 
-  const $ = (id) => document.getElementById(id);
-  const el = {
+  var $ = function (id) { return document.getElementById(id); };
+
+  var el = {
     lobby: $('lobby'),
     room: $('room'),
     nameInput: $('nameInput'),
@@ -35,9 +45,6 @@
     deckStack: $('deckStack'),
     scorePanel: $('scorePanel'),
     players: $('players'),
-    settingsRow: $('settingsRow'),
-    timeLimitSelect: $('timeLimitSelect'),
-    pointValueInput: $('pointValueInput'),
     table: $('table'),
     tableHint: $('tableHint'),
     promptBox: $('promptBox'),
@@ -45,806 +52,770 @@
     turnInfo: $('turnInfo'),
     timer: $('timer'),
     startBtn: $('startBtn'),
-    overlay: $('overlay'),
+    overlay: $('overlay')
   };
 
-  let roomCode = null;
-  let mySeat = -1;
-  let lastFxSeq = 0;
-  let lastVersion = -1;
-  let pollTimer = null;
-  let pollPending = false;
-  let lastState = null;
-  let busy = false; // 액션 처리 중 잠금(중복 전송 방지)
+  var KIND_LABEL = {
+    bright: '광', animal: '열꽃', ribbon: '띠', junk: '피',
+    doubleJunk: '쌍피', bonus: '보너스'
+  };
 
-  const Fx = window.GostopFx;
+  var DOT_COLOR = {
+    guang: '#e8c46a', godori: '#8fe0a8', hong: '#ef8fb0', cheong: '#7fb2e8',
+    cho: '#9ed48a', animal: '#c9a0e8', ribbon: '#7fd4c4', junk: '#b9c4bb'
+  };
 
-  // ── 자동 갱신 ────────────────────────────────────────────────────────────
-  // 서버의 빌드 버전이 지금 것과 다르면(업데이트 happened) 화면을 자동으로 새로고침한다.
-  // → 폰에서 "새로고침 눌러주세요" 없이도 항상 최신 화면을 쓰게 된다.
-  (async () => {
+  var SET_TAGS = ['godori', 'hongdan', 'cheongdan', 'chodan'];
+  var SET_COLOR = { godori: 'godori', hongdan: 'hong', cheongdan: 'cheong', chodan: 'cho' };
+
+  // ── 네트워크 (XMLHttpRequest — 구형 브라우저 대응) ───────────────────────
+
+  function request(method, url, body, onOk, onErr) {
+    var xhr = new XMLHttpRequest();
     try {
-      const res = await fetch('/api/version', { cache: 'no-store' });
-      if (!res.ok) return;
-      const { version } = await res.json();
-      buildVersion = version;
-      const saved = localStorage.getItem('gs_build');
-      if (saved && saved !== version) {
-        localStorage.setItem('gs_build', version);
+      xhr.open(method, url, true);
+    } catch (e) {
+      if (onErr) onErr();
+      return;
+    }
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.withCredentials = true;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        var data = null;
+        try { data = JSON.parse(xhr.responseText); } catch (e) { data = null; }
+        if (onOk) onOk(data);
+      } else if (onErr) {
+        onErr(xhr);
+      }
+    };
+    xhr.onerror = function () { if (onErr) onErr(xhr); };
+    try {
+      xhr.send(body ? JSON.stringify(body) : null);
+    } catch (e) {
+      if (onErr) onErr(xhr);
+    }
+  }
+
+  function getJson(url, onOk, onErr) { request('GET', url, null, onOk, onErr); }
+  function postJson(url, body, onOk, onErr) { request('POST', url, body, onOk, onErr); }
+
+  // ── 자동 갱신 (구버전 화면이면 자동으로 새로고침) ────────────────────────
+
+  function checkBuild() {
+    getJson('/api/version', function (res) {
+      if (!res || !res.version) return;
+      buildVersion = res.version;
+      var saved = null;
+      try { saved = localStorage.getItem('gs_build'); } catch (e) { saved = null; }
+      if (saved && saved !== res.version) {
+        try { localStorage.setItem('gs_build', res.version); } catch (e) {}
         location.reload();
         return;
       }
-      localStorage.setItem('gs_build', version);
-    } catch {
-      /* 무시 */
-    }
-  })();
-
-  // ── 네트워크 ────────────────────────────────────────────────────────────
-
-  async function api(path, options = {}) {
-    const res = await fetch(path, {
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
-    return res.json();
+      try { localStorage.setItem('gs_build', res.version); } catch (e) {}
+    }, function () {});
   }
-
-  async function post(path, payload) {
-    return api(path, { method: 'POST', body: JSON.stringify(payload || {}) });
-  }
-
-  async function act(type, payload = {}) {
-    if (!roomCode || busy) return;
-    busy = true;
-    try {
-      const res = await post(`/api/room/${roomCode}/action`, {
-        requestId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        type,
-        payload,
-      });
-      if (res && res.ok === false) {
-        Fx.showBanner(res.error || '처리할 수 없습니다.', 'red', 1400);
-      }
-    } catch {
-      Fx.showBanner('연결이 끊겼습니다', 'red', 1400);
-    } finally {
-      busy = false;
-    }
-    await pollNow();
-  }
+  checkBuild();
 
   // ── 입장 ────────────────────────────────────────────────────────────────
 
-  el.createBtn.addEventListener('click', async () => {
-    const name = el.nameInput.value.trim() || '나';
+  el.createBtn.addEventListener('click', function () {
+    var name = el.nameInput.value.replace(/^\s+|\s+$/g, '') || '나';
     el.lobbyError.textContent = '';
-
-    const [mode, count] = el.modeSelect.value.split('-');
-    const res = await post('/api/room', {
-      name,
-      mode,
-      playerCount: Number(count),
-      aiDifficulty: el.diffSelect.value,
-    });
-    if (!res.code) {
-      el.lobbyError.textContent = res.error || '방을 만들지 못했습니다.';
-      return;
-    }
-    enterRoom(res.code, res.seat);
+    var parts = el.modeSelect.value.split('-');
+    var mode = parts[0];
+    var count = parts[1] ? parseInt(parts[1], 10) : 3;
+    var diff = el.diffSelect.value;
+    postJson('/api/room', { name: name, mode: mode, playerCount: count, aiDifficulty: diff },
+      function (res) {
+        if (!res || !res.code) {
+          el.lobbyError.textContent = (res && res.error) || '방을 만들지 못했습니다.';
+          return;
+        }
+        enterRoom(res.code, res.seat);
+      },
+      function () { el.lobbyError.textContent = '서버에 연결할 수 없습니다.'; });
   });
 
-  el.joinBtn.addEventListener('click', () => {
-    el.joinBox.classList.toggle('hidden');
-    el.codeInput.focus();
+  el.joinBtn.addEventListener('click', function () {
+    if (el.joinBox.className.indexOf('hidden') >= 0) { el.joinBox.className = ''; el.codeInput.focus(); }
+    else { el.joinBox.className = 'hidden'; }
   });
 
-  el.joinGoBtn.addEventListener('click', async () => {
-    const name = el.nameInput.value.trim() || '나';
-    const code = el.codeInput.value.trim().toUpperCase();
-    if (code.length !== 6) {
-      el.lobbyError.textContent = '방 코드는 6자리입니다.';
-      return;
-    }
+  el.joinGoBtn.addEventListener('click', function () {
+    var name = el.nameInput.value.replace(/^\s+|\s+$/g, '') || '나';
+    var code = el.codeInput.value.replace(/^\s+|\s+$/g, '').toUpperCase();
+    if (code.length !== 6) { el.lobbyError.textContent = '방 코드는 6자리입니다.'; return; }
     el.lobbyError.textContent = '';
-    const res = await post(`/api/room/${code}/join`, { name });
-    if (!res.code) {
-      el.lobbyError.textContent = res.error || '방에 참가할 수 없습니다.';
-      return;
-    }
-    enterRoom(res.code, res.seat);
+    postJson('/api/room/' + code + '/join', { name: name }, function (res) {
+      if (!res || !res.code) {
+        el.lobbyError.textContent = (res && res.error) || '방에 참가할 수 없습니다.';
+        return;
+      }
+      enterRoom(res.code, res.seat);
+    }, function () { el.lobbyError.textContent = '서버에 연결할 수 없습니다.'; });
   });
 
-  el.codeChip.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(roomCode || '');
-      Fx.showBanner('방 코드 복사됨', 'plain', 900);
-    } catch {
-      Fx.showBanner(roomCode || '', 'plain', 1400);
-    }
+  el.codeChip.addEventListener('click', function () {
+    var done = function () { Fx.showBanner('방 코드 복사됨', 'plain', 900); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(roomCode || '').then(done, function () { done(); });
+    } else { done(); }
   });
 
-  el.muteBtn.addEventListener('click', () => {
-    const muted = Fx.setMuted(!Fx.isMuted());
-    el.muteBtn.textContent = muted ? '🔇' : '🔊';
+  el.muteBtn.addEventListener('click', function () {
+    var muted = Fx.setMuted(!Fx.isMuted());
+    el.muteBtn.innerHTML = muted ? '🔇' : '🔊';
     el.muteBtn.title = muted ? '소리 켜기' : '소리 끄기';
   });
 
-  el.bgmBtn.addEventListener('click', () => {
-    const on = Fx.toggleBgm();
-    el.bgmBtn.classList.toggle('on', on);
+  el.bgmBtn.addEventListener('click', function () {
+    var on = Fx.toggleBgm();
+    el.bgmBtn.className = 'chip icon' + (on ? ' on' : '');
     el.bgmBtn.title = on ? '배경음악 끄기' : '배경음악 켜기';
   });
 
-  el.startBtn.addEventListener('click', () => act('start'));
+  el.startBtn.addEventListener('click', function () { act('start'); });
 
   function enterRoom(code, seat) {
     roomCode = code;
     mySeat = seat;
     lastFxSeq = 0;
-    el.lobby.classList.add('hidden');
-    el.room.classList.remove('hidden');
-    el.codeChip.textContent = code;
-    document.title = `고스톱 ${code}`;
+    // 새로고침해도 방으로 돌아올 수 있게 방 코드와 이름을 기억한다
+    try {
+      sessionStorage.setItem('gs_room', code);
+      sessionStorage.setItem('gs_name', el.nameInput.value.replace(/^\s+|\s+$/g, ''));
+    } catch (e) {}
+    el.lobby.className = 'screen hidden';
+    el.room.className = 'screen';
+    el.codeChip.innerHTML = code;
+    document.title = '고스톱 ' + code;
     startPolling();
   }
 
-  // ── 폴링 ────────────────────────────────────────────────────────────────
+  // 새로고침 후 방으로 자동 복귀 (기존 참가자라면 쿠키로 자리도 복원된다)
+  function restoreRoom() {
+    var saved = null;
+    try { saved = sessionStorage.getItem('gs_room'); } catch (e) { saved = null; }
+    if (!saved) return;
+    var savedName = '';
+    try { savedName = sessionStorage.getItem('gs_name') || ''; } catch (e) { savedName = ''; }
+    postJson('/api/room/' + saved + '/join', { name: savedName }, function (res) {
+      if (res && res.code) {
+        enterRoom(res.code, res.seat);
+      } else {
+        try { sessionStorage.removeItem('gs_room'); } catch (e) {}
+      }
+    }, function () {
+      try { sessionStorage.removeItem('gs_room'); } catch (e) {}
+    });
+  }
+  restoreRoom();
+
+  // ── 폴링 (긴 폴링: 서버가 상태 변경 시 즉시 응답) ───────────────────────
 
   function startPolling() {
     if (pollTimer) clearTimeout(pollTimer);
-    // 긴 폴링 — 서버가 상태가 바뀌면 즉시 응답한다 (지연 없음)
-    const loop = async () => {
-      await pollNow();
-      if (roomCode) pollTimer = setTimeout(loop, 50);
+    var loop = function () {
+      pollNow(function () {
+        if (roomCode) pollTimer = setTimeout(loop, 50);
+      });
     };
     loop();
   }
 
-  async function pollNow() {
-    if (!roomCode || pollPending) return;
+  function pollNow(done) {
+    if (!roomCode || pollPending) { if (done) done(); return; }
     pollPending = true;
-    let res;
-    try {
-      res = await api(`/api/room/${roomCode}/state?since=${lastFxSeq}&v=${lastVersion}`);
-    } catch {
-      pollPending = false;
-      return; // 네트워크 흔들림은 무시하고 다시 시도
-    }
-    pollPending = false;
-    if (!res || !res.ok) return;
-    if (typeof res.version === 'number') lastVersion = res.version;
+    getJson('/api/room/' + roomCode + '/state?since=' + lastFxSeq + '&v=' + lastVersion,
+      function (res) {
+        pollPending = false;
+        if (done) done();
+        if (!res || !res.ok) return;
+        if (typeof res.version === 'number') lastVersion = res.version;
+        var fx = res.fx || [];
+        for (var i = 0; i < fx.length; i++) {
+          if (fx[i].seq > lastFxSeq) lastFxSeq = fx[i].seq;
+          Fx.handleFx(fx[i], { seatEl: seatEl, mySeat: mySeat });
+        }
+        lastState = res.state;
+        render(res.state);
+      },
+      function () { pollPending = false; if (done) done(); });
+  }
 
-    for (const fx of res.fx || []) {
-      lastFxSeq = Math.max(lastFxSeq, fx.seq);
-      Fx.handleFx(fx, { seatEl, mySeat });
-    }
+  // ── 액션 ────────────────────────────────────────────────────────────────
 
-    lastState = res.state;
-    render(res.state);
+  function act(type, payload) {
+    if (!roomCode || busy) return;
+    busy = true;
+    var body = {
+      requestId: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+      type: type,
+      payload: payload || {}
+    };
+    postJson('/api/room/' + roomCode + '/action', body, function (res) {
+      busy = false;
+      if (res && res.ok === false) Fx.showBanner(res.error || '처리할 수 없습니다.', 'red', 1400);
+      pollNow(function () {});
+    }, function () {
+      busy = false;
+      Fx.showBanner('연결이 끊겼습니다', 'red', 1400);
+    });
   }
 
   // ── 렌더링 ──────────────────────────────────────────────────────────────
 
   function cardImg(card) {
-    return `${CARD_IMG}${card.id}.png?v=${buildVersion}`;
+    return CARD_IMG + card.id + '.png?v=' + buildVersion;
   }
 
-  const KIND_LABEL = {
-    bright: '광',
-    animal: '열꽃',
-    ribbon: '띠',
-    junk: '피',
-    doubleJunk: '쌍피',
-    bonus: '보너스',
-  };
-
-  /**
-   * 카드 요소 — 전통 그림 위에 '월' 색상 띠와 종류 배지를 얹는다.
-   * (모바일에서 선명하게 보려면 background-image 가 아니라 <img> 를 쓴다.
-   *  CSS 배경의 SVG 는 크롬이 저해상도로 래스터화해 흐려진다.)
-   */
-  function makeCardEl(card, extraClass = '') {
-    const d = document.createElement('div');
-    d.className = `card ${extraClass}`.trim();
-    const img = document.createElement('img');
+  function makeCardEl(card, extraClass) {
+    var d = document.createElement('div');
+    d.className = 'card ' + (extraClass || '');
+    var img = document.createElement('img');
     img.className = 'card-img';
     img.src = cardImg(card);
     img.alt = '';
-    img.draggable = false;
     d.appendChild(img);
     if (card.month >= 1 && card.month <= 12) {
-      d.classList.add('m' + String(card.month).padStart(2, '0'));
-      d.dataset.monthLabel = card.month + '월';
+      d.className += ' m' + (card.month < 10 ? '0' + card.month : String(card.month));
+      d.setAttribute('data-month-label', card.month + '월');
     }
-    d.dataset.kind = KIND_LABEL[card.kind] || '';
+    d.setAttribute('data-kind', KIND_LABEL[card.kind] || '');
     return d;
   }
 
-  /** 획득 요약 (광/열꽃/띠/피 개수). */
   function capturedSummary(sum) {
-    const wrap = document.createElement('div');
+    var wrap = document.createElement('div');
     wrap.className = 'captured-sum';
     if (!sum) return wrap;
-    const items = [
+    var items = [
       ['guang', '광', sum.bright],
       ['', '열', sum.animal],
       ['ribbon', '띠', sum.ribbon],
-      ['junk', '피', sum.junk + sum.doubleJunk + sum.bonus],
+      ['junk', '피', sum.junk + sum.doubleJunk + sum.bonus]
     ];
-    for (const [cls, label, n] of items) {
-      const i = document.createElement('i');
-      i.className = `${cls} ${n > 0 ? 'on' : ''}`.trim();
-      i.textContent = `${label}${n}`;
-      wrap.append(i);
+    for (var i = 0; i < items.length; i++) {
+      var cls = items[i][0];
+      var n = items[i][2];
+      var tag = document.createElement('i');
+      tag.className = (cls ? cls + ' ' : '') + (n > 0 ? 'on' : '');
+      tag.innerHTML = items[i][1] + n;
+      wrap.appendChild(tag);
     }
     return wrap;
   }
 
-  /** 족보 패널 — 실제 화투처럼 내가 먹은 패를 카드로 보여준다. */
-  function renderScorePanel(state) {
-    const s = state.mySets;
-    el.scorePanel.innerHTML = '';
-    if (!s) return;
-
-    const me = state.players[mySeat];
-    const total = me ? me.score : 0;
-
-    // ── 윗줄: 점수·개수·족보 진행 타일 ──
-    const tiles = document.createElement('div');
-    tiles.className = 'sp-tiles';
-
-    const scoreTile = document.createElement('div');
-    scoreTile.className = 'sp big';
-    scoreTile.innerHTML = `<b>${total}</b><span>점</span>`;
-    tiles.append(scoreTile);
-
-    const countTile = document.createElement('div');
-    countTile.className = 'sp';
-    const captured = me && me.captured ? me.captured.total : 0;
-    countTile.innerHTML = `<b>${captured}</b><span>개</span>`;
-    tiles.append(countTile);
-
-    const items = [
-      { label: '광', n: s.bright, need: 3, cls: 'guang' },
-      { label: '고도리', n: s.godori, need: 3, cls: 'godori' },
-      { label: '홍단', n: s.hongdan, need: 3, cls: 'hong' },
-      { label: '청단', n: s.cheongdan, need: 3, cls: 'cheong' },
-      { label: '초단', n: s.chodan, need: 3, cls: 'cho' },
-      { label: '열꽃', n: s.animal, need: 5, cls: 'animal' },
-      { label: '띠', n: s.ribbon, need: 5, cls: 'ribbon' },
-      { label: '피', n: s.junk, need: 10, cls: 'junk' },
-    ];
-
-    for (const it of items) {
-      const d = document.createElement('div');
-      d.className = 'sp' + (it.n >= it.need ? ' done' : '');
-      const dot = document.createElement('span');
-      dot.className = 'dot';
-      dot.style.background = DOT_COLOR[it.cls] || 'var(--muted)';
-      const b = document.createElement('b');
-      b.textContent = it.label;
-      const need = document.createElement('span');
-      need.className = 'need';
-      need.textContent = `${it.n}/${it.need}`;
-      d.append(dot, b, need);
-      tiles.append(d);
-    }
-    el.scorePanel.append(tiles);
-
-    // ── 아랫줄: 내가 먹은 패 (실제 카드로 펼친다) ──
-    const cards = state.myCaptured || [];
-    const rack = document.createElement('div');
-    rack.className = 'my-cards';
-
-    const title = document.createElement('span');
-    title.className = 'my-cards-title';
-    title.textContent = '내가 먹은 패';
-    rack.append(title);
-
-    const fan = document.createElement('div');
-    fan.className = 'card-fan';
-    for (const c of cards) {
-      const d = makeCardEl(c, 'tiny');
-      // 족보에 속하는 카드는 색 테두리로 강조 (실제 화투처럼 한 장씩 눈에 띄게)
-      const setTag = (c.tags || []).find((t) => SET_TAGS.includes(t));
-      if (setTag) {
-        d.classList.add('in-set');
-        d.style.setProperty('--sc', DOT_COLOR[SET_COLOR[setTag]] || '#e8c46a');
-      }
-      fan.append(d);
-    }
-    if (!cards.length) {
-      const empty = document.createElement('span');
-      empty.className = 'my-cards-empty';
-      empty.textContent = '아직 먹은 패가 없습니다';
-      fan.append(empty);
-    }
-    rack.append(fan);
-    el.scorePanel.append(rack);
-  }
-
-  const SET_TAGS = ['godori', 'hongdan', 'cheongdan', 'chodan'];
-  const SET_COLOR = {
-    godori: 'godori',
-    hongdan: 'hong',
-    cheongdan: 'cheong',
-    chodan: 'cho',
-  };
-
-  const DOT_COLOR = {
-    guang: '#e8c46a',
-    godori: '#8fe0a8',
-    hong: '#ef8fb0',
-    cheong: '#7fb2e8',
-    cho: '#9ed48a',
-    animal: '#c9a0e8',
-    ribbon: '#7fd4c4',
-    junk: '#b9c4bb',
-  };
-
-  /** 손패 카드가 화면폭에 맞춰 보이도록 크기를 정한다. */
   function fitHandCards(count) {
     if (!count) return;
-    const avail = Math.min(window.innerWidth - 16, 760);
-    const gap = 3;
-    // 최대 74px, 최소 54px (어르신이 두드리기 편한 크기)
-    const w = Math.max(54, Math.min(74, Math.floor((avail - (count - 1) * gap) / count)));
-    el.hand.style.setProperty('--hand-w', `${w}px`);
-  }
-
-  // ── 아바타 ────────────────────────────────────────────────────────────────
-  // 이름에서 만들어내는 아바타 (외부 이미지 자산 없이 이름 첫 글자 + 색상 해시)
-  const AVATAR_COLORS = ['#c96f5a', '#5a8fc9', '#6fbf73', '#c9a05a', '#9a6fc9', '#5ac9c0', '#c95a9a', '#8a9ac9'];
-
-  function avatarOf(name) {
-    const ch = (name || '?').trim().charAt(0) || '?';
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-    return { ch, color: AVATAR_COLORS[hash % AVATAR_COLORS.length] };
-  }
-
-  /** 상대 손패를 카드 뒷장으로 보여준다(장수는 공개되므로 개수만큼). */
-  function handBacks(count, max = 6) {
-    const wrap = document.createElement('div');
-    wrap.className = 'hand-backs';
-    const n = Math.min(count, max);
-    for (let i = 0; i < n; i++) {
-      const b = document.createElement('div');
-      b.className = 'card back mini';
-      wrap.append(b);
-    }
-    return wrap;
+    var avail = Math.min(window.innerWidth - 16, 760);
+    var gap = 3;
+    var w = Math.floor((avail - (count - 1) * gap) / count);
+    if (w > 74) w = 74;
+    if (w < 54) w = 54;
+    el.hand.style.setProperty('--hand-w', w + 'px');
   }
 
   function render(state) {
-    const me = state.players[mySeat];
-    el.moneyChip.textContent = `${(me?.money ?? 0).toLocaleString()} P`;
+    var me = state.players[mySeat];
+    el.moneyChip.innerHTML = (me ? me.money : 0).toLocaleString() + ' P';
 
-    // ── 플레이어 ──
+    // 플레이어
     el.players.innerHTML = '';
-    for (const p of state.players) {
-      const div = document.createElement('div');
-      div.className =
-        'player' +
-        (p.seat === state.currentSeat ? ' turn' : '') +
-        (p.seat === mySeat ? ' me' : '') +
-        (p.type === 'ai' ? ' ai' : '');
-      div.dataset.seat = String(p.seat);
+    for (var i = 0; i < state.players.length; i++) {
+      var p = state.players[i];
+      var div = document.createElement('div');
+      var cls = 'player';
+      if (p.seat === state.currentSeat) cls += ' turn';
+      if (p.seat === mySeat) cls += ' me';
+      if (p.type === 'ai') cls += ' ai';
+      div.className = cls;
+      div.setAttribute('data-seat', String(p.seat));
 
-      const name = document.createElement('div');
+      var name = document.createElement('div');
       name.className = 'pname';
-      const av = avatarOf(p.name);
-      const ava = document.createElement('span');
-      ava.className = 'avatar';
-      ava.style.background = av.color;
-      ava.textContent = av.ch;
-      name.append(ava, document.createTextNode(p.name + (p.type === 'ai' ? ' 🤖' : '')));
+      var av = document.createElement('span');
+      av.className = 'avatar';
+      av.style.background = avatarColor(p.name);
+      av.innerHTML = (p.name || '?').replace(/^\s+|\s+$/g, '').charAt(0) || '?';
+      name.appendChild(av);
+      name.appendChild(document.createTextNode(p.name + (p.type === 'ai' ? ' 🤖' : '')));
 
-      const meta = document.createElement('div');
+      var meta = document.createElement('div');
       meta.className = 'pmeta';
-      meta.textContent = `${p.handCount}장 · ${p.score}점`;
+      meta.innerHTML = p.handCount + '장 · ' + p.score + '점';
 
-      const money = document.createElement('div');
+      var money = document.createElement('div');
       money.className = 'pmoney';
-      money.textContent = `${p.money.toLocaleString()}P`;
+      money.innerHTML = p.money.toLocaleString() + 'P';
 
-      div.append(name, meta, money);
-      div.append(capturedSummary(p.captured));
+      div.appendChild(name);
+      div.appendChild(meta);
+      div.appendChild(money);
+      div.appendChild(capturedSummary(p.captured));
 
-      // 상대 손패는 뒷장으로 보여준다 (내 손패는 공개)
       if (p.seat !== mySeat && p.handCount > 0) {
-        div.append(handBacks(p.handCount));
+        div.appendChild(handBacks(p.handCount));
       }
-
       if (!p.connected) {
-        const off = document.createElement('div');
+        var off = document.createElement('div');
         off.className = 'pready';
-        off.textContent = '연결 끊김';
-        div.append(off);
+        off.innerHTML = '연결 끊김';
+        div.appendChild(off);
       } else if (p.goCount > 0) {
-        const go = document.createElement('div');
+        var go = document.createElement('div');
         go.className = 'pready';
-        go.textContent = `${p.goCount}고`;
-        div.append(go);
+        go.innerHTML = p.goCount + '고';
+        div.appendChild(go);
       }
-      el.players.append(div);
+      el.players.appendChild(div);
     }
 
-    // ── 4인 광팔기 협상 ──
+    // 4인 광팔기 협상
     if (state.phase === 'negotiate') {
       el.table.innerHTML = '';
-      for (const c of state.table) el.table.append(makeCardEl(c, 'small'));
-      el.tableHint.textContent = '바닥 1장만 공개됩니다 (협상 중)';
+      for (var t = 0; t < state.table.length; t++) el.table.appendChild(makeCardEl(state.table[t], 'small'));
+      el.tableHint.innerHTML = '바닥 1장만 공개됩니다 (협상 중)';
       el.hand.innerHTML = '';
-      for (const c of state.myHand) el.hand.append(makeCardEl(c, ''));
-      el.turnInfo.textContent = '4인 광팔기 — 참가 여부 협상 중';
-      el.timer.textContent = '';
-      el.startBtn.classList.add('hidden');
-      el.overlay.classList.add('hidden');
+      for (var h = 0; h < state.myHand.length; h++) el.hand.appendChild(makeCardEl(state.myHand[h], ''));
+      el.turnInfo.innerHTML = '4인 광팔기 — 참가 여부 협상 중';
+      el.timer.innerHTML = '';
+      el.startBtn.className = 'primary hidden';
+      el.overlay.className = 'overlay hidden';
       renderNegotiation(state);
       return;
     }
 
-    // ── 선 결정 단계 ──
+    // 선 결정
     if (state.phase === 'seon') {
       el.table.innerHTML = '';
       el.hand.innerHTML = '';
-      el.turnInfo.textContent = '';
-      el.timer.textContent = '';
-      el.startBtn.classList.add('hidden');
-      el.overlay.classList.add('hidden');
-      // renderSeon 이 프롬프트와 안내 문구를 직접 정한다 (그 뒤에 덮어쓰면 카드를 고를 수 없게 된다)
+      el.turnInfo.innerHTML = '';
+      el.timer.innerHTML = '';
+      el.startBtn.className = 'primary hidden';
+      el.overlay.className = 'overlay hidden';
       renderSeon(state);
       return;
     }
 
-    // ── 바닥 ──
+    // 바닥
     el.table.innerHTML = '';
-    for (const c of state.table) {
-      el.table.append(makeCardEl(c, 'small'));
+    for (var f = 0; f < state.table.length; f++) {
+      el.table.appendChild(makeCardEl(state.table[f], 'small'));
     }
-    el.tableHint.textContent = state.table.length ? `바닥 ${state.table.length}장` : '';
+    el.tableHint.innerHTML = state.table.length ? '바닥 ' + state.table.length + '장' : '';
 
-    // ── 뒷패 더미 ──
+    // 뒷패 더미
     el.deckStack.innerHTML = '';
     if (state.deckCount > 0) {
-      const stack = document.createElement('div');
+      var stack = document.createElement('div');
       stack.className = 'deck';
-      for (let i = 0; i < Math.min(state.deckCount, 5); i++) {
-        const b = document.createElement('div');
+      for (var d = 0; d < Math.min(state.deckCount, 5); d++) {
+        var b = document.createElement('div');
         b.className = 'card back';
-        stack.append(b);
+        stack.appendChild(b);
       }
-      el.deckStack.append(stack);
-      const label = document.createElement('span');
-      label.className = 'deck-count';
-      label.textContent = `뒷패 ${state.deckCount}장`;
-      el.deckStack.append(label);
+      el.deckStack.appendChild(stack);
+      var dl = document.createElement('span');
+      dl.className = 'deck-count';
+      dl.innerHTML = '뒷패 ' + state.deckCount + '장';
+      el.deckStack.appendChild(dl);
     }
 
-    // ── 내 손패 ──
-    // 내 차례가 아니거나 선택 대기 중이면 카드를 눌러도 안 된다(서버가 거절하고 오류가 뜬다)
-    const myTurn = state.currentSeat === mySeat && !state.prompt;
+    // 내 손패
+    var myTurn = state.currentSeat === mySeat && !state.prompt;
     fitHandCards(state.myHand.length);
     el.hand.innerHTML = '';
-    state.myHand.forEach((c, i) => {
-      const d = makeCardEl(c, myTurn ? 'pick' : '');
-      d.dataset.cardId = c.id;
-      if (myTurn) d.addEventListener('click', () => playCard(d, i));
-      el.hand.append(d);
-    });
-    el.hand.classList.toggle('waiting', !myTurn && state.phase === 'play');
+    for (var k = 0; k < state.myHand.length; k++) {
+      (function (index) {
+        var card = makeCardEl(state.myHand[index], myTurn ? 'pick' : '');
+        card.setAttribute('data-card-id', state.myHand[index].id);
+        if (myTurn) {
+          card.addEventListener('click', function () { playCard(card, index); });
+        }
+        el.hand.appendChild(card);
+      })(k);
+    }
+    el.hand.className = 'hand' + (!myTurn && state.phase === 'play' ? ' waiting' : '');
 
     renderPrompt(state);
     renderScorePanel(state);
 
-    const cur = state.players[state.currentSeat];
-    el.turnInfo.textContent = state.phase === 'settle'
-      ? '판이 끝났습니다.'
-      : cur
-        ? state.currentSeat === mySeat
-          ? '내 차례입니다'
-          : `${cur.name} 차례`
-        : '';
+    var cur = state.players[state.currentSeat];
+    if (state.phase === 'settle') el.turnInfo.innerHTML = '판이 끝났습니다.';
+    else if (cur) el.turnInfo.innerHTML = cur.seat === mySeat ? '내 차례입니다' : cur.name + ' 차례';
+    else el.turnInfo.innerHTML = '';
 
-    // ── 방장 시작 버튼 ──
-    const canStart = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
-    el.startBtn.classList.toggle('hidden', !canStart);
-    el.startBtn.textContent = state.phase === 'settle' ? '다음 판' : '판 시작';
+    var canStart = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
+    el.startBtn.className = canStart ? 'primary' : 'primary hidden';
+    el.startBtn.innerHTML = state.phase === 'settle' ? '다음 판' : '판 시작';
 
-    // ── 방장만 볼 수 있는 방 설정 ──
-    el.settingsRow.classList.toggle('hidden', !state.isHost);
-    if (state.isHost) {
-      const tl = state.settings.timeLimit;
-      const preset = tl.enabled ? String(tl.base) : 'off';
-      if (el.timeLimitSelect.value !== preset) el.timeLimitSelect.value = preset;
-      if (document.activeElement !== el.pointValueInput) {
-        el.pointValueInput.value = String(state.settings.moneyPerPoint);
-      }
-    }
-
-    // ── 정산 ──
     if (state.phase === 'settle' && state.result) showResult(state);
-    else el.overlay.classList.add('hidden');
+    else el.overlay.className = 'overlay hidden';
   }
 
-  // ── 방 설정 변경 (방장 전용) ────────────────────────────────────────────
+  function avatarColor(name) {
+    var colors = ['#c96f5a', '#5a8fc9', '#6fbf73', '#c9a05a', '#9a6fc9', '#5ac9c0', '#c95a9a', '#8a9ac9'];
+    var s = name || '?';
+    var hash = 0;
+    for (var i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    return colors[hash % colors.length];
+  }
 
-  el.timeLimitSelect.addEventListener('change', () => {
-    const v = el.timeLimitSelect.value;
-    const base = Number(v);
-    const timeLimit = v === 'off'
-      ? { enabled: false, base: 30, increment: 5 }
-      : { enabled: true, base, increment: base === 60 ? 10 : 5 };
-    act('settings', { timeLimit });
-  });
+  function handBacks(count) {
+    var wrap = document.createElement('div');
+    wrap.className = 'hand-backs';
+    var n = count < 6 ? count : 6;
+    for (var i = 0; i < n; i++) {
+      var b = document.createElement('div');
+      b.className = 'card back mini';
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
 
-  el.pointValueInput.addEventListener('change', () => {
-    const v = Math.max(1, Math.min(100000, Number(el.pointValueInput.value) || 100));
-    act('settings', { moneyPerPoint: v });
-  });
-
-  /** 카드를 낸다 — 카드가 손패에서 바닥으로 날아가는 애니메이션을 먼저 보여준다. */
-  async function playCard(cardEl, index) {
+  function playCard(cardEl, index) {
     if (busy) return;
-    // 마지막으로 받은 상태가 "내 차례"가 아니면 보내지 않는다.
-    // (긴 폴링이라 상태는 거의 실시간이지만, 클릭 직전 확인이 안전망이 된다)
     if (!lastState || lastState.currentSeat !== mySeat || lastState.prompt) return;
-
-    const target = el.table;
-    Fx.animateCardFlight(cardEl, target, -6, 260);
-    // 애니메이션이 진행되는 동안 잠깐 대기 → 손에서 카드가 "빠지는" 느낌
-    await new Promise((r) => setTimeout(r, 120));
-    act('playCard', { handIndex: index });
+    Fx.animateCardFlight(cardEl, el.table, -6, 260);
+    setTimeout(function () { act('playCard', { handIndex: index }); }, 120);
   }
 
   function seatEl(seat) {
-    return el.players.querySelector(`.player[data-seat="${seat}"]`);
+    return el.players.querySelector('.player[data-seat="' + seat + '"]');
   }
 
-  /** 4인 광팔기 협상 화면. */
+  // ── 4인 광팔기 협상 ─────────────────────────────────────────────────────
+
   function renderNegotiation(state) {
-    const n = state.negotiation || {};
-    const waiting = n.waitingSeat;
-    el.promptBox.classList.remove('hidden');
+    var n = state.negotiation || {};
+    var waiting = n.waitingSeat;
+    el.promptBox.className = 'prompt';
     el.promptBox.innerHTML = '';
 
-    // 이미 결정한 사람들
-    const done = Object.entries(n.decisions || {});
-    if (done.length) {
-      const info = document.createElement('span');
-      info.textContent = done
-        .map(([seat, d]) => `${state.players[seat]?.name || ''}: ${d === 'giveup' ? '포기' : d === 'sell' ? '광팔기' : '참가'}`)
-        .join(' · ');
-      el.promptBox.append(info);
+    var dec = n.decisions || {};
+    var info = [];
+    for (var key in dec) {
+      if (!Object.prototype.hasOwnProperty.call(dec, key)) continue;
+      var p = state.players[key];
+      var d = dec[key];
+      info.push((p ? p.name : '') + ': ' + (d === 'giveup' ? '포기' : d === 'sell' ? '광팔기' : '참가'));
+    }
+    if (info.length) {
+      var span = document.createElement('span');
+      span.innerHTML = info.join(' · ');
+      el.promptBox.appendChild(span);
     }
 
     if (waiting !== mySeat) {
-      const w = document.createElement('span');
-      w.textContent = waiting < 0 ? '협상이 끝났습니다.' : `${state.players[waiting]?.name || ''} 님이 결정하는 중…`;
-      el.promptBox.append(w);
+      var w = document.createElement('span');
+      var wp = state.players[waiting];
+      w.innerHTML = waiting < 0 ? '협상이 끝났습니다.' : (wp ? wp.name : '') + ' 님이 결정하는 중…';
+      el.promptBox.appendChild(w);
       return;
     }
 
-    const title = document.createElement('strong');
-    title.textContent = '참가하시겠습니까?';
-    el.promptBox.append(title);
+    var title = document.createElement('strong');
+    title.innerHTML = '참가하시겠습니까?';
+    el.promptBox.appendChild(title);
 
-    const join = document.createElement('button');
+    var join = document.createElement('button');
     join.className = 'primary';
-    join.textContent = '참가';
-    join.addEventListener('click', () => act('negotiate', { decision: 'join' }));
-    el.promptBox.append(join);
+    join.innerHTML = '참가';
+    join.addEventListener('click', function () { act('negotiate', { decision: 'join' }); });
+    el.promptBox.appendChild(join);
 
-    // P4(4번째)만 광을 팔 수 있다
     if (mySeat === 3) {
-      const sell = document.createElement('button');
-      sell.textContent = `광을 판다 (${n.gwangCount || 0}광)`;
-      sell.addEventListener('click', () => act('negotiate', { decision: 'sell' }));
-      el.promptBox.append(sell);
-
+      var sell = document.createElement('button');
+      sell.innerHTML = '광을 판다 (' + (n.gwangCount || 0) + '광)';
+      sell.addEventListener('click', function () { act('negotiate', { decision: 'sell' }); });
+      el.promptBox.appendChild(sell);
       if (n.mySaleCards && n.mySaleCards.length) {
-        const label = document.createElement('span');
-        label.textContent = '팔 패:';
-        el.promptBox.append(label);
-        for (const c of n.mySaleCards) el.promptBox.append(makeCardEl(c, 'small'));
+        var lab = document.createElement('span');
+        lab.innerHTML = '팔 패:';
+        el.promptBox.appendChild(lab);
+        for (var s = 0; s < n.mySaleCards.length; s++) {
+          el.promptBox.appendChild(makeCardEl(n.mySaleCards[s], 'small'));
+        }
       }
     } else {
-      const giveup = document.createElement('button');
-      giveup.textContent = '포기';
-      giveup.addEventListener('click', () => act('negotiate', { decision: 'giveup' }));
-      el.promptBox.append(giveup);
+      var giveup = document.createElement('button');
+      giveup.innerHTML = '포기';
+      giveup.addEventListener('click', function () { act('negotiate', { decision: 'giveup' }); });
+      el.promptBox.appendChild(giveup);
     }
   }
 
+  // ── 선 결정 ─────────────────────────────────────────────────────────────
+
   function renderSeon(state) {
-    const cands = state.seonCandidates[mySeat] || [];
-    if (cands.length === 0) {
-      // 늦게 들어온 경우 등 — 선택할 카드가 없으면 안내만 보여준다
-      el.tableHint.textContent = '선(先)을 정하는 중입니다.';
-      el.promptBox.classList.remove('hidden');
+    var cands = state.seonCandidates[mySeat] || [];
+    if (!cands.length) {
+      el.tableHint.innerHTML = '선(先)을 정하는 중입니다.';
+      el.promptBox.className = 'prompt';
       el.promptBox.innerHTML = '<span>이 방은 이미 선을 정하는 중입니다. 다음 판에 참여해 주세요.</span>';
       return;
     }
     if (state.seonPicked[mySeat] !== -1) {
-      el.tableHint.textContent = '카드를 골랐습니다. 다른 가족을 기다리는 중…';
-      el.promptBox.classList.remove('hidden');
+      el.tableHint.innerHTML = '카드를 골랐습니다. 다른 가족을 기다리는 중…';
+      el.promptBox.className = 'prompt';
       el.promptBox.innerHTML = '<span>다른 가족들이 카드를 고르는 중입니다…</span>';
       return;
     }
-    el.tableHint.textContent = '가장 크게(낮) 또는 가장 작게(밤) 나는 카드를 고르세요.';
-    el.promptBox.classList.remove('hidden');
+    el.tableHint.innerHTML = '가장 크게(낮) 또는 가장 작게(밤) 나는 카드를 고르세요.';
+    el.promptBox.className = 'prompt';
     el.promptBox.innerHTML = '';
-
-    const label = document.createElement('strong');
-    label.textContent = '선 결정 카드:';
-    el.promptBox.append(label);
-
-    cands.forEach((c, i) => {
-      const d = document.createElement('div');
-      d.className = 'card pick small';
-      d.style.backgroundImage = `url(${cardImg(c)})`;
-      d.addEventListener('click', () => act('seonPick', { cardIndex: i }));
-      el.promptBox.append(d);
-    });
+    var label = document.createElement('strong');
+    label.innerHTML = '선 결정 카드:';
+    el.promptBox.appendChild(label);
+    for (var i = 0; i < cands.length; i++) {
+      (function (index) {
+        var c = makeCardEl(cands[index], 'pick small');
+        c.addEventListener('click', function () { act('seonPick', { cardIndex: index }); });
+        el.promptBox.appendChild(c);
+      })(i);
+    }
   }
 
+  // ── 프롬프트 ────────────────────────────────────────────────────────────
+
   function renderPrompt(state) {
-    const p = state.prompt;
-    if (!p) {
-      el.promptBox.classList.add('hidden');
-      return;
-    }
-    el.promptBox.classList.remove('hidden');
+    var p = state.prompt;
+    if (!p) { el.promptBox.className = 'prompt hidden'; return; }
+    el.promptBox.className = 'prompt';
     el.promptBox.innerHTML = '';
 
     if (p.seat !== mySeat) {
-      const who = state.players[p.seat]?.name || '상대';
-      el.promptBox.innerHTML = `<span>${who} 님이 선택하는 중입니다…</span>`;
+      var who = state.players[p.seat] ? state.players[p.seat].name : '상대';
+      el.promptBox.innerHTML = '<span>' + who + ' 님이 선택하는 중입니다…</span>';
       return;
     }
 
     if (p.type === 'goStop') {
       el.promptBox.innerHTML = '<strong>고 / 스톱</strong>';
-      const go = document.createElement('button');
-      go.textContent = '고 (계속)';
-      go.addEventListener('click', () => act('go'));
-      const stop = document.createElement('button');
+      var go = document.createElement('button');
+      go.innerHTML = '고 (계속)';
+      go.addEventListener('click', function () { act('go'); });
+      var stop = document.createElement('button');
       stop.className = 'primary';
-      stop.textContent = '스톱 (승리)';
-      stop.addEventListener('click', () => act('stop'));
-      el.promptBox.append(go, stop);
+      stop.innerHTML = '스톱 (승리)';
+      stop.addEventListener('click', function () { act('stop'); });
+      el.promptBox.appendChild(go);
+      el.promptBox.appendChild(stop);
       return;
     }
 
     if (p.type === 'floorChoice' || p.type === 'flipChoice') {
       el.promptBox.innerHTML = '<strong>가져갈 카드를 고르세요</strong>';
-      (p.options || []).forEach((opt, i) => {
-        const d = document.createElement('div');
-        d.className = 'card pick small';
-        d.style.backgroundImage = `url(${cardImg(opt)})`;
-        d.addEventListener('click', () =>
-          act(p.type === 'floorChoice' ? 'floorChoice' : 'flipChoice', p.type === 'floorChoice' ? { choice: i } : { ordinal: i })
-        );
-        el.promptBox.append(d);
-      });
+      var opts = p.options || [];
+      for (var i = 0; i < opts.length; i++) {
+        (function (index) {
+          var c = makeCardEl(opts[index], 'pick small');
+          c.addEventListener('click', function () {
+            if (p.type === 'floorChoice') act('floorChoice', { choice: index });
+            else act('flipChoice', { ordinal: index });
+          });
+          el.promptBox.appendChild(c);
+        })(i);
+      }
       return;
     }
 
     if (p.type === 'bonusDraw') {
       el.promptBox.innerHTML = '<strong>보너스패를 냈습니다 — 보충할 카드를 고르세요</strong>';
-      (p.options || []).forEach((opt) => {
-        const d = document.createElement('div');
-        d.className = 'card pick small';
-        d.style.backgroundImage = `url(${cardImg(opt)})`;
-        d.addEventListener('click', () => act('bonusDraw', { stockIndex: opt.stockIndex }));
-        el.promptBox.append(d);
-      });
+      var bopts = p.options || [];
+      for (var j = 0; j < bopts.length; j++) {
+        (function (opt) {
+          var c = makeCardEl(opt, 'pick small');
+          c.addEventListener('click', function () { act('bonusDraw', { stockIndex: opt.stockIndex }); });
+          el.promptBox.appendChild(c);
+        })(bopts[j]);
+      }
     }
+  }
+
+  // ── 족보 패널 ───────────────────────────────────────────────────────────
+
+  function renderScorePanel(state) {
+    var s = state.mySets;
+    el.scorePanel.innerHTML = '';
+    if (!s) return;
+
+    var me = state.players[mySeat];
+    var total = me ? me.score : 0;
+
+    var tiles = document.createElement('div');
+    tiles.className = 'sp-tiles';
+
+    var scoreTile = document.createElement('div');
+    scoreTile.className = 'sp big';
+    scoreTile.innerHTML = '<b>' + total + '</b><span>점</span>';
+    tiles.appendChild(scoreTile);
+
+    var countTile = document.createElement('div');
+    countTile.className = 'sp';
+    var captured = me && me.captured ? me.captured.total : 0;
+    countTile.innerHTML = '<b>' + captured + '</b><span>개</span>';
+    tiles.appendChild(countTile);
+
+    var items = [
+      ['광', s.bright, 3, 'guang'],
+      ['고도리', s.godori, 3, 'godori'],
+      ['홍단', s.hongdan, 3, 'hong'],
+      ['청단', s.cheongdan, 3, 'cheong'],
+      ['초단', s.chodan, 3, 'cho'],
+      ['열꽃', s.animal, 5, 'animal'],
+      ['띠', s.ribbon, 5, 'ribbon'],
+      ['피', s.junk, 10, 'junk']
+    ];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var d = document.createElement('div');
+      d.className = 'sp' + (it[1] >= it[2] ? ' done' : '');
+      var dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = DOT_COLOR[it[3]] || 'var(--muted)';
+      var b = document.createElement('b');
+      b.innerHTML = it[0];
+      var need = document.createElement('span');
+      need.className = 'need';
+      need.innerHTML = it[1] + '/' + it[2];
+      d.appendChild(dot);
+      d.appendChild(b);
+      d.appendChild(need);
+      tiles.appendChild(d);
+    }
+    el.scorePanel.appendChild(tiles);
+
+    var cards = state.myCaptured || [];
+    var rack = document.createElement('div');
+    rack.className = 'my-cards';
+    var title = document.createElement('span');
+    title.className = 'my-cards-title';
+    title.innerHTML = '내가 먹은 패';
+    rack.appendChild(title);
+
+    var fan = document.createElement('div');
+    fan.className = 'card-fan';
+    for (var c2 = 0; c2 < cards.length; c2++) {
+      var card = cards[c2];
+      var el2 = makeCardEl(card, 'tiny');
+      var tags = card.tags || [];
+      var setTag = null;
+      for (var t = 0; t < tags.length; t++) {
+        if (SET_TAGS.join(' ').indexOf(tags[t]) >= 0) { setTag = tags[t]; break; }
+      }
+      if (setTag) {
+        el2.className += ' in-set';
+        el2.style.setProperty('--sc', DOT_COLOR[SET_COLOR[setTag]] || '#e8c46a');
+      }
+      fan.appendChild(el2);
+    }
+    if (!cards.length) {
+      var empty = document.createElement('span');
+      empty.className = 'my-cards-empty';
+      empty.innerHTML = '아직 먹은 패가 없습니다';
+      fan.appendChild(empty);
+    }
+    rack.appendChild(fan);
+    el.scorePanel.appendChild(rack);
   }
 
   // ── 정산 화면 ───────────────────────────────────────────────────────────
 
   function showResult(state) {
-    const r = state.result;
-    el.overlay.classList.remove('hidden');
+    var r = state.result;
+    el.overlay.className = 'overlay';
     el.overlay.innerHTML = '';
 
-    const box = document.createElement('div');
+    var box = document.createElement('div');
     box.className = 'overlay-inner';
 
-    const h = document.createElement('h2');
-    h.textContent = r.nagari ? '나가리' : `${state.players[r.winnerSeat]?.name || '승자'} 승리!`;
-    box.append(h);
+    var h = document.createElement('h2');
+    var wname = state.players[r.winnerSeat] ? state.players[r.winnerSeat].name : '승자';
+    h.innerHTML = r.nagari ? '나가리' : wname + ' 승리!';
+    box.appendChild(h);
 
-    const sub = document.createElement('p');
+    var sub = document.createElement('p');
     sub.className = 'overlay-sub';
-    sub.textContent = r.nagari ? '이번 판은 승패가 없습니다. 다음 판은 2배입니다.' : '정산 결과';
-    box.append(sub);
+    sub.innerHTML = r.nagari ? '이번 판은 승패가 없습니다. 다음 판은 2배입니다.' : '정산 결과';
+    box.appendChild(sub);
 
-    const rows = document.createElement('div');
+    var rows = document.createElement('div');
     rows.className = 'rows';
-    for (const row of r.rows) {
-      const line = document.createElement('div');
+    for (var i = 0; i < r.rows.length; i++) {
+      var row = r.rows[i];
+      var line = document.createElement('div');
       line.className = 'rowline' + (row.seat === r.winnerSeat ? ' win' : '');
-
-      const left = document.createElement('span');
-      left.textContent = row.name;
-      const right = document.createElement('b');
-      right.textContent = `${row.amount > 0 ? '+' : ''}${row.amount.toLocaleString()} P`;
-      line.append(left, right);
-
+      var left = document.createElement('span');
+      left.innerHTML = row.name;
+      var right = document.createElement('b');
+      right.innerHTML = (row.amount > 0 ? '+' : '') + row.amount.toLocaleString() + ' P';
+      line.appendChild(left);
+      line.appendChild(right);
       if (row.reasons && row.reasons.length) {
-        const why = document.createElement('small');
-        why.textContent = row.reasons.join(' · ');
-        line.append(why);
+        var why = document.createElement('small');
+        why.innerHTML = row.reasons.join(' · ');
+        line.appendChild(why);
       }
-      rows.append(line);
+      rows.appendChild(line);
     }
-    box.append(rows);
+    box.appendChild(rows);
 
-    // 배수 계산 과정
-    const steps = r.rows.find((x) => x.steps && x.steps.length);
+    var steps = null;
+    for (var j = 0; j < r.rows.length; j++) {
+      if (r.rows[j].steps && r.rows[j].steps.length) { steps = r.rows[j]; break; }
+    }
     if (steps) {
-      const wrap = document.createElement('div');
+      var wrap = document.createElement('div');
       wrap.className = 'steps';
-      const title = document.createElement('h3');
-      title.textContent = '점수 계산';
-      wrap.append(title);
-      for (const s of steps.steps) {
-        const l = document.createElement('div');
+      var title2 = document.createElement('h3');
+      title2.innerHTML = '점수 계산';
+      wrap.appendChild(title2);
+      for (var s = 0; s < steps.steps.length; s++) {
+        var l = document.createElement('div');
         l.className = 'step';
-        l.innerHTML = `<span>${s.label}</span><b>${s.formula} = ${s.value}</b>`;
-        wrap.append(l);
+        l.innerHTML = '<span>' + steps.steps[s].label + '</span><b>' + steps.steps[s].formula + ' = ' + steps.steps[s].value + '</b>';
+        wrap.appendChild(l);
       }
-      const money = document.createElement('div');
+      var money = document.createElement('div');
       money.className = 'step total';
-      const total = steps.steps[steps.steps.length - 1];
-      money.innerHTML = `<span>최종 점수</span><b>${total.value}점</b>`;
-      wrap.append(money);
-      box.append(wrap);
+      var total2 = steps.steps[steps.steps.length - 1];
+      money.innerHTML = '<span>최종 점수</span><b>' + total2.value + '점</b>';
+      wrap.appendChild(money);
+      box.appendChild(wrap);
     }
 
-    const btn = document.createElement('button');
+    var btn = document.createElement('button');
     btn.className = 'primary';
-    btn.textContent = '닫기';
-    btn.addEventListener('click', () => el.overlay.classList.add('hidden'));
-    box.append(btn);
+    btn.innerHTML = '닫기';
+    btn.addEventListener('click', function () { el.overlay.className = 'overlay hidden'; });
+    box.appendChild(btn);
 
-    el.overlay.append(box);
+    el.overlay.appendChild(box);
   }
 
   // ── 타이머 ──────────────────────────────────────────────────────────────
 
-  setInterval(() => {
-    const s = lastState;
-    if (!s || !s.deadline) {
-      el.timer.textContent = '';
-      return;
-    }
-    const remain = Math.max(0, Math.round((s.deadline - Date.now()) / 1000));
-    el.timer.textContent = `${remain}초`;
+  setInterval(function () {
+    var s = lastState;
+    if (!s || !s.deadline) { el.timer.innerHTML = ''; return; }
+    var remain = Math.max(0, Math.round((s.deadline - Date.now()) / 1000));
+    el.timer.innerHTML = remain + '초';
     el.timer.style.color = remain <= 5 ? 'var(--red)' : 'var(--gold)';
   }, 250);
 
   // 첫 사용자 입력 시 오디오 재생 허용(모바일 자동재생 정책 대비)
-  document.addEventListener(
-    'pointerdown',
-    () => {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        ctx.resume();
-      } catch {
-        /* 무시 */
-      }
-    },
-    { once: true }
-  );
+  document.addEventListener('pointerdown', function () {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) { var c = new Ctx(); if (c.resume) c.resume(); }
+    } catch (e) {}
+  }, false);
 
-  // 소리 상태 표시
-  el.muteBtn.textContent = Fx.isMuted() ? '🔇' : '🔊';
-  el.bgmBtn.classList.toggle('on', Fx.isBgmOn());
-  el.bgmBtn.title = Fx.isBgmOn() ? '배경음악 끄기' : '배경음악 켜기';
+  el.muteBtn.innerHTML = Fx.isMuted() ? '🔇' : '🔊';
+  el.bgmBtn.className = 'chip icon' + (Fx.isBgmOn() ? ' on' : '');
 })();
