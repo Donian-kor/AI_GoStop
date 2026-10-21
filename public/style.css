@@ -430,7 +430,7 @@ button:disabled { opacity: .5; cursor: default; }
   padding: 8px 12px; border-top: 1px solid var(--line);
   background: var(--bg2);
 }
-/* 손패 — 어르신이 두드리���기 쉽게 크고, 넘치면 살짝 겹쳐 한 화면에 */
+/* 손패 — 어르신이 두드리기 쉽게 크고, 넘치면 살짝 겹쳐 한 화면에 */
 .hand {
   display: flex; gap: 3px; overflow-x: auto; padding-bottom: 4px;
   justify-content: center; min-height: calc(var(--hand-w, 60px) * 1.63 + 8px);

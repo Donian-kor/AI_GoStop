@@ -3,75 +3,71 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>고스??/title>
+<title>고스톱</title>
 <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <div id="app">
-  <!-- ?�장 -->
+  <!-- 입장 -->
   <section id="lobby" class="screen">
-    <h1 class="logo">고스??/h1>
-    <p class="sub">가족끼�??�께 치는 고스??/p>
+    <h1 class="logo">고스톱</h1>
+    <p class="sub">가족끼리 함께 치는 고스톱</p>
     <div class="version-badge">버전 <b id="appVersion">{{GAME_VERSION}}</b></div>
-    <input id="nameInput" type="text" placeholder="?�름" maxlength="12" autocomplete="off">
+    <input id="nameInput" type="text" placeholder="이름" maxlength="12" autocomplete="off">
     <div class="row">
       <select id="modeSelect">
-        <option value="multi-3">3�?(가족과 ?�께)</option>
-        <option value="multi-2">2??맞고</option>
-        <option value="multi-4">4??광팔�?/option>
-        <option value="solo-2">?�자 · AI?� 2??/option>
-        <option value="solo-3">?�자 · AI?� 3??/option>
+        <option value="multi-3">3명 (가족과 함께)</option>
+        <option value="multi-2">2인 맞고</option>
+        <option value="multi-4">4인 광팔기</option>
+        <option value="solo-2">혼자 · AI와 2인</option>
+        <option value="solo-3">혼자 · AI와 3인</option>
       </select>
       <select id="diffSelect">
-        <option value="easy">AI ?��?</option>
+        <option value="easy">AI 쉬움</option>
         <option value="normal" selected>AI 보통</option>
-        <option value="hard">AI ?�려?�</option>
-        <option value="expert">AI 초고??/option>
+        <option value="hard">AI 어려움</option>
+        <option value="expert">AI 초고수</option>
       </select>
     </div>
     <div class="row">
-      <button id="createBtn" class="primary">�?만들�?/button>
-      <button id="joinBtn">�?참�?</button>
+      <button id="createBtn" class="primary">방 만들기</button>
+      <button id="joinBtn">방 참가</button>
       <button id="rulesBtn">게임 방법</button>
     </div>
     <div id="joinBox" class="hidden">
-      <input id="codeInput" type="text" placeholder="�?코드" maxlength="6" autocapitalize="characters">
-      <button id="joinGoBtn" class="primary">참�??�기</button>
+      <input id="codeInput" type="text" placeholder="방 코드" maxlength="6" autocapitalize="characters">
+      <button id="joinGoBtn" class="primary">참가하기</button>
     </div>
     <p id="lobbyError" class="error"></p>
   </section>
 
-  <!-- �?-->
+  <!-- 방 -->
   <section id="room" class="screen hidden">
     <header class="topbar">
-      <button id="codeChip" class="chip" title="�?코드 (?�러??복사)">------</button>
+      <button id="codeChip" class="chip" title="방 코드 (눌러서 복사)">------</button>
       <div class="topbar-right">
-        <span id="moneyChip" class="chip">0??/span>
-        <button id="bgmBtn" class="chip icon" title="배경?�악">??/button>
-        <button id="muteBtn" class="chip icon" title="?�리 ?�기">?��</button>
-        <button id="leaveBtn" class="chip icon" title="�??��?�?>??/button>
+        <span id="moneyChip" class="chip">0원</span>
+        <button id="bgmBtn" class="chip icon" title="배경음악">♪</button>
+        <button id="muteBtn" class="chip icon" title="소리 끄기">🔊</button>
+        <button id="leaveBtn" class="chip icon" title="나가기">✕</button>
       </div>
     </header>
-
     <div id="players" class="players"></div>
-
     <div id="settingsRow" class="settings-row hidden">
-      <span class="settings-label">�??�정</span>
-      <label>?�간?�한
+      <span class="settings-label">방 설정</span>
+      <label>시간제한
         <select id="timeLimitSelect">
-          <option value="off">?�음</option>
-          <option value="30">30�?5�?/option>
-          <option value="45">45�?5�?/option>
-          <option value="60">60�?10�?/option>
+          <option value="off">없음</option>
+          <option value="30">30초+5초</option>
+          <option value="45">45초+5초</option>
+          <option value="60">60초+10초</option>
         </select>
       </label>
-      <label>?�당 금액
+      <label>점당 금액
         <input id="pointValueInput" type="number" min="1" max="100000" step="10" inputmode="numeric">
       </label>
     </div>
-
     <div id="scorePanel" class="score-panel"></div>
-
     <div class="table-field">
       <div id="tableWrap" class="table-wrap">
         <div id="deckStack" class="deck-stack"></div>
@@ -79,36 +75,32 @@
         <p id="tableHint" class="hint"></p>
       </div>
     </div>
-
     <div id="promptBox" class="prompt hidden"></div>
-
     <div id="handWrap" class="hand-wrap">
       <div id="hand" class="hand"></div>
-      <button id="flipBtn" class="chip icon hidden" title="카드�?갚기 (?�집기만)">?�집�?/button>
+      <button id="flipBtn" class="chip icon hidden" title="카드빚 갚기 (뒤집기만)">뒤집기</button>
     </div>
-
     <footer class="bottombar">
       <span id="turnInfo" class="turn"></span>
       <span id="timer" class="timer"></span>
-      <button id="startBtn" class="primary hidden">???�작</button>
+      <button id="startBtn" class="primary hidden">판 시작</button>
     </footer>
-
     <div id="toast" class="toast hidden"></div>
     <div id="overlay" class="overlay hidden"></div>
     <div id="rulesOverlay" class="overlay hidden">
       <div class="overlay-inner">
         <h2>기본 게임진행</h2>
-        <p class="overlay-sub">고스?????�의 ?�름??짧게 ?�리?�습?�다.</p>
+        <p class="overlay-sub">고스톱 한 판의 흐름을 짧게 정리했습니다.</p>
         <div class="rules-body">
-          <p><b>1. ???�누�?/b> ??2??10?? 3??7?�씩. 바닥??6??깔고, ?��? ?�패?�서 뽑습?�다.</p>
-          <p><b>2. ??결정</b> ??밤일??��?�로 가?????? ?�는 가???��?(�? ?�을 뽑�? ?�람???�입?�다.</p>
-          <p><b>3. ??진행</b> ???�패 1?�을 ?�어 바닥�?같�? ?�이�?먹고, ?�집?� ?�도 같�? ?�이�?먹습?�다. �?먹으�?바닥???�습?�다.</p>
-          <p><b>4. ?�수</b> ??뻑·쪽·?�닥·?�쓸?�·폭?�·흔?�기·총통 ?�이 ?�동?�로 처리?�니??</p>
-          <p><b>5. �?/ ?�톱</b> ??3??3?? 2??7?��??? 고는 계속, ?�톱?� 즉시 ?�리. 3고�???배수 2�?</p>
-          <p><b>6. �?/b> ???�박·광박·멍박·고박. ?�자가 ???�도 �?먹으�?지�?면제.</p>
-          <p><b>7. ?�산</b> ??(족보?�수 + 고보?�스) × 배수. 가???�인?�만 ?�용?�니??</p>
+          <p><b>1. 패 나누기</b> — 2인 10장, 3인 7장씩. 바닥에 6장 깔고, 남은 뒷패에서 뽑습니다.</p>
+          <p><b>2. 선 결정</b> — 밤일낮장으로 가장 큰(낮) 또는 가장 작은(밤) 월을 뽑은 사람이 선입니다.</p>
+          <p><b>3. 턴 진행</b> — 손패 1장을 내어 바닥과 같은 월이면 먹고, 뒤집은 패도 같은 월이면 먹습니다. 못 먹으면 바닥에 놓습니다.</p>
+          <p><b>4. 특수</b> — 뻑·쪽·따닥·싹쓸이·폭탄·흔들기·총통 등이 자동으로 처리됩니다.</p>
+          <p><b>5. 고 / 스톱</b> — 3인 3점, 2인 7점부터. 고는 계속, 스톱은 즉시 승리. 3고부터 배수 2배.</p>
+          <p><b>6. 박</b> — 피박·광박·멍박·고박. 패자가 한 장도 못 먹으면 지급 면제.</p>
+          <p><b>7. 정산</b> — (족보점수 + 고보너스) × 배수. 가상 포인트만 사용합니다.</p>
         </div>
-        <button id="rulesCloseBtn" class="primary">?�기</button>
+        <button id="rulesCloseBtn" class="primary">닫기</button>
       </div>
     </div>
   </section>
