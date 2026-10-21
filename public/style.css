@@ -631,3 +631,74 @@ button:disabled { opacity: .5; cursor: default; }
   .turn { font-size: 15px; }
   .timer { font-size: 16px; }
 }
+
+/* ── 구형 브라우저(안드로이드 4.4 등) fallback ──────────────────────────
+   안드로이드 4.4 WebView(Chrome 30)는 CSS 변수(var())·flex gap·Grid·
+   min()·inset·aspect-ratio 를 지원하지 않는다. 그대로 두면 카드 크기 지정이
+   무시되어 원본 그림(600px)이 그대로 나오므로, 아래에서 고정 크기·색으로
+   대체한다. 최신 브라우저는 @supports 조건에서 걸러져 기존 화면 그대로다. */
+@supports not (--card-w: 0px) {
+  /* 색 — 변수 대신 고정색 */
+  html, body { background: #14231c; color: #f2f6f1; }
+  .topbar, .bottombar, .players, .score-panel, .hand-wrap { border-color: #3c5a45; }
+  .score-panel, .hand-wrap { background: #1d3327; }
+  .bottombar { background: #14231c; }
+  .player { background: #1d3327; border-color: #3c5a45; }
+  .chip, button, input, select { background: #24402f; color: #f2f6f1; border-color: #3c5a45; }
+  button.primary { background: #e8c46a; color: #2a1f08; border-color: #e8c46a; }
+  .logo, .version-badge b, .player .pmoney, .player .pready, .timer,
+  .settings-label, .overlay h2, .overlay .rowline b, .step.total b,
+  .score-panel .jk-score b, .score-panel .jk-set.done .jk-need,
+  .score-panel .jk-set.done .jk-foot, .banner { color: #e8c46a; }
+  .sub, .hint, .settings-row, .player .pmeta, .overlay-sub,
+  .overlay .rowline small, .score-panel .jk-title, .score-panel .jk-score,
+  .score-panel .jk-need, .score-panel .jk-foot, .my-cards-title,
+  .my-cards-empty, .score-panel .jk-toggle { color: #9db3a4; }
+  .error, .float-tag { color: #e2685f; }
+  .prompt { background: #24402f; border-color: #e8c46a; }
+  .banner { border-color: #e8c46a; }
+  .banner.plain { color: #f2f6f1; border-color: #3c5a45; }
+  .overlay { top: 0; right: 0; bottom: 0; left: 0; }
+  .steps { background: #1d3327; }
+  .step b { color: #f2f6f1; }
+  .overlay .rowline, .step.total { border-color: #3c5a45; }
+  .player.turn { border-color: #e8c46a; box-shadow: 0 0 0 1px #e8c46a inset; }
+  .score-panel .jk-toggle { background: rgba(0, 0, 0, .28); border-color: #3c5a45; }
+
+  /* min() 미지원 — 입력 폭 */
+  input { width: 90vw; max-width: 320px; }
+
+  /* 카드 크기 — var()·clamp() 미지원이라 고정 크기 */
+  .card { width: 54px; height: 88px; }
+  .card.small { width: 46px; height: 75px; }
+  .table .card.small { width: 46px; height: 75px; }
+  .hand .card { width: 44px; height: 72px; }
+  .prompt .card.small { width: 44px; height: 72px; }
+  .card.tiny { width: 34px; height: 55px; }
+  .card::before { height: 13px; line-height: 13px; background: #6b7f70; font-size: 9px; }
+  .card::after { color: #333; }
+  .hand { min-height: 76px; }
+
+  /* flex gap 미지원 — margin 으로 간격 */
+  .table .card, .prompt > * { margin: 2px; }
+  .hand .card { margin-right: 3px; }
+  .players .player { margin-right: 5px; }
+  .topbar-right .chip { margin-left: 4px; }
+  #joinBox > * { margin-bottom: 8px; }
+  .row > * { margin: 5px; }
+  .settings-row > * { margin-right: 8px; }
+  .score-panel .jk-set { margin-right: 6px; }
+  .score-panel .jk-card { margin-right: 2px; }
+}
+
+/* 구형 + 가로 모드 — 세로로 쌓이므로 카드를 더 줄여 화투판이 보이게 한다 */
+@media (orientation: landscape) and (max-height: 560px) {
+  @supports not (--card-w: 0px) {
+    .table .card.small { width: 40px; height: 65px; }
+    .hand .card { width: 34px; height: 55px; }
+    .hand { min-height: 59px; }
+    .prompt .card.small { width: 36px; height: 59px; }
+    .score-panel { padding: 3px 6px; }
+    .score-panel .jk-set { padding: 3px 4px; }
+  }
+}
