@@ -1069,18 +1069,54 @@ class Room {
       text: `${player.name} 님 연결 끊김 — 자동 진행`,
       victimSeat: -1,
     });
-    try {
-      const hand = this.engine.state.players[engineSeat].hand;
-      if (hand.length > 0) {
-        const result = this.engine.playHandCard(0, null);
-        this.afterAction(result);
-      } else {
-        this.engine.flipOnly();
-        this.afterAction(null);
+
+    // 한 차례에 선택(바닥 2장·뒤집기·보너스·고/스톱)이나 보너스패 재사용이
+    // 이어질 수 있다. 첫 수만 두고 멈추면 그 차례에서 영원히 멈추므로,
+    // 같은 사람 차례가 계속되는 동안 합법 선택을 골라 끝까지 진행한다.
+    for (let guard = 0; guard < 12; guard++) {
+      const state = this.engine.state;
+      if (state.phase === PHASE.FINISHED) break;
+      if (state.current !== engineSeat) break;
+
+      try {
+        if (state.phase === PHASE.AWAITING_GO_STOP) {
+          this.engine.declareStop();
+          this.afterAction(null);
+        } else if (state.phase === PHASE.AWAITING_FLOOR_CHOICE) {
+          this.engine.resolveFloorChoice(0);
+          this.afterAction(null);
+        } else if (state.phase === PHASE.AWAITING_FLIP_CHOICE) {
+          this.engine.resolveFlipChoice(0);
+          this.afterAction(null);
+        } else if (state.phase === PHASE.AWAITING_BONUS_DRAW) {
+          const stock = state.stock;
+          this.engine.resolveBonusDraw(Math.max(0, stock.length - 1));
+          this.afterAction(null);
+        } else {
+          const hand = state.players[engineSeat].hand;
+          if (!hand.length) {
+            this.engine.flipOnly();
+            this.afterAction(null);
+          } else {
+            // 보너스패보다 일반패를 먼저 낸다
+            let idx = 0;
+            for (let i = 0; i < hand.length; i++) {
+              if (hand[i].kind !== 'bonus') {
+                idx = i;
+                break;
+              }
+            }
+            const result = this.engine.playHandCard(idx, null);
+            this.afterAction(result);
+          }
+        }
+      } catch (err) {
+        this.logEvent(`자동 진행 중 오류: ${err.message}`);
+        break;
       }
-    } catch (err) {
-      this.logEvent(`자동 진행 중 오류: ${err.message}`);
-      this.afterAction(null);
+
+      // 차례가 넘어갔으면 끝, 같은 사람이면(보너스·선택) 이어서 처리
+      if (this.engine.state.current !== engineSeat) break;
     }
   }
 

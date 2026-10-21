@@ -89,6 +89,8 @@ test('세트를 완성하면 완성 표시와 점수가 붙는다', () => {
 test('개수 세트는 점수 계산과 같은 수치를 쓴다 (쌍피 포함)', () => {
   const room = makeRoom();
   const captured = room.engine.state.players[0].captured;
+  // 딜 직후 바닥 보너스패를 선이 먹었을 수 있으므로 빈 상태에서 시작한다
+  captured.length = 0;
 
   // 쌍피 5장 = 피 10장 → 피 족보 완성
   const doubleJunk = ['november_kasu_2', 'december_kasu', 'bonus_ssangpi_1', 'bonus_ssangpi_2', 'bonus_joker'];
