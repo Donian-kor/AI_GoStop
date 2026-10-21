@@ -19,7 +19,9 @@
   var lastFxSeq = 0;
   var lastVersion = -1;
   var pollTimer = null;
+  var watchdogTimer = null;
   var pollPending = false;
+  var lastUpdateAt = 0;
   var lastState = null;
   var busy = false;
   var Fx = window.GostopFx;
@@ -224,6 +226,9 @@
       });
     };
     loop();
+    if (!watchdogTimer) {
+      watchdogTimer = setInterval(watchdog, 2000);
+    }
   }
 
   function pollNow(done) {
@@ -234,16 +239,35 @@
         pollPending = false;
         if (done) done();
         if (!res || !res.ok) return;
+        lastUpdateAt = new Date().getTime();
         if (typeof res.version === 'number') lastVersion = res.version;
         var fx = res.fx || [];
         for (var i = 0; i < fx.length; i++) {
           if (fx[i].seq > lastFxSeq) lastFxSeq = fx[i].seq;
-          Fx.handleFx(fx[i], { seatEl: seatEl, mySeat: mySeat });
+          try {
+            if (Fx) Fx.handleFx(fx[i], { seatEl: seatEl, mySeat: mySeat });
+          } catch (e) { /* 이펙트 오류가 게임을 멈추지 않게 */ }
         }
         lastState = res.state;
-        render(res.state);
+        try {
+          render(res.state);
+        } catch (e) {
+          // 화면을 그리는 중 오류가 나도 대국은 계속된다
+          if (!window.console || !console.error) return;
+          console.error('[render]', e);
+        }
       },
       function () { pollPending = false; if (done) done(); });
+  }
+
+  // 상태 갱신이 멈췄다면(폴링 루프가 죽었거나 연결이 꼬였으면) 자동으로 새로고침한다
+  function watchdog() {
+    if (!roomCode) return;
+    if (new Date().getTime() - lastUpdateAt > 12000) {
+      location.reload();
+      return;
+    }
+    setTimeout(watchdog, 2000);
   }
 
   // ── 액션 ────────────────────────────────────────────────────────────────
@@ -816,6 +840,12 @@
     } catch (e) {}
   }, false);
 
-  el.muteBtn.innerHTML = Fx.isMuted() ? '🔇' : '🔊';
-  el.bgmBtn.className = 'chip icon' + (Fx.isBgmOn() ? ' on' : '');
+  if (Fx) {
+    el.muteBtn.innerHTML = Fx.isMuted() ? '🔇' : '🔊';
+    el.bgmBtn.className = 'chip icon' + (Fx.isBgmOn() ? ' on' : '');
+  } else {
+    // fx.js 가 로드되지 않은 구형 환경에서도 화면이 죽지 않게 한다
+    el.muteBtn.style.display = 'none';
+    el.bgmBtn.style.display = 'none';
+  }
 })();

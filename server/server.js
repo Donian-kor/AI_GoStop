@@ -273,7 +273,7 @@ async function handleApi(req, res, url) {
     // 긴 폴링 — 상태가 바뀌면 즉시 응답한다(지연 없음).
     // 바뀌지 않으면 20초 뒤 현재 상태로 응답한다(하트비트).
     if (clientVersion >= 0 && clientVersion === room.version) {
-      await room.waitForChange(20000);
+      await room.waitForChange(8000);
     }
 
     const fx = room.fx.filter((e) => e.seq > since);
