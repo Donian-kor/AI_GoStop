@@ -148,6 +148,33 @@ button:disabled { opacity: .5; cursor: default; }
 .settings-row input { width: 84px; }
 .settings-label { color: var(--gold); font-weight: 700; }
 
+/* 아바타 — 이름에서 생성 (외부 이미지 불필요) */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 12px; font-weight: 800; color: #10241a;
+  margin-right: 4px; vertical-align: -5px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .18) inset;
+}
+
+/* 카드 뒷장 */
+.card.back {
+  background-image: url('../assets/hwatu/svg/back_red.svg');
+  background-size: cover;
+}
+.card.back.mini { width: 15px; height: 24px; border-radius: 3px; }
+.hand-backs { display: flex; margin-top: 4px; height: 24px; }
+.hand-backs .card.back { margin-right: -9px; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.hand-backs .card.back:last-child { margin-right: 0; }
+
+.deck-stack { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.deck { display: flex; }
+.deck .card.back { width: 26px; height: 42px; margin-right: -14px; border-radius: 4px; }
+.deck .card.back:last-child { margin-right: 0; }
+.deck-count { font-size: 12px; color: var(--muted); }
+
+.chip.icon.on { border-color: var(--gold); color: var(--gold); }
+
 .table-wrap {
   flex: 1 1 auto; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;

@@ -26,6 +26,8 @@
     codeChip: $('codeChip'),
     moneyChip: $('moneyChip'),
     muteBtn: $('muteBtn'),
+    bgmBtn: $('bgmBtn'),
+    deckStack: $('deckStack'),
     players: $('players'),
     settingsRow: $('settingsRow'),
     timeLimitSelect: $('timeLimitSelect'),
@@ -140,6 +142,12 @@
     el.muteBtn.title = muted ? '소리 켜기' : '소리 끄기';
   });
 
+  el.bgmBtn.addEventListener('click', () => {
+    const on = Fx.toggleBgm();
+    el.bgmBtn.classList.toggle('on', on);
+    el.bgmBtn.title = on ? '배경음악 끄기' : '배경음악 켜기';
+  });
+
   el.startBtn.addEventListener('click', () => act('start'));
 
   function enterRoom(code, seat) {
@@ -194,6 +202,30 @@
     el.hand.style.setProperty('--card-w', `${w}px`);
   }
 
+  // ── 아바타 ────────────────────────────────────────────────────────────────
+  // 이름에서 만들어내는 아바타 (외부 이미지 자산 없이 이름 첫 글자 + 색상 해시)
+  const AVATAR_COLORS = ['#c96f5a', '#5a8fc9', '#6fbf73', '#c9a05a', '#9a6fc9', '#5ac9c0', '#c95a9a', '#8a9ac9'];
+
+  function avatarOf(name) {
+    const ch = (name || '?').trim().charAt(0) || '?';
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return { ch, color: AVATAR_COLORS[hash % AVATAR_COLORS.length] };
+  }
+
+  /** 상대 손패를 카드 뒷장으로 보여준다(장수는 공개되므로 개수만큼). */
+  function handBacks(count, max = 6) {
+    const wrap = document.createElement('div');
+    wrap.className = 'hand-backs';
+    const n = Math.min(count, max);
+    for (let i = 0; i < n; i++) {
+      const b = document.createElement('div');
+      b.className = 'card back mini';
+      wrap.append(b);
+    }
+    return wrap;
+  }
+
   function render(state) {
     const me = state.players[mySeat];
     el.moneyChip.textContent = `${(me?.money ?? 0).toLocaleString()} P`;
@@ -211,7 +243,12 @@
 
       const name = document.createElement('div');
       name.className = 'pname';
-      name.textContent = p.name + (p.type === 'ai' ? ' 🤖' : '');
+      const av = avatarOf(p.name);
+      const ava = document.createElement('span');
+      ava.className = 'avatar';
+      ava.style.background = av.color;
+      ava.textContent = av.ch;
+      name.append(ava, document.createTextNode(p.name + (p.type === 'ai' ? ' 🤖' : '')));
 
       const meta = document.createElement('div');
       meta.className = 'pmeta';
@@ -222,6 +259,11 @@
       money.textContent = `${p.money.toLocaleString()}P`;
 
       div.append(name, meta, money);
+
+      // 상대 손패는 뒷장으로 보여준다 (내 손패는 공개)
+      if (p.seat !== mySeat && p.handCount > 0) {
+        div.append(handBacks(p.handCount));
+      }
 
       if (!p.connected) {
         const off = document.createElement('div');
@@ -239,15 +281,14 @@
 
     // ── 선 결정 단계 ──
     if (state.phase === 'seon') {
-      renderSeon(state);
       el.table.innerHTML = '';
-      el.tableHint.textContent = '선(先)을 정하는 중입니다.';
       el.hand.innerHTML = '';
-      el.promptBox.classList.add('hidden');
       el.turnInfo.textContent = '';
       el.timer.textContent = '';
       el.startBtn.classList.add('hidden');
       el.overlay.classList.add('hidden');
+      // renderSeon 이 프롬프트와 안내 문구를 직접 정한다 (그 뒤에 덮어쓰면 카드를 고를 수 없게 된다)
+      renderSeon(state);
       return;
     }
 
@@ -260,6 +301,23 @@
       el.table.append(d);
     }
     el.tableHint.textContent = state.table.length ? `바닥 ${state.table.length}장` : '';
+
+    // ── 뒷패 더미 ──
+    el.deckStack.innerHTML = '';
+    if (state.deckCount > 0) {
+      const stack = document.createElement('div');
+      stack.className = 'deck';
+      for (let i = 0; i < Math.min(state.deckCount, 5); i++) {
+        const b = document.createElement('div');
+        b.className = 'card back';
+        stack.append(b);
+      }
+      el.deckStack.append(stack);
+      const label = document.createElement('span');
+      label.className = 'deck-count';
+      label.textContent = `뒷패 ${state.deckCount}장`;
+      el.deckStack.append(label);
+    }
 
     // ── 내 손패 ──
     fitHandCards(state.myHand.length);
@@ -331,6 +389,13 @@
 
   function renderSeon(state) {
     const cands = state.seonCandidates[mySeat] || [];
+    if (cands.length === 0) {
+      // 늦게 들어온 경우 등 — 선택할 카드가 없으면 안내만 보여준다
+      el.tableHint.textContent = '선(先)을 정하는 중입니다.';
+      el.promptBox.classList.remove('hidden');
+      el.promptBox.innerHTML = '<span>이 방은 이미 선을 정하는 중입니다. 다음 판에 참여해 주세요.</span>';
+      return;
+    }
     if (state.seonPicked[mySeat] !== -1) {
       el.tableHint.textContent = '카드를 골랐습니다. 다른 가족을 기다리는 중…';
       el.promptBox.classList.remove('hidden');
@@ -508,4 +573,6 @@
 
   // 소리 상태 표시
   el.muteBtn.textContent = Fx.isMuted() ? '🔇' : '🔊';
+  el.bgmBtn.classList.toggle('on', Fx.isBgmOn());
+  el.bgmBtn.title = Fx.isBgmOn() ? '배경음악 끄기' : '배경음악 켜기';
 })();

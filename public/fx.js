@@ -258,6 +258,43 @@
     }
   }
 
+  // ── 배경음악 (BGN) ────────────────────────────────────────────────────────
+  // 국악 배경음악 #133 (공유마당, CC BY 4.0) — ATTRIBUTION.md 참고
+  let bgm = null;
+  let bgmOn = localStorage.getItem('gs_bgm') === '1';
+
+  function bgmElement() {
+    if (!bgm) {
+      bgm = new Audio('assets/audio/gugak-bgm-133.mp3');
+      bgm.loop = true;
+      bgm.volume = 0.22;
+      bgm.preload = 'none';
+    }
+    return bgm;
+  }
+
+  /** BGM 켜기/끄기. 반환값 = 켜졌는지. */
+  function toggleBgm() {
+    bgmOn = !bgmOn;
+    localStorage.setItem('gs_bgm', bgmOn ? '1' : '0');
+    try {
+      const el = bgmElement();
+      if (bgmOn) {
+        const p = el.play();
+        if (p && p.catch) p.catch(() => {});
+      } else {
+        el.pause();
+      }
+    } catch {
+      /* 무시 */
+    }
+    return bgmOn;
+  }
+
+  function isBgmOn() {
+    return bgmOn;
+  }
+
   window.GostopFx = {
     EASE,
     EFFECTS,
@@ -269,5 +306,7 @@
     setMuted,
     isMuted,
     handleFx,
+    toggleBgm,
+    isBgmOn,
   };
 })();

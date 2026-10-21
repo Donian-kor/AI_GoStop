@@ -56,6 +56,14 @@ const TARGETS = [
     ext: '.wav',
     exclude: (n) => n === 'verification.json',
   },
+  // itsent-lab: 추가 효과음 MP3 (CC0) + 국악 배경음악 (CC BY 4.0)
+  {
+    dir: path.join(ROOT, 'assets', 'audio'),
+    repo: 'hwatu',
+    prefix: 'apps/web/public/audio/',
+    ext: '.mp3',
+    exclude: (n) => n === 'verification.json',
+  },
   // civilian7: 재플레이 레코드
   {
     dir: path.join(ROOT, 'tests', 'records'),

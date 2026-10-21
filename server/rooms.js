@@ -140,6 +140,13 @@ class Room {
     };
     this.seats[seat] = player;
     if (!this.hostId) this.hostId = id;
+
+    // 선 결정 중에 들어온 사람에게도 후보 카드를 준다 (아니면 선을 고를 수 없어 stuck 된다)
+    if (this.phase === ROOM_PHASE.SEON && this.deck && this.deck.length >= 3) {
+      this.seonCandidates[seat] = [this.deck.pop(), this.deck.pop(), this.deck.pop()];
+      this.seonPicked[seat] = -1;
+    }
+
     this.touch();
     return { seat, player };
   }

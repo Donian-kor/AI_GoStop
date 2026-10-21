@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>고스톱</title>
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 <div id="app">
@@ -44,6 +44,7 @@
       <button id="codeChip" class="chip" title="방 코드 (눌러서 복사)">------</button>
       <div class="topbar-right">
         <span id="moneyChip" class="chip">0 P</span>
+        <button id="bgmBtn" class="chip icon" title="배경음악">♪</button>
         <button id="muteBtn" class="chip icon" title="소리 끄기">🔊</button>
       </div>
     </header>
@@ -68,6 +69,7 @@
     <div id="tableWrap" class="table-wrap">
       <div id="table" class="table"></div>
       <p id="tableHint" class="hint"></p>
+      <div id="deckStack" class="deck-stack"></div>
     </div>
 
     <div id="promptBox" class="prompt hidden"></div>
