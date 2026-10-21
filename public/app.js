@@ -216,12 +216,18 @@
 
   /**
    * 카드 요소 — 전통 그림 위에 '월' 색상 띠와 종류 배지를 얹는다.
-   * (모바일에서 한눈에 월/종류를 읽을 수 있게 하는 현대적 재해석)
+   * (모바일에서 선명하게 보려면 background-image 가 아니라 <img> 를 쓴다.
+   *  CSS 배경의 SVG 는 크롬이 저해상도로 래스터화해 흐려진다.)
    */
   function makeCardEl(card, extraClass = '') {
     const d = document.createElement('div');
     d.className = `card ${extraClass}`.trim();
-    d.style.backgroundImage = `url(${cardImg(card)})`;
+    const img = document.createElement('img');
+    img.className = 'card-img';
+    img.src = cardImg(card);
+    img.alt = '';
+    img.draggable = false;
+    d.appendChild(img);
     if (card.month >= 1 && card.month <= 12) {
       d.classList.add('m' + String(card.month).padStart(2, '0'));
       d.dataset.monthLabel = card.month + '월';
