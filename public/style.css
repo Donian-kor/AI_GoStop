@@ -238,42 +238,63 @@ button:disabled { opacity: .5; cursor: default; }
 .cutin-flash.red { background: radial-gradient(circle at 50% 34%, rgba(226, 104, 95, .34), transparent 62%); }
 @keyframes cutinFlash { from { opacity: 1; } to { opacity: 0; } }
 
-/* ── 족보 패널 (실시간 달성 상태) ───────────────────────
-   텍스트 한 줄이 아니라 실제 고스톱 탭의 정보판처럼 박스형 타일로 구성한다. */
+/* ── 족보 패널 (실제 맞고처럼 카드 그림으로) ─────────────
+   세트마다 '필요한 카드'를 그림으로 늘어놓고, 먹은 카드는 밝게 / 못 먹은 카드는
+   어둡게 보여준다. 완성되면 금색 테두리와 점수가 붙는다. */
 .score-panel {
-  display: block; padding: 8px 12px; background: var(--bg2);
+  display: block; padding: 8px 10px 6px; background: var(--bg2);
   border-bottom: 1px solid var(--line);
 }
-.score-panel .sp-tiles {
-  display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
-  scrollbar-width: none; padding-bottom: 2px;
+.score-panel .jk-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.score-panel .jk-title { font-size: 14px; font-weight: 700; color: var(--muted); }
+.score-panel .jk-score { margin-left: auto; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.score-panel .jk-score b { font-size: 22px; line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums; }
+.score-panel .jk-toggle {
+  font: inherit; font-size: 12px; padding: 3px 9px; border-radius: 999px;
+  background: rgba(0, 0, 0, .28); color: var(--muted);
+  border: 1px solid var(--line); cursor: pointer;
 }
-.score-panel .sp-tiles::-webkit-scrollbar { display: none; }
-.score-panel .sp {
-  flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
-  min-width: 84px; justify-content: center;
-  padding: 9px 12px; border-radius: 10px;
+
+.score-panel .jk-row {
+  display: flex; gap: 6px; align-items: stretch;
+  overflow-x: auto; padding-bottom: 2px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.score-panel .jk-row::-webkit-scrollbar { display: none; }
+.score-panel .jk-set {
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px;
+  min-width: 74px; padding: 6px 7px; border-radius: 10px;
   background: linear-gradient(180deg, #2b4a36, #223a2b);
   border: 1px solid #46654e;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 4px rgba(0, 0, 0, .3);
-  font-size: 15px; white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 2px 4px rgba(0, 0, 0, .3);
 }
-.score-panel .sp b { font-variant-numeric: tabular-nums; font-weight: 700; }
-.score-panel .sp .dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0, 0, 0, .3); }
-.score-panel .sp .need { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.score-panel .sp.done {
+.score-panel .jk-set.done {
   border-color: var(--gold);
-  background: linear-gradient(180deg, #4a5230, #38422a);
-  box-shadow: inset 0 0 0 1px rgba(232, 196, 106, .25), 0 0 10px rgba(232, 196, 106, .18);
+  background: linear-gradient(180deg, #4a5230, #333f28);
+  box-shadow: inset 0 0 0 1px rgba(232, 196, 106, .3), 0 0 10px rgba(232, 196, 106, .22);
 }
-.score-panel .sp.done .need { color: var(--gold); }
-.score-panel .sp.big { min-width: 96px; }
-.score-panel .sp.big b { font-size: 30px; color: var(--gold); line-height: 1; }
-.score-panel .sp.big span { font-size: 14px; color: var(--muted); }
-.score-panel .sp:not(.big) b { font-size: 16px; }
+.score-panel .jk-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.score-panel .jk-name { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.score-panel .jk-need { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.score-panel .jk-set.done .jk-need { color: var(--gold); }
+.score-panel .jk-body { height: 39px; display: flex; align-items: center; }
+.score-panel .jk-cards { display: flex; gap: 2px; }
+.score-panel .jk-card {
+  width: 24px; height: 39px; flex: 0 0 auto;
+  border-radius: 4px; overflow: hidden; background: #101d16;
+  border: 1px solid rgba(0, 0, 0, .4);
+}
+.score-panel .jk-card img { display: block; width: 100%; height: 100%; }
+/* 아직 못 먹은 카드 — 색을 빼고 살짝 어둡게 (무늬는 알아볼 수 있게) */
+.score-panel .jk-card.miss { opacity: .8; filter: grayscale(1) brightness(.62); }
+.score-panel .jk-bar { width: 100%; height: 10px; border-radius: 5px; background: rgba(0, 0, 0, .38); overflow: hidden; }
+.score-panel .jk-bar i { display: block; height: 100%; background: linear-gradient(180deg, #f0d489, #d8ab4e); }
+.score-panel .jk-foot { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 15px; }
+.score-panel .jk-set.done .jk-foot { color: var(--gold); font-weight: 700; }
 
-/* 내가 먹은 패 — 실제 화투처럼 카드로 펼친다 */
-.my-cards { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-width: 0; }
+/* 내가 먹은 패 — 기본은 접어 두고 '먹은 패 보기' 를 누르면 펼친다 */
+.my-cards { display: none; align-items: center; gap: 8px; margin-top: 6px; min-width: 0; }
+.score-panel.show-fan .my-cards { display: flex; }
 .my-cards-title { color: var(--muted); font-size: 13px; white-space: nowrap; flex: 0 0 auto; }
 .my-cards-empty { color: var(--muted); font-size: 13px; }
 .card-fan { display: flex; gap: 2px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
@@ -491,6 +512,12 @@ button:disabled { opacity: .5; cursor: default; }
   .banner.cutin { font-size: 30px; padding: 16px 30px; }
   .hand { justify-content: flex-start; }
   .overlay h2 { font-size: 24px; }
-  .score-panel .sp { min-width: 74px; padding: 8px 10px; font-size: 14px; }
-  .score-panel .sp.big b { font-size: 26px; }
+  .score-panel .jk-card { width: 22px; height: 35px; }
+  .score-panel .jk-body { height: 35px; }
+  .score-panel .jk-name { font-size: 13px; }
+}
+
+/* 화면이 낮은 폰 — 바닥(대국 테이블)이 좁아지지 않도록 족보 아래 문구를 접는다 */
+@media (max-height: 700px) {
+  .score-panel .jk-foot { display: none; }
 }

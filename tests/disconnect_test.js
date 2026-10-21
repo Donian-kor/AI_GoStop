@@ -22,13 +22,23 @@ function makeRoom() {
   return room;
 }
 
-test('연결이 끊기면 ' + "'연결 끊김'" + ' 으로 표시된다', () => {
-  const room = makeRoom();
+/**
+ * 선 결정을 끝내고 대국을 시작한다.
+ * 최고월이 겹치면 서버가 같은 후보로 다시 뽑게 하므로, 확정될 때까지 반복한다.
+ */
+function startPlay(room) {
   room.startRound();
-  room.pickSeonCard(0, 0);
-  room.pickSeonCard(1, 0);
-  room.pickSeonCard(2, 0);
-  assert.strictEqual(room.phase, 'play');
+  for (let round = 0; round < 12 && room.phase === 'seon'; round++) {
+    for (let s = 0; s < 3 && room.phase === 'seon'; s++) {
+      if (room.seonPicked[s] === -1) room.pickSeonCard(s, 0);
+    }
+  }
+  assert.strictEqual(room.phase, 'play', '선 결정이 끝나야 한다');
+  return room;
+}
+
+test('연결이 끊기면 ' + "'연결 끊김'" + ' 으로 표시된다', () => {
+  const room = startPlay(makeRoom());
 
   // 2번 플레이어가 30초째 폴링이 없다고 가정
   const p2 = room.seats[2];
@@ -40,11 +50,7 @@ test('연결이 끊기면 ' + "'연결 끊김'" + ' 으로 표시된다', () => 
 });
 
 test('연결이 끊긴 사람의 차례는 자동으로 진행된다', () => {
-  const room = makeRoom();
-  room.startRound();
-  room.pickSeonCard(0, 0);
-  room.pickSeonCard(1, 0);
-  room.pickSeonCard(2, 0);
+  const room = startPlay(makeRoom());
 
   // 현재 차례인 사람이 한 수를 둔다
   const before = room.engine.state.playCount;

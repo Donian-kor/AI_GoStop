@@ -10,7 +10,8 @@
 //   mode = 'solo'  → 0번 자리는 사람, 나머지는 AI (혼자 치기 / 2인 맞고)
 
 const { TurnEngine, EngineError, PHASE, EVENT } = require('../engine/play');
-const { KIND, displayName } = require('../engine/cards');
+const { KIND, STANDARD, displayName } = require('../engine/cards');
+const { evaluate } = require('../engine/score');
 const { shuffledDeck } = require('../engine/deck');
 const { pickSeon, deal } = require('../engine/deal');
 const { normalizeSettings, toScoreOptions, DEFAULT_SETTINGS } = require('../engine/settings');
@@ -78,6 +79,97 @@ function describeCards(engine, cards) {
     kind: c.kind,
     tags: c.tags || [],
   }));
+}
+
+// ── 족보 표시용 정의 ──────────────────────────────────────────────────────
+//
+// 화면에서 "이 족보를 만들려면 어떤 카드가 필요한지"를 그림으로 보여주려면
+// 카드 한 장 한 장의 정체를 알아야 한다. 덱은 항상 같은 48장이므로 여기서
+// 한 번만 만들어 두고, 상태를 낼 때 '내가 먹었는지'만 표시한다.
+
+/** 카드 그림으로 보여주는 고정 세트 (광·고도리·홍단·청단·초단). */
+const FIXED_SETS = [
+  {
+    code: 'guang',
+    name: '광',
+    line: 'bright',
+    need: 3,
+    cards: STANDARD.filter((c) => c.kind === KIND.BRIGHT),
+  },
+  {
+    code: 'godori',
+    name: '고도리',
+    line: 'godori',
+    need: 3,
+    cards: STANDARD.filter((c) => (c.tags || []).includes('godori')),
+  },
+  {
+    code: 'hongdan',
+    name: '홍단',
+    line: 'hongdan',
+    need: 3,
+    cards: STANDARD.filter((c) => (c.tags || []).includes('hongdan')),
+  },
+  {
+    code: 'cheongdan',
+    name: '청단',
+    line: 'cheongdan',
+    need: 3,
+    cards: STANDARD.filter((c) => (c.tags || []).includes('cheongdan')),
+  },
+  {
+    code: 'chodan',
+    name: '초단',
+    line: 'chodan',
+    need: 3,
+    cards: STANDARD.filter((c) => (c.tags || []).includes('chodan')),
+  },
+];
+
+/** 개수로 세는 세트 (열꽃·띠·피) — 필요한 카드가 정해져 있지 않다. */
+const COUNT_SETS = [
+  { code: 'animal', name: '열꽃', line: 'animal', need: 5 },
+  { code: 'ribbon', name: '띠', line: 'ribbon', need: 5 },
+  { code: 'junk', name: '피', line: 'junk', need: 10 },
+];
+
+/**
+ * 족보 패널에 그릴 내역.
+ * 고정 세트는 필요한 카드 전부를(먹은 것/못 먹은 것 구분), 개수 세트는 달성 수치를 낸다.
+ * @param {Array} captured 내가 먹은 카드
+ * @param {object} ev evaluate() 결과 (점수·개수 해석이 이미 반영됨)
+ */
+function describeJokbo(captured, ev) {
+  const owned = new Set(captured.map((c) => c.id));
+  const lines = ev.lines || [];
+  const points = {};
+  for (const line of lines) points[line.code] = line.points;
+  const count = { animal: ev.animalCount, ribbon: ev.ribbonCount, junk: ev.junkValue };
+
+  const sets = [];
+  for (const set of FIXED_SETS) {
+    const have = set.cards.filter((c) => owned.has(c.id)).length;
+    sets.push({
+      code: set.code,
+      name: set.name,
+      need: set.need,
+      have,
+      done: !!points[set.line],
+      points: points[set.line] || 0,
+      cards: set.cards.map((c) => ({ id: c.id, owned: owned.has(c.id) })),
+    });
+  }
+  for (const set of COUNT_SETS) {
+    sets.push({
+      code: set.code,
+      name: set.name,
+      need: set.need,
+      have: count[set.code],
+      done: !!points[set.line],
+      points: points[set.line] || 0,
+    });
+  }
+  return sets;
 }
 
 /** 사람이 읽는 로그로 남길 이벤트 종류. */
@@ -1118,6 +1210,14 @@ class Room {
         base.mySets = e >= 0 ? setProgress(this.engine.state.players[e].captured) : null;
         // 내가 먹은 패 (실제 화투처럼 카드로 보여주기)
         base.myCaptured = e >= 0 ? describeCards(this.engine, this.engine.state.players[e].captured) : [];
+        // 족보 패널 — 필요한 카드를 그림으로 보여주기 위한 내역
+        // 점수 옵션은 엔진이 쓰는 것과 똑같이 맞춘다(화면과 정산이 어긋나지 않게).
+        base.myJokbo = e >= 0
+          ? describeJokbo(
+              this.engine.state.players[e].captured,
+              evaluate(this.engine.state.players[e].captured, this.engine.options)
+            )
+          : null;
       }
     }
     return base;

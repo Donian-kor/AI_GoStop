@@ -24,6 +24,9 @@
   var lastUpdateAt = 0;
   var lastState = null;
   var busy = false;
+  // 족보 패널 아래 '내가 먹은 패' 를 펼쳐 둘지 (기본은 접어서 화면을 넓게 쓴다)
+  var showAllCaptured = false;
+  try { showAllCaptured = localStorage.getItem('gs_fan') === '1'; } catch (e) { showAllCaptured = false; }
   var Fx = window.GostopFx;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -714,57 +717,118 @@
   }
 
   // ── 족보 패널 ───────────────────────────────────────────────────────────
+  // 실제 맞고처럼 족보를 '카드 그림'으로 보여준다.
+  //   먹은 카드 = 밝게, 아직 못 먹은 카드 = 어둡게 → 무엇이 남았는지 한눈에 보인다.
+  //   세트를 완성하면 금색 테두리와 점수가 붙는다.
+
+  function miniCardEl(id, owned) {
+    var d = document.createElement('div');
+    d.className = 'jk-card' + (owned ? '' : ' miss');
+    var img = document.createElement('img');
+    img.src = CARD_IMG + id + '.png?v=' + buildVersion;
+    img.alt = '';
+    d.appendChild(img);
+    return d;
+  }
+
+  function jokboTile(s) {
+    var tile = document.createElement('div');
+    tile.className = 'jk-set' + (s.done ? ' done' : '');
+
+    var top = document.createElement('div');
+    top.className = 'jk-top';
+    var name = document.createElement('span');
+    name.className = 'jk-name';
+    name.innerHTML = s.name;
+    var need = document.createElement('span');
+    need.className = 'jk-need';
+    need.innerHTML = (s.have > s.need ? s.need : s.have) + '/' + s.need + (s.done ? ' ✔' : '');
+    top.appendChild(name);
+    top.appendChild(need);
+    tile.appendChild(top);
+
+    var body = document.createElement('div');
+    body.className = 'jk-body';
+    if (s.cards && s.cards.length) {
+      var strip = document.createElement('div');
+      strip.className = 'jk-cards';
+      for (var i = 0; i < s.cards.length; i++) {
+        strip.appendChild(miniCardEl(s.cards[i].id, s.cards[i].owned));
+      }
+      body.appendChild(strip);
+    } else {
+      var bar = document.createElement('div');
+      bar.className = 'jk-bar';
+      var fill = document.createElement('i');
+      var pct = s.need ? Math.round((s.have / s.need) * 100) : 0;
+      fill.style.width = (pct > 100 ? 100 : pct) + '%';
+      bar.appendChild(fill);
+      body.appendChild(bar);
+    }
+    tile.appendChild(body);
+
+    var foot = document.createElement('div');
+    foot.className = 'jk-foot';
+    foot.innerHTML = s.done ? '+' + s.points + '점' : (s.need - s.have) + '장 더';
+    tile.appendChild(foot);
+    return tile;
+  }
+
+  // 서버가 족보 내역(myJokbo)을 안 보내는 경우를 위한 최소 정보
+  var JOKBO_FALLBACK = [
+    ['광', 3, 'bright'], ['고도리', 3, 'godori'], ['홍단', 3, 'hongdan'],
+    ['청단', 3, 'cheongdan'], ['초단', 3, 'chodan'], ['열꽃', 5, 'animal'],
+    ['띠', 5, 'ribbon'], ['피', 10, 'junk']
+  ];
 
   function renderScorePanel(state) {
     var s = state.mySets;
+    el.scorePanel.className = 'score-panel' + (showAllCaptured ? ' show-fan' : '');
     el.scorePanel.innerHTML = '';
     if (!s) return;
 
     var me = state.players[mySeat];
     var total = me ? me.score : 0;
-
-    var tiles = document.createElement('div');
-    tiles.className = 'sp-tiles';
-
-    var scoreTile = document.createElement('div');
-    scoreTile.className = 'sp big';
-    scoreTile.innerHTML = '<b>' + total + '</b><span>점</span>';
-    tiles.appendChild(scoreTile);
-
-    var countTile = document.createElement('div');
-    countTile.className = 'sp';
     var captured = me && me.captured ? me.captured.total : 0;
-    countTile.innerHTML = '<b>' + captured + '</b><span>개</span>';
-    tiles.appendChild(countTile);
 
-    var items = [
-      ['광', s.bright, 3, 'guang'],
-      ['고도리', s.godori, 3, 'godori'],
-      ['홍단', s.hongdan, 3, 'hong'],
-      ['청단', s.cheongdan, 3, 'cheong'],
-      ['초단', s.chodan, 3, 'cho'],
-      ['열꽃', s.animal, 5, 'animal'],
-      ['띠', s.ribbon, 5, 'ribbon'],
-      ['피', s.junk, 10, 'junk']
-    ];
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i];
-      var d = document.createElement('div');
-      d.className = 'sp' + (it[1] >= it[2] ? ' done' : '');
-      var dot = document.createElement('span');
-      dot.className = 'dot';
-      dot.style.background = DOT_COLOR[it[3]] || 'var(--muted)';
-      var b = document.createElement('b');
-      b.innerHTML = it[0];
-      var need = document.createElement('span');
-      need.className = 'need';
-      need.innerHTML = it[1] + '/' + it[2];
-      d.appendChild(dot);
-      d.appendChild(b);
-      d.appendChild(need);
-      tiles.appendChild(d);
+    var head = document.createElement('div');
+    head.className = 'jk-head';
+    var title = document.createElement('span');
+    title.className = 'jk-title';
+    title.innerHTML = '내 족보';
+    head.appendChild(title);
+
+    var toggle = document.createElement('button');
+    toggle.className = 'jk-toggle';
+    toggle.innerHTML = showAllCaptured ? '먹은 패 접기' : '먹은 패 보기';
+    toggle.addEventListener('click', function () {
+      showAllCaptured = !showAllCaptured;
+      try { localStorage.setItem('gs_fan', showAllCaptured ? '1' : '0'); } catch (e) {}
+      el.scorePanel.className = 'score-panel' + (showAllCaptured ? ' show-fan' : '');
+      toggle.innerHTML = showAllCaptured ? '먹은 패 접기' : '먹은 패 보기';
+    });
+    head.appendChild(toggle);
+
+    var score = document.createElement('span');
+    score.className = 'jk-score';
+    score.innerHTML = '먹은 패 ' + captured + '장 · <b>' + total + '</b>점';
+    head.appendChild(score);
+    el.scorePanel.appendChild(head);
+
+    var row = document.createElement('div');
+    row.className = 'jk-row';
+
+    var list = state.myJokbo;
+    if (list && list.length) {
+      for (var i = 0; i < list.length; i++) row.appendChild(jokboTile(list[i]));
+    } else {
+      for (var f = 0; f < JOKBO_FALLBACK.length; f++) {
+        var fb = JOKBO_FALLBACK[f];
+        var have = s[fb[2]] || 0;
+        row.appendChild(jokboTile({ name: fb[0], need: fb[1], have: have, done: have >= fb[1], points: 0 }));
+      }
     }
-    el.scorePanel.appendChild(tiles);
+    el.scorePanel.appendChild(row);
 
     var cards = state.myCaptured || [];
     var rack = document.createElement('div');
