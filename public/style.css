@@ -78,12 +78,12 @@ select { padding: 10px 12px; font-size: 15px; }
 #codeInput { text-transform: uppercase; letter-spacing: 4px; font-weight: 700; }
 
 button {
-  padding: 12px 20px;
+  padding: 15px 24px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
 }
 
@@ -121,10 +121,10 @@ button:disabled { opacity: .5; cursor: default; }
 .player.turn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
 .player.me { background: var(--panel); }
 .player.ai .pname { color: #9fd0c4; }
-.player .pname { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player .pmeta { font-size: 12px; color: var(--muted); }
-.player .pmoney { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; }
-.player .pready { color: var(--gold); font-size: 11px; }
+.player .pname { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .pmeta { font-size: 14px; color: var(--muted); }
+.player .pmoney { font-size: 14px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.player .pready { color: var(--gold); font-size: 13px; }
 
 .float-tag {
   position: absolute; left: 50%; top: 50%;
@@ -136,8 +136,8 @@ button:disabled { opacity: .5; cursor: default; }
 
 .settings-row {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 6px 12px; border-bottom: 1px solid var(--line);
-  font-size: 13px; color: var(--muted);
+  padding: 8px 12px; border-bottom: 1px solid var(--line);
+  font-size: 15px; color: var(--muted);
 }
 .settings-row label { display: flex; align-items: center; gap: 4px; }
 .settings-row select, .settings-row input {
@@ -151,9 +151,9 @@ button:disabled { opacity: .5; cursor: default; }
 /* 아바타 — 이름에서 생성 (외부 이미지 불필요) */
 .avatar {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: 50%;
-  font-size: 12px; font-weight: 800; color: #10241a;
-  margin-right: 4px; vertical-align: -5px;
+  width: 26px; height: 26px; border-radius: 50%;
+  font-size: 14px; font-weight: 800; color: #10241a;
+  margin-right: 5px; vertical-align: -6px;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .18) inset;
 }
 
@@ -162,16 +162,16 @@ button:disabled { opacity: .5; cursor: default; }
   background-image: url('../assets/hwatu/svg/back_red.svg');
   background-size: cover;
 }
-.card.back.mini { width: 15px; height: 24px; border-radius: 3px; }
-.hand-backs { display: flex; margin-top: 4px; height: 24px; }
+.card.back.mini { width: 18px; height: 29px; border-radius: 3px; }
+.hand-backs { display: flex; margin-top: 4px; height: 29px; }
 .hand-backs .card.back { margin-right: -9px; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
 .hand-backs .card.back:last-child { margin-right: 0; }
 
 .deck-stack { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
 .deck { display: flex; }
-.deck .card.back { width: 26px; height: 42px; margin-right: -14px; border-radius: 4px; }
+.deck .card.back { width: 34px; height: 55px; margin-right: -16px; border-radius: 4px; }
 .deck .card.back:last-child { margin-right: 0; }
-.deck-count { font-size: 12px; color: var(--muted); }
+.deck-count { font-size: 14px; color: var(--muted); }
 
 .chip.icon.on { border-color: var(--gold); color: var(--gold); }
 
@@ -240,32 +240,32 @@ button:disabled { opacity: .5; cursor: default; }
 }
 .score-panel::-webkit-scrollbar { display: none; }
 .score-panel .sp {
-  flex: 0 0 auto; display: flex; align-items: center; gap: 5px;
-  min-width: 74px; justify-content: center;
-  padding: 7px 10px; border-radius: 10px;
+  flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+  min-width: 84px; justify-content: center;
+  padding: 9px 12px; border-radius: 10px;
   background: linear-gradient(180deg, #2b4a36, #223a2b);
   border: 1px solid #46654e;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 4px rgba(0, 0, 0, .3);
-  font-size: 13px; white-space: nowrap;
+  font-size: 15px; white-space: nowrap;
 }
 .score-panel .sp b { font-variant-numeric: tabular-nums; font-weight: 700; }
-.score-panel .sp .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0, 0, 0, .3); }
-.score-panel .sp .need { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.score-panel .sp .dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0, 0, 0, .3); }
+.score-panel .sp .need { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .score-panel .sp.done {
   border-color: var(--gold);
   background: linear-gradient(180deg, #4a5230, #38422a);
   box-shadow: inset 0 0 0 1px rgba(232, 196, 106, .25), 0 0 10px rgba(232, 196, 106, .18);
 }
 .score-panel .sp.done .need { color: var(--gold); }
-.score-panel .sp.big { min-width: 84px; }
-.score-panel .sp.big b { font-size: 24px; color: var(--gold); line-height: 1; }
-.score-panel .sp.big span { font-size: 12px; color: var(--muted); }
-.score-panel .sp:not(.big) b { font-size: 14px; }
+.score-panel .sp.big { min-width: 96px; }
+.score-panel .sp.big b { font-size: 30px; color: var(--gold); line-height: 1; }
+.score-panel .sp.big span { font-size: 14px; color: var(--muted); }
+.score-panel .sp:not(.big) b { font-size: 16px; }
 
 /* 획득 요약 (광/열/띠/피 개수) */
 .captured-sum { display: flex; gap: 3px; justify-content: center; margin-top: 3px; flex-wrap: wrap; }
 .captured-sum i {
-  font-style: normal; font-size: 10px; padding: 1px 4px; border-radius: 4px;
+  font-style: normal; font-size: 12px; padding: 2px 6px; border-radius: 4px;
   background: rgba(0, 0, 0, .25); color: var(--muted);
 }
 .captured-sum i.on { color: #10241a; font-weight: 700; }
@@ -349,8 +349,8 @@ button:disabled { opacity: .5; cursor: default; }
   background: rgba(24, 70, 50, .88); text-align: center;
   transform: translateX(-50%);
 }
-.room-status strong { color: #ffe56c; font-size: 15px; }
-.room-status span { display: block; margin-top: 1px; color: #d8e9c8; font-size: 12px; font-weight: 800; }
+.room-status strong { color: #ffe56c; font-size: 18px; }
+.room-status span { display: block; margin-top: 1px; color: #d8e9c8; font-size: 14px; font-weight: 800; }
 
 .table-wrap {
   flex: 1 1 auto; min-height: 0; position: relative; z-index: 1;
@@ -358,15 +358,15 @@ button:disabled { opacity: .5; cursor: default; }
   gap: 8px; padding: 12px 8px; overflow: hidden;
 }
 .table { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; max-width: 96vw; }
-.hint { color: var(--muted); font-size: 13px; margin: 0; min-height: 1.2em; }
+.hint { color: var(--muted); font-size: 15px; margin: 0; min-height: 1.2em; }
 
-/* 카드 */
+/* 카드 — 어르신용으로 크게 (탭 영역 60×98 이상 확보) */
 .card {
   position: relative;
   overflow: hidden;
-  width: var(--card-w);
-  height: calc(var(--card-w) * 1.63);
-  border-radius: 6px;
+  width: var(--card-w, 60px);
+  height: calc(var(--card-w, 60px) * 1.63);
+  border-radius: 7px;
   border: 1px solid rgba(0, 0, 0, .35);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
   flex: 0 0 auto;
@@ -375,10 +375,11 @@ button:disabled { opacity: .5; cursor: default; }
 /* <img> 로 그려야 모바일 기기 픽셀비에 맞춰 선명하다 */
 .card-img {
   display: block; width: 100%; height: 100%;
-  object-fit: fill; border-radius: 5px;
+  object-fit: fill; border-radius: 6px;
   -webkit-user-drag: none; user-select: none;
 }
-.card.small { width: 40px; height: 65px; --band-h: 10px; --band-fs: 8px; --kind-fs: 8px; }
+/* 바닥패 — 중앙에서 또렷하게 보이도록 크게 */
+.card.small { width: 54px; height: 88px; --band-h: 15px; --band-fs: 11px; --kind-fs: 11px; }
 .card.pick { cursor: pointer; transition: transform .12s ease; }
 .card.pick:active { transform: scale(.94); }
 
@@ -393,21 +394,25 @@ button:disabled { opacity: .5; cursor: default; }
   padding: 8px 12px; border-top: 1px solid var(--line);
   background: var(--bg2);
 }
+/* 손패 — 어르신이 두드리���기 쉽게 크고, 넘치면 살짝 겹쳐 한 화면에 */
 .hand {
-  display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px;
-  justify-content: center; min-height: calc(var(--hand-w) * 1.63 + 8px);
+  display: flex; gap: 3px; overflow-x: auto; padding-bottom: 4px;
+  justify-content: center; min-height: calc(var(--hand-w, 60px) * 1.63 + 8px);
 }
-.hand .card { width: var(--hand-w); height: calc(var(--hand-w) * 1.63); }
+.hand .card { width: var(--hand-w, 60px); height: calc(var(--hand-w, 60px) * 1.63); }
+.hand .card.pick { transition: transform .14s ease, box-shadow .14s ease; }
+.hand .card.pick:hover { transform: translateY(-9px); box-shadow: 0 6px 14px rgba(0, 0, 0, .55); }
+.hand .card.pick:active { transform: translateY(-4px) scale(.97); }
 
 .bottombar {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px; border-top: 1px solid var(--line); background: var(--bg);
 }
-.turn { flex: 1 1 auto; font-size: 14px; }
-.timer { font-variant-numeric: tabular-nums; font-size: 15px; color: var(--gold); }
+.turn { flex: 1 1 auto; font-size: 17px; }
+.timer { font-variant-numeric: tabular-nums; font-size: 18px; color: var(--gold); }
 
 .prompt {
-  margin: 0 12px 8px; padding: 10px; border-radius: 10px;
+  margin: 0 12px 8px; padding: 12px; border-radius: 10px;
   background: var(--panel); border: 1px solid var(--gold);
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
 }
@@ -455,12 +460,16 @@ button:disabled { opacity: .5; cursor: default; }
 
 /* ── 좁은 화면(폰) ────────────────────────────────────── */
 @media (max-width: 480px) {
+  /* 어르신용 — 작은 화면에서도 크기를 최대한 유지한다 */
   .players { gap: 5px; padding: 6px 8px; }
-  .player { padding: 5px 4px; }
-  .player .pname { font-size: 12px; }
-  .player .pmeta, .player .pmoney { font-size: 11px; }
-  .card.small { width: 32px; height: 52px; }
-  .banner { font-size: 24px; padding: 12px 24px; }
+  .player { padding: 6px 4px; }
+  .player .pname { font-size: 15px; }
+  .player .pmeta, .player .pmoney { font-size: 13px; }
+  .card.small { width: 48px; height: 78px; --band-h: 13px; --band-fs: 10px; --kind-fs: 10px; }
+  .banner { font-size: 26px; padding: 14px 26px; }
+  .banner.cutin { font-size: 30px; padding: 16px 30px; }
   .hand { justify-content: flex-start; }
-  .overlay h2 { font-size: 22px; }
+  .overlay h2 { font-size: 24px; }
+  .score-panel .sp { min-width: 74px; padding: 8px 10px; font-size: 14px; }
+  .score-panel .sp.big b { font-size: 26px; }
 }

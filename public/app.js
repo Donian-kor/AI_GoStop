@@ -322,9 +322,11 @@
   /** 손패 카드가 화면폭에 맞춰 보이도록 크기를 정한다. */
   function fitHandCards(count) {
     if (!count) return;
-    const avail = Math.min(window.innerWidth - 24, 520);
-    const w = Math.max(34, Math.min(58, Math.floor((avail - (count - 1) * 4) / count)));
-    el.hand.style.setProperty('--card-w', `${w}px`);
+    const avail = Math.min(window.innerWidth - 16, 760);
+    const gap = 3;
+    // 최대 74px, 최소 54px (어르신이 두드리기 편한 크기)
+    const w = Math.max(54, Math.min(74, Math.floor((avail - (count - 1) * gap) / count)));
+    el.hand.style.setProperty('--hand-w', `${w}px`);
   }
 
   // ── 아바타 ────────────────────────────────────────────────────────────────
