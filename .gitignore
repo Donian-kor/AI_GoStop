@@ -12,6 +12,15 @@ tmp/
 .idea/
 *.swp
 
+
+# 환경 변수 / 비밀 정보 (절대 커밋 금지)
+.env
+.env.*
+*.env
+secrets/
+*.pem
+*.key
+*.p12
 # OS
 .DS_Store
 Thumbs.db

@@ -20,6 +20,7 @@ const crypto = require('crypto');
 const { Room, ROOM_PHASE, randomCode } = require('./rooms');
 const { EngineError } = require('../engine/play');
 
+const IDLE_MINUTES = Number(process.env.IDLE_MINUTES || 30); // 0 = 비활성화
 const PORT = Number(process.env.PORT) || 8787;
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -34,6 +35,8 @@ const { GAME_VERSION, BUILD_VERSION } = require('./version');
 
 /** 방 목록 */
 const rooms = new Map();
+/** 마지막 요청 시각 (자동 종료 판단용) */
+let lastRequestAt = Date.now();
 
 // ── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -318,6 +321,7 @@ async function handleApi(req, res, url) {
 }
 
 const server = http.createServer(async (req, res) => {
+  lastRequestAt = Date.now();
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
   if (url.pathname.startsWith('/api/')) {
@@ -351,7 +355,16 @@ setInterval(() => {
   }
 }, 1000);
 
-// ── 시작 ────────────────────────────────────────────────────────────────────
+// ── 자동 종료 (일정 시간 요청이 없으면 서버 종료) ─────────────────────────────
+if (IDLE_MINUTES > 0) {
+  const IDLE_MS = IDLE_MINUTES * 60 * 1000;
+  setInterval(() => {
+    if (Date.now() - lastRequestAt > IDLE_MS) {
+      console.log(`\n[자동 종료] ${IDLE_MINUTES}분간 접속이 없어 서버를 종료합니다.`);
+      process.exit(0);
+    }
+  }, 60 * 1000);
+}
 
 server.listen(PORT, HOST, () => {
   const addrs = localAddresses();
@@ -368,9 +381,28 @@ server.listen(PORT, HOST, () => {
   }
   console.log(line);
   console.log('  가족 모두 이 주소로 접속한 뒤, 방 코드를 입력하면 됩니다.');
-  console.log('  종료: Ctrl + C');
+  console.log('  종료: Ctrl + C  (또는 stop.bat 더블클릭)');
+  if (IDLE_MINUTES > 0) {
+    console.log(`  자동 종료: ${IDLE_MINUTES}분간 접속 없으면 자동 종료`);
+  }
   console.log(line);
 });
+
+// ── 콘솔 창이 닫히면 서버도 자동 종료 ───────────────────────────────────────
+// Windows에서 명령창 X 버튼을 누르면 node 프로세스가 뒤에 남는 경우가 있어,
+// stdin 이 닫히는 시점을 감지해 깨끗하게 종료한다.
+// 테스트 환경(stdio ignore)에서는 isTTY 가 false 라 비활성화된다.
+if (process.stdin.isTTY) {
+  process.stdin.resume();
+  const shutdown = (reason) => {
+    console.log(`\n[자동 종료] ${reason} — 서버를 종료합니다.`);
+    process.exit(0);
+  };
+  process.stdin.on('end', () => shutdown('콘솔 창이 닫혔습니다'));
+  process.stdin.on('close', () => shutdown('콘솔 입력이 종료되었습니다'));
+  process.stdin.on('error', () => {});
+}
+
 
 process.on('SIGINT', () => {
   console.log('\n서버를 종료합니다.');

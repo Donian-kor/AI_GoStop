@@ -2,7 +2,7 @@
 
 > 상태: **구현 완료 (1차)** — 엔진·서버·AI·화면 전부 동작, 테스트 63개 통과. 남은 일: 폰 3대 실전 점검
 > 작성일: 2026-10-21
-> 대상 폴더: `C:\Users\donian\Documents\기본 프로젝트\gostop-game\`
+> 대상 폴더: `<프로젝트 루트>/gostop-game/`
 > 벤치마킹 정리: [`BENCHMARK.md`](./BENCHMARK.md) · 자산 라이선스: [`ATTRIBUTION.md`](./ATTRIBUTION.md)
 
 ---
@@ -442,7 +442,7 @@ gostop-game/
 
 ```
 고스톱 서버가 시작되었습니다.
-  방 생성 URL : http://192.168.0.12:8787
+  방 생성 URL : http://192.168.x.x:8787
   같은 기기   : http://localhost:8787
   .local 주소 : http://DESKTOP-XXXX.local:8787
 ```

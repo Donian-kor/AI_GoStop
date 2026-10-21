@@ -34,7 +34,7 @@ npm start
 
 ```
   이 PC에서 접속   :  http://localhost:8787
-  같은 와이파이    :  http://192.168.0.12:8787
+  같은 와이파이    :  http://192.168.x.x:8787
   .local 주소      :  http://DESKTOP-XXXX.local:8787
 ```
 
