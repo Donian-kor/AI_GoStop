@@ -30,7 +30,7 @@ const MAX_FX = 200;
  * 빌드 버전 — 화면·엔진·자산을 바꿀 때마다 올린다.
  * 클라이언트가 이 값을 비교해 오래된 화면이면 자동으로 새로고침한다.
  */
-const BUILD_VERSION = '2026-10-21-3';
+const BUILD_VERSION = '2026-10-21-4';
 
 /** 방 목록 */
 const rooms = new Map();

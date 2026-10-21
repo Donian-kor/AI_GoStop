@@ -56,6 +56,16 @@ const TARGETS = [
     ext: '.wav',
     exclude: (n) => n === 'verification.json' || n === 'mission.wav',
   },
+  // civilian7: 화투 카드 PNG (600x978, 미리 래스터화)
+  //   → SVG 는 고DPR 기기에서 내재 크기(103px)로 래스터화돼 확대 시 흐려진다.
+  //      PNG 는 600px 로 미리 그려져 있어 어떤 기기에서든 선명하다.
+  {
+    dir: path.join(ROOT, 'assets', 'hwatu', 'png'),
+    repo: 'gostop',
+    prefix: 'assets/hwatu/',
+    ext: '.png',
+    exclude: (n) => n.startsWith('back_'),
+  },
   // itsent-lab: 추가 효과음 MP3 (CC0) + 국악 배경음악 (CC BY 4.0)
   {
     dir: path.join(ROOT, 'assets', 'audio'),

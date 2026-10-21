@@ -8,7 +8,10 @@
 
 (() => {
   const POLL_MS = 1200;
-  const CARD_IMG = 'assets/hwatu/svg/';
+  // 카드 이미지: PNG(600x978 미리 래스터화)를 쓴다.
+  //   SVG(103x168 내재 크기)는 고DPR 기기에서 103px로 래스터화돼 확대 시 흐려진다.
+  //   PNG 는 어떤 기기 픽셀비에서도 선명하다.
+  const CARD_IMG = 'assets/hwatu/png/';
   // 자산 버전 — 서버 빌드 버전과 맞춰 쓴다(자산이 바뀌면 URL 이 달라져 캐시가 무효화된다)
   let buildVersion = '1';
 
@@ -225,7 +228,7 @@
   // ── 렌더링 ──────────────────────────────────────────────────────────────
 
   function cardImg(card) {
-    return `${CARD_IMG}${card.imageKey || card.id}.svg?v=${buildVersion}`;
+    return `${CARD_IMG}${card.id}.png?v=${buildVersion}`;
   }
 
   const KIND_LABEL = {
