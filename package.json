@@ -1,0 +1,19 @@
+{
+  "name": "gostop-game",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PC/모바일 연동 고스톱 (3인 삼파전 + 2인 맞고) — 의존성 0",
+  "type": "commonjs",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node tests/engine_test.js && node tests/contract_test.js && node tests/replay_test.js",
+    "test:engine": "node tests/engine_test.js",
+    "test:contract": "node tests/contract_test.js",
+    "test:replay": "node tests/replay_test.js",
+    "fetch-assets": "node tools/fetch-assets.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

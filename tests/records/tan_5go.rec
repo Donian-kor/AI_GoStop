@@ -1,0 +1,267 @@
+﻿{
+  "playerCount": 3,
+  "aiSkill": 70,
+  "humanRow": -1,
+  "bonus": true,
+  "seonWinner": -1,
+  "targetSituation": "탄",
+  "note": "3인 탄 · 최고 Net=1024 · 시도 15530회차 · 수 29개",
+  "deck": [
+    "june_kasu_2",
+    "bonus_ssangpi_2",
+    "september_tanzaku",
+    "september_kasu_2",
+    "june_kasu_1",
+    "july_kasu_1",
+    "june_tane",
+    "october_kasu_1",
+    "september_tane",
+    "february_kasu_2",
+    "march_kasu_2",
+    "october_kasu_2",
+    "april_tane",
+    "may_kasu_2",
+    "february_tane",
+    "february_tanzaku",
+    "january_kasu_2",
+    "april_tanzaku",
+    "december_tane",
+    "november_kasu_1",
+    "august_hikari",
+    "november_hikari",
+    "march_hikari",
+    "november_kasu_3",
+    "october_tane",
+    "august_tane",
+    "july_tane",
+    "may_tanzaku",
+    "november_kasu_2",
+    "january_hikari",
+    "august_kasu_2",
+    "july_tanzaku",
+    "january_tanzaku",
+    "bonus_sampi",
+    "october_tanzaku",
+    "august_kasu_1",
+    "december_hikari",
+    "may_tane",
+    "july_kasu_2",
+    "january_kasu_1",
+    "may_kasu_1",
+    "march_tanzaku",
+    "bonus_ssangpi_1",
+    "april_kasu_1",
+    "april_kasu_2",
+    "september_kasu_1",
+    "december_kasu",
+    "march_kasu_1",
+    "june_tanzaku",
+    "february_kasu_1",
+    "december_tanzaku"
+  ],
+  "moves": [
+    {
+      "k": 0,
+      "p": 0,
+      "a": 4,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 1,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 2,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 2,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 0,
+      "a": 2,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 1,
+      "a": 3,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 5,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 3,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 0,
+      "a": 3,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 1,
+      "a": 3,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 3,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 2,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 3,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 0,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 1,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 2,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 3,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 0,
+      "a": 1,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 1,
+      "a": 1,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 3,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 0,
+      "a": 1,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 1,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 3,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 0,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 1,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 0,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    {
+      "k": 4,
+      "p": 2,
+      "a": 0,
+      "b": 0,
+      "c": 0
+    }
+  ]
+}

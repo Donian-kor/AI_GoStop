@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# 로그 / 임시 파일
+*.log
+tmp/
+.cache/
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

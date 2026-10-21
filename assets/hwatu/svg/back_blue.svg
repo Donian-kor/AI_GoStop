@@ -1,0 +1,21 @@
+<svg width="103.2" height="168.2" preserveAspectRatio="none" version="1.1" viewBox="0 0 103.2 168.2" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="card_b">
+      <path d="m13.301 7.1992c-4.6667 0-7 2.3333-7 7v139.8c0 4.6667 2.3333 7 7 7h76.6c4.6667 0 7-2.3333 7-7v-139.8c0-4.6667-2.3333-7-7-7z"/>
+    </clipPath>
+    <pattern id="net_b" width="2.6" height="2.6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="2.6" height="2.6" fill="#1f4e8f"/>
+      <path d="M0 0 H 2.6" stroke="#6f9ad0" stroke-width="0.42"/>
+      <path d="M0 0 V 2.6" stroke="#6f9ad0" stroke-width="0.42"/>
+      <path d="M0 2.6 H 2.6" stroke="#143562" stroke-width="0.42"/>
+      <path d="M 2.6 0 V 2.6" stroke="#143562" stroke-width="0.42"/>
+      <rect x="0" y="0" width="0.55" height="0.55" fill="#6f9ad0"/>
+    </pattern>
+  </defs>
+  <!-- 바탕(모서리까지 채움) -->
+  <path d="m13.301 7.1992c-4.6667 0-7 2.3333-7 7v139.8c0 4.6667 2.3333 7 7 7h76.6c4.6667 0 7-2.3333 7-7v-139.8c0-4.6667-2.3333-7-7-7z" fill="#1f4e8f"/>
+  <!-- 네트 무늬 -->
+  <rect x="0" y="0" width="103.2" height="168.2" fill="url(#net_b)" clip-path="url(#card_b)"/>
+  <!-- 카드 테두리 -->
+  <path d="m13.301 7.1992c-4.6667 0-7 2.3333-7 7v139.8c0 4.6667 2.3333 7 7 7h76.6c4.6667 0 7-2.3333 7-7v-139.8c0-4.6667-2.3333-7-7-7z" fill="none" stroke="#0e2745" stroke-width="1.1"/>
+</svg>

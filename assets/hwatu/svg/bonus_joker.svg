@@ -1,0 +1,60 @@
+<svg width="103.2" height="168.2" preserveAspectRatio="none" version="1.1" viewBox="0 0 103.2 168.2" xmlns="http://www.w3.org/2000/svg">
+  <!-- 카드 본체: 기존 화투와 동일 규격 -->
+  <path d="m13.301 7.1992c-4.6667 0-7 2.3333-7 7v139.8c0 4.6667 2.3333 7 7 7h76.6c4.6667 0 7-2.3333 7-7v-139.8c0-4.6667-2.3333-7-7-7z" fill="#fffdf7" stroke="#1a1a1a" stroke-width="1.2"/>
+  <!-- 장식 이중 프레임(금색+적색) -->
+  <rect x="11.6" y="12.4" width="80" height="143.4" rx="4.5" fill="none" stroke="#d8a63c" stroke-width="1.7"/>
+  <rect x="14.4" y="15.2" width="74.4" height="137.8" rx="3" fill="none" stroke="#c0392b" stroke-width="0.8"/>
+  <!-- 상단 보너스 리본 -->
+  <g>
+    <rect x="24.6" y="19.5" width="54" height="15" rx="7.5" fill="#c0392b"/>
+    <text x="51.6" y="30.4" text-anchor="middle" font-family="'Malgun Gothic','맑은 고딕',sans-serif" font-size="9.2" font-weight="700" fill="#fffdf7" letter-spacing="1.5">보너스</text>
+  </g>
+  <!-- 중앙 꽃 모티프(값=꽃 개수) -->
+  <g transform="translate(40.6,68) scale(1.7)">
+    <g fill="#7d5ba6" stroke="#a8324a" stroke-width="0.35">
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(72)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(144)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(216)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(288)"/>
+    </g>
+    <circle r="2.5" fill="#f2c14e"/>
+  </g>  <g transform="translate(62.6,90) scale(1.7)">
+    <g fill="#7d5ba6" stroke="#a8324a" stroke-width="0.35">
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(72)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(144)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(216)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(288)"/>
+    </g>
+    <circle r="2.5" fill="#f2c14e"/>
+  </g>
+  <!-- 값 배지 -->
+  <circle cx="51.6" cy="122" r="14.5" fill="#c0392b" stroke="#d8a63c" stroke-width="1.6"/>
+  <text x="51.6" y="128.6" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="17" font-weight="700" fill="#fffdf7">2</text>
+  <!-- 하단 라벨 -->
+  <text x="51.6" y="148.5" text-anchor="middle" font-family="'Malgun Gothic','맑은 고딕',sans-serif" font-size="11.5" font-weight="700" fill="#c0392b" letter-spacing="0.5">조커</text>
+  <!-- 모서리 소형 꽃 장식 -->
+  <g opacity="0.85">
+  <g transform="translate(20.5,21) scale(0.62)">
+    <g fill="#7d5ba6" stroke="#a8324a" stroke-width="0.35">
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(72)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(144)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(216)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(288)"/>
+    </g>
+    <circle r="2.5" fill="#f2c14e"/>
+  </g>
+  <g transform="translate(82.7,21) scale(0.62)">
+    <g fill="#7d5ba6" stroke="#a8324a" stroke-width="0.35">
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(72)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(144)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(216)"/>
+      <ellipse cx="0" cy="-4.6" rx="2.7" ry="4.1" transform="rotate(288)"/>
+    </g>
+    <circle r="2.5" fill="#f2c14e"/>
+  </g>
+  </g>
+</svg>
