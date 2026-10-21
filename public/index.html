@@ -42,10 +42,28 @@
   <section id="room" class="screen hidden">
     <header class="topbar">
       <button id="codeChip" class="chip" title="방 코드 (눌러서 복사)">------</button>
-      <span id="moneyChip" class="chip">0 P</span>
+      <div class="topbar-right">
+        <span id="moneyChip" class="chip">0 P</span>
+        <button id="muteBtn" class="chip icon" title="소리 끄기">🔊</button>
+      </div>
     </header>
 
     <div id="players" class="players"></div>
+
+    <div id="settingsRow" class="settings-row hidden">
+      <span class="settings-label">방 설정</span>
+      <label>시간제한
+        <select id="timeLimitSelect">
+          <option value="off">없음</option>
+          <option value="30">30초+5초</option>
+          <option value="45">45초+5초</option>
+          <option value="60">60초+10초</option>
+        </select>
+      </label>
+      <label>점당 금액
+        <input id="pointValueInput" type="number" min="1" max="100000" step="10" inputmode="numeric">
+      </label>
+    </div>
 
     <div id="tableWrap" class="table-wrap">
       <div id="table" class="table"></div>
@@ -69,6 +87,7 @@
   </section>
 </div>
 
-<script src="app.js?v=1"></script>
+<script src="fx.js?v=1"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
