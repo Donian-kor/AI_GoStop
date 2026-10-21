@@ -1224,6 +1224,7 @@ class Room {
             score: inGame ? this.engine.scoreOf(e).total : 0,
             goCount: inGame ? this.engine.state.players[e].goCount : 0,
             shakeCount: inGame ? this.engine.state.players[e].shakeCount : 0,
+            cardDebt: inGame ? this.engine.state.players[e].cardDebt : 0,
             captured: inGame ? countKinds(this.engine.state.players[e].captured) : countKinds(p.hand || []),
             sittingOut: Boolean(this.lastSitOutSeat === seat && this.phase === ROOM_PHASE.PLAY),
           };

@@ -506,6 +506,9 @@ button:disabled { opacity: .5; cursor: default; }
 .overlay .rowline b { color: var(--gold); font-variant-numeric: tabular-nums; }
 .overlay .rowline.win b { color: #8fe0a8; }
 .overlay .rowline small { display: block; width: 100%; color: var(--muted); font-size: 12px; }
+.rules-body { text-align: left; margin: 12px 0; font-size: 15px; line-height: 1.6; }
+.rules-body p { margin: 6px 0; }
+.rules-body b { color: var(--gold); }
 
 .steps { text-align: left; margin: 12px 0; background: var(--bg2); border-radius: 10px; padding: 10px; }
 .steps h3 { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; }

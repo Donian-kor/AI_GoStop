@@ -21,6 +21,16 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
+  // 가상 돈을 한국 돈 단위로 표시 (1만 이상이면 만원, 아니면 원)
+  function won(n) {
+    n = Math.round(n || 0);
+    if (Math.abs(n) >= 10000) {
+      var m = n / 10000;
+      var mStr = (Math.abs(m - Math.round(m)) < 0.001) ? String(Math.round(m)) : m.toFixed(1).replace(/\.0$/, '');
+      return mStr + '만원';
+    }
+    return n.toLocaleString() + '원';
+  }
   var CARD_IMG = 'assets/hwatu/png/';
   var buildVersion = '1';
   var roomCode = null;
@@ -52,6 +62,9 @@
     diffSelect: $('diffSelect'),
     createBtn: $('createBtn'),
     joinBtn: $('joinBtn'),
+    rulesBtn: $('rulesBtn'),
+    rulesOverlay: $('rulesOverlay'),
+    rulesCloseBtn: $('rulesCloseBtn'),
     joinBox: $('joinBox'),
     codeInput: $('codeInput'),
     joinGoBtn: $('joinGoBtn'),
@@ -68,6 +81,7 @@
     tableHint: $('tableHint'),
     promptBox: $('promptBox'),
     hand: $('hand'),
+    flipBtn: $('flipBtn'),
     turnInfo: $('turnInfo'),
     timer: $('timer'),
     startBtn: $('startBtn'),
@@ -216,6 +230,13 @@
   });
 
   el.startBtn.addEventListener('click', function () { act('start'); });
+  if (el.flipBtn) el.flipBtn.addEventListener('click', function () { act('flipOnly'); });
+  if (el.rulesBtn) el.rulesBtn.addEventListener('click', function () {
+    if (el.rulesOverlay) el.rulesOverlay.className = 'overlay';
+  });
+  if (el.rulesCloseBtn) el.rulesCloseBtn.addEventListener('click', function () {
+    if (el.rulesOverlay) el.rulesOverlay.className = 'overlay hidden';
+  });
 
   // ── 나가기 ──────────────────────────────────────────────────────────────
   el.leaveBtn.addEventListener('click', function () {
@@ -244,7 +265,7 @@
     el.hand.innerHTML = '';
     el.deckStack.innerHTML = '';
     el.codeChip.innerHTML = '------';
-    el.moneyChip.innerHTML = '0 P';
+    el.moneyChip.innerHTML = '0원';
     el.turnInfo.innerHTML = '';
     el.timer.innerHTML = '';
     document.title = '고스톱';
@@ -454,7 +475,7 @@
     var phaseBefore = prevPhase;
     prevPhase = state.phase;
     var me = state.players[mySeat];
-    el.moneyChip.innerHTML = (me ? me.money : 0).toLocaleString() + ' P';
+    el.moneyChip.innerHTML = won(me ? me.money : 0);
 
     // 플레이어 — 나는 아래(손패·족보·머니칩)에 이미 나오므로 상단에는 상대만 보여준다
     el.players.innerHTML = '';
@@ -483,7 +504,7 @@
 
       var money = document.createElement('div');
       money.className = 'pmoney';
-      money.innerHTML = p.money.toLocaleString() + 'P';
+      money.innerHTML = won(p.money);
 
       div.appendChild(name);
       div.appendChild(meta);
@@ -582,6 +603,12 @@
     if (state.phase === 'settle') el.turnInfo.innerHTML = '판이 끝났습니다.';
     else if (cur) el.turnInfo.innerHTML = cur.seat === mySeat ? '내 차례입니다' : esc(cur.name) + ' 차례';
     else el.turnInfo.innerHTML = '';
+
+    // 뒤집기 버튼 — 카드빚이 있을 때만 (내 차례)
+    if (el.flipBtn) {
+      var showFlip = (state.phase === 'play' && state.currentSeat === mySeat && me && me.cardDebt > 0);
+      el.flipBtn.className = showFlip ? 'chip' : 'chip hidden';
+    }
 
     var canStart = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
     el.startBtn.className = canStart ? 'primary' : 'primary hidden';
@@ -971,7 +998,7 @@
       var left = document.createElement('span');
       left.innerHTML = esc(row.name);
       var right = document.createElement('b');
-      right.innerHTML = (row.amount > 0 ? '+' : '') + row.amount.toLocaleString() + ' P';
+      right.innerHTML = (row.amount > 0 ? '+' : '') + won(row.amount);
       line.appendChild(left);
       line.appendChild(right);
       if (row.reasons && row.reasons.length) {

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>고스톱</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <div id="app">
@@ -32,6 +32,7 @@
     <div class="row">
       <button id="createBtn" class="primary">방 만들기</button>
       <button id="joinBtn">방 참가</button>
+      <button id="rulesBtn">게임 방법</button>
     </div>
     <div id="joinBox" class="hidden">
       <input id="codeInput" type="text" placeholder="방 코드" maxlength="6" autocapitalize="characters">
@@ -45,7 +46,7 @@
     <header class="topbar">
       <button id="codeChip" class="chip" title="방 코드 (눌러서 복사)">------</button>
       <div class="topbar-right">
-        <span id="moneyChip" class="chip">0 P</span>
+        <span id="moneyChip" class="chip">0원</span>
         <button id="bgmBtn" class="chip icon" title="배경음악">♪</button>
         <button id="muteBtn" class="chip icon" title="소리 끄기">🔊</button>
         <button id="leaveBtn" class="chip icon" title="방 나가기">✕</button>
@@ -83,6 +84,7 @@
 
     <div id="handWrap" class="hand-wrap">
       <div id="hand" class="hand"></div>
+      <button id="flipBtn" class="chip icon hidden" title="카드빚 갚기 (뒤집기만)">뒤집기</button>
     </div>
 
     <footer class="bottombar">
@@ -93,10 +95,26 @@
 
     <div id="toast" class="toast hidden"></div>
     <div id="overlay" class="overlay hidden"></div>
+    <div id="rulesOverlay" class="overlay hidden">
+      <div class="overlay-inner">
+        <h2>기본 게임진행</h2>
+        <p class="overlay-sub">고스톱 한 판의 흐름을 짧게 정리했습니다.</p>
+        <div class="rules-body">
+          <p><b>1. 패 나누기</b> — 2인 10장, 3인 7장씩. 바닥에 6장 깔고, 남은 뒷패에서 뽑습니다.</p>
+          <p><b>2. 선 결정</b> — 밤일낮장으로 가장 큰(낮) 또는 가장 작은(밤) 월을 뽑은 사람이 선입니다.</p>
+          <p><b>3. 턴 진행</b> — 손패 1장을 내어 바닥과 같은 월이면 먹고, 뒤집은 패도 같은 월이면 먹습니다. 못 먹으면 바닥에 놓습니다.</p>
+          <p><b>4. 특수</b> — 뻑·쪽·따닥·싹쓸이·폭탄·흔들기·총통 등이 자동으로 처리됩니다.</p>
+          <p><b>5. 고 / 스톱</b> — 3인 3점, 2인 7점부터. 고는 계속, 스톱은 즉시 승리. 3고부터 배수 2배.</p>
+          <p><b>6. 박</b> — 피박·광박·멍박·고박. 패자가 한 장도 못 먹으면 지급 면제.</p>
+          <p><b>7. 정산</b> — (족보점수 + 고보너스) × 배수. 가상 포인트만 사용합니다.</p>
+        </div>
+        <button id="rulesCloseBtn" class="primary">닫기</button>
+      </div>
+    </div>
   </section>
 </div>
 
 <script src="fx.js?v=2"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
