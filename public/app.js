@@ -9,8 +9,8 @@
 (() => {
   const POLL_MS = 1200;
   const CARD_IMG = 'assets/hwatu/svg/';
-  // 자산 버전 — SVG 내용(고정 크기 제거 등)이 바뀌면 올린다(브라우저 캐시 무효화)
-  const ASSET_VER = 2;
+  // 자산 버전 — 서버 빌드 버전과 맞춰 쓴다(자산이 바뀌면 URL 이 달라져 캐시가 무효화된다)
+  let buildVersion = '1';
 
   const $ = (id) => document.getElementById(id);
   const el = {
@@ -55,6 +55,27 @@
   let busy = false; // 액션 처리 중 잠금(중복 전송 방지)
 
   const Fx = window.GostopFx;
+
+  // ── 자동 갱신 ────────────────────────────────────────────────────────────
+  // 서버의 빌드 버전이 지금 것과 다르면(업데이트 happened) 화면을 자동으로 새로고침한다.
+  // → 폰에서 "새로고침 눌러주세요" 없이도 항상 최신 화면을 쓰게 된다.
+  (async () => {
+    try {
+      const res = await fetch('/api/version', { cache: 'no-store' });
+      if (!res.ok) return;
+      const { version } = await res.json();
+      buildVersion = version;
+      const saved = localStorage.getItem('gs_build');
+      if (saved && saved !== version) {
+        localStorage.setItem('gs_build', version);
+        location.reload();
+        return;
+      }
+      localStorage.setItem('gs_build', version);
+    } catch {
+      /* 무시 */
+    }
+  })();
 
   // ── 네트워크 ────────────────────────────────────────────────────────────
 
@@ -204,7 +225,7 @@
   // ── 렌더링 ──────────────────────────────────────────────────────────────
 
   function cardImg(card) {
-    return `${CARD_IMG}${card.imageKey || card.id}.svg?v=${ASSET_VER}`;
+    return `${CARD_IMG}${card.imageKey || card.id}.svg?v=${buildVersion}`;
   }
 
   const KIND_LABEL = {
@@ -258,7 +279,7 @@
     return wrap;
   }
 
-  /** 족보 패널 — 실제 고스톱 탭처럼 박스형 타일로 구성한다(텍스트 한 줄로 늘어놓지 않는다). */
+  /** 족보 패널 — 실제 화투처럼 내가 먹은 패를 카드로 보여준다. */
   function renderScorePanel(state) {
     const s = state.mySets;
     el.scorePanel.innerHTML = '';
@@ -267,20 +288,21 @@
     const me = state.players[mySeat];
     const total = me ? me.score : 0;
 
-    // 큰 점수 타일
+    // ── 윗줄: 점수·개수·족보 진행 타일 ──
+    const tiles = document.createElement('div');
+    tiles.className = 'sp-tiles';
+
     const scoreTile = document.createElement('div');
     scoreTile.className = 'sp big';
     scoreTile.innerHTML = `<b>${total}</b><span>점</span>`;
-    el.scorePanel.append(scoreTile);
+    tiles.append(scoreTile);
 
-    // 획득 장수 타일
     const countTile = document.createElement('div');
     countTile.className = 'sp';
     const captured = me && me.captured ? me.captured.total : 0;
     countTile.innerHTML = `<b>${captured}</b><span>개</span>`;
-    el.scorePanel.append(countTile);
+    tiles.append(countTile);
 
-    // 족보별 진행 타일
     const items = [
       { label: '광', n: s.bright, need: 3, cls: 'guang' },
       { label: '고도리', n: s.godori, need: 3, cls: 'godori' },
@@ -304,9 +326,49 @@
       need.className = 'need';
       need.textContent = `${it.n}/${it.need}`;
       d.append(dot, b, need);
-      el.scorePanel.append(d);
+      tiles.append(d);
     }
+    el.scorePanel.append(tiles);
+
+    // ── 아랫줄: 내가 먹은 패 (실제 카드로 펼친다) ──
+    const cards = state.myCaptured || [];
+    const rack = document.createElement('div');
+    rack.className = 'my-cards';
+
+    const title = document.createElement('span');
+    title.className = 'my-cards-title';
+    title.textContent = '내가 먹은 패';
+    rack.append(title);
+
+    const fan = document.createElement('div');
+    fan.className = 'card-fan';
+    for (const c of cards) {
+      const d = makeCardEl(c, 'tiny');
+      // 족보에 속하는 카드는 색 테두리로 강조 (실제 화투처럼 한 장씩 눈에 띄게)
+      const setTag = (c.tags || []).find((t) => SET_TAGS.includes(t));
+      if (setTag) {
+        d.classList.add('in-set');
+        d.style.setProperty('--sc', DOT_COLOR[SET_COLOR[setTag]] || '#e8c46a');
+      }
+      fan.append(d);
+    }
+    if (!cards.length) {
+      const empty = document.createElement('span');
+      empty.className = 'my-cards-empty';
+      empty.textContent = '아직 먹은 패가 없습니다';
+      fan.append(empty);
+    }
+    rack.append(fan);
+    el.scorePanel.append(rack);
   }
+
+  const SET_TAGS = ['godori', 'hongdan', 'cheongdan', 'chodan'];
+  const SET_COLOR = {
+    godori: 'godori',
+    hongdan: 'hong',
+    cheongdan: 'cheong',
+    chodan: 'cho',
+  };
 
   const DOT_COLOR = {
     guang: '#e8c46a',

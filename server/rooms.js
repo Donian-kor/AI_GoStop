@@ -69,6 +69,17 @@ function setProgress(cards) {
   };
 }
 
+/** 카드 요약 정보(클라이언트가 족보 묶음을 만들 수 있도록 태그까지). */
+function describeCards(engine, cards) {
+  return cards.map((c) => ({
+    id: c.id,
+    imageKey: c.imageKey,
+    month: c.month,
+    kind: c.kind,
+    tags: c.tags || [],
+  }));
+}
+
 /** 사람이 읽는 로그로 남길 이벤트 종류. */
 const LOGGED_EVENTS = new Set([
   EVENT.BBEOK,
@@ -1044,6 +1055,8 @@ class Room {
         const e = this.engineSeatOf(viewerSeat);
         base.myHand = e >= 0 ? this.engine.state.players[e].hand.map((c) => this.engine.describeCard(c)) : [];
         base.mySets = e >= 0 ? setProgress(this.engine.state.players[e].captured) : null;
+        // 내가 먹은 패 (실제 화투처럼 카드로 보여주기)
+        base.myCaptured = e >= 0 ? describeCards(this.engine, this.engine.state.players[e].captured) : [];
       }
     }
     return base;

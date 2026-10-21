@@ -26,6 +26,12 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const ASSETS_DIR = path.join(__dirname, '..', 'assets');
 const MAX_FX = 200;
 
+/**
+ * 빌드 버전 — 화면·엔진·자산을 바꿀 때마다 올린다.
+ * 클라이언트가 이 값을 비교해 오래된 화면이면 자동으로 새로고침한다.
+ */
+const BUILD_VERSION = '2026-10-21-3';
+
 /** 방 목록 */
 const rooms = new Map();
 
@@ -181,6 +187,11 @@ async function handleApi(req, res, url) {
   const segments = url.pathname.split('/').filter(Boolean); // ['api','room',code,...]
   const cookies = parseCookies(req);
   const playerId = cookies.gs_id || null;
+
+  // GET /api/version — 빌드 버전 (클라이언트 자동 갱신용)
+  if (segments.length === 2 && segments[1] === 'version' && req.method === 'GET') {
+    return sendJson(res, 200, { ok: true, version: BUILD_VERSION });
+  }
 
   // POST /api/room — 방 만들기
   if (segments[1] === 'room' && segments.length === 2 && req.method === 'POST') {

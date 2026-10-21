@@ -233,12 +233,14 @@ button:disabled { opacity: .5; cursor: default; }
 /* ── 족보 패널 (실시간 달성 상태) ───────────────────────
    텍스트 한 줄이 아니라 실제 고스톱 탭의 정보판처럼 박스형 타일로 구성한다. */
 .score-panel {
-  display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
-  padding: 8px 12px; background: var(--bg2);
+  display: block; padding: 8px 12px; background: var(--bg2);
   border-bottom: 1px solid var(--line);
-  scrollbar-width: none;
 }
-.score-panel::-webkit-scrollbar { display: none; }
+.score-panel .sp-tiles {
+  display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
+  scrollbar-width: none; padding-bottom: 2px;
+}
+.score-panel .sp-tiles::-webkit-scrollbar { display: none; }
 .score-panel .sp {
   flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
   min-width: 84px; justify-content: center;
@@ -261,6 +263,15 @@ button:disabled { opacity: .5; cursor: default; }
 .score-panel .sp.big b { font-size: 30px; color: var(--gold); line-height: 1; }
 .score-panel .sp.big span { font-size: 14px; color: var(--muted); }
 .score-panel .sp:not(.big) b { font-size: 16px; }
+
+/* 내가 먹은 패 — 실제 화투처럼 카드로 펼친다 */
+.my-cards { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-width: 0; }
+.my-cards-title { color: var(--muted); font-size: 13px; white-space: nowrap; flex: 0 0 auto; }
+.my-cards-empty { color: var(--muted); font-size: 13px; }
+.card-fan { display: flex; gap: 2px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+.card-fan::-webkit-scrollbar { display: none; }
+.card.tiny { width: 34px; height: 55px; --band-h: 10px; --band-fs: 8px; --kind-fs: 8px; }
+.card.tiny.in-set { outline: 3px solid var(--sc, #e8c46a); outline-offset: -1px; border-radius: 6px; }
 
 /* 획득 요약 (광/열/띠/피 개수) */
 .captured-sum { display: flex; gap: 3px; justify-content: center; margin-top: 3px; flex-wrap: wrap; }
@@ -412,10 +423,12 @@ button:disabled { opacity: .5; cursor: default; }
 .timer { font-variant-numeric: tabular-nums; font-size: 18px; color: var(--gold); }
 
 .prompt {
-  margin: 0 12px 8px; padding: 12px; border-radius: 10px;
+  margin: 0 12px 6px; padding: 8px 10px; border-radius: 10px;
   background: var(--panel); border: 1px solid var(--gold);
-  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
 }
+.prompt .card.small { width: 34px; height: 55px; }
+.prompt button { padding: 11px 18px; font-size: 16px; }
 
 /* ── 이펙트 배너 ───────────────────────────────────────── */
 .banner {
