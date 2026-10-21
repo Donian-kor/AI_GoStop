@@ -1225,6 +1225,21 @@ class Room {
             goCount: inGame ? this.engine.state.players[e].goCount : 0,
             shakeCount: inGame ? this.engine.state.players[e].shakeCount : 0,
             cardDebt: inGame ? this.engine.state.players[e].cardDebt : 0,
+            shakableMonths: inGame
+              ? (() => {
+                  const pl = this.engine.state.players[e];
+                  if (pl.pendingShakeMonth !== 0) return [];
+                  const months = [];
+                  const seen = {};
+                  for (const c of pl.hand) {
+                    if (seen[c.month]) continue;
+                    seen[c.month] = true;
+                    if (pl.shakenMonths.includes(c.month)) continue;
+                    if (pl.hand.filter((x) => x.month === c.month).length >= 3) months.push(c.month);
+                  }
+                  return months;
+                })()
+              : [],
             captured: inGame ? countKinds(this.engine.state.players[e].captured) : countKinds(p.hand || []),
             sittingOut: Boolean(this.lastSitOutSeat === seat && this.phase === ROOM_PHASE.PLAY),
           };

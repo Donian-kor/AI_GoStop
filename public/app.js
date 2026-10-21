@@ -82,6 +82,7 @@
     promptBox: $('promptBox'),
     hand: $('hand'),
     flipBtn: $('flipBtn'),
+    shakeBtn: $('shakeBtn'),
     turnInfo: $('turnInfo'),
     timer: $('timer'),
     startBtn: $('startBtn'),
@@ -231,6 +232,11 @@
 
   el.startBtn.addEventListener('click', function () { act('start'); });
   if (el.flipBtn) el.flipBtn.addEventListener('click', function () { act('flipOnly'); });
+  if (el.shakeBtn) el.shakeBtn.addEventListener('click', function () {
+    var me2 = lastState ? lastState.players[mySeat] : null;
+    var months = (me2 && me2.shakableMonths) || [];
+    if (months.length) act('shake', { month: months[0] });
+  });
   if (el.rulesBtn) el.rulesBtn.addEventListener('click', function () {
     if (el.rulesOverlay) el.rulesOverlay.className = 'overlay';
   });
@@ -603,6 +609,11 @@
     if (el.flipBtn) {
       var showFlip = (state.phase === 'play' && state.currentSeat === mySeat && me && me.cardDebt > 0);
       el.flipBtn.className = showFlip ? 'chip' : 'chip hidden';
+    }
+    // 흔들기 버튼 — 같은 월 3장 이상 들고 있을 때 (내 차례)
+    if (el.shakeBtn) {
+      var showShake = (state.phase === 'play' && state.currentSeat === mySeat && me && me.shakableMonths && me.shakableMonths.length > 0);
+      el.shakeBtn.className = showShake ? 'chip' : 'chip hidden';
     }
 
     var canStart = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
