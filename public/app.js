@@ -491,11 +491,6 @@
 
       var name = document.createElement('div');
       name.className = 'pname';
-      var av = document.createElement('span');
-      av.className = 'avatar';
-      av.style.background = avatarColor(p.name);
-      av.innerHTML = (p.name || '?').replace(/^\s+|\s+$/g, '').charAt(0) || '?';
-      name.appendChild(av);
       name.appendChild(document.createTextNode(p.name + (p.type === 'ai' ? ' 🤖' : '')));
 
       var meta = document.createElement('div');
@@ -620,14 +615,6 @@
     } else {
       el.overlay.className = 'overlay hidden';
     }
-  }
-
-  function avatarColor(name) {
-    var colors = ['#c96f5a', '#5a8fc9', '#6fbf73', '#c9a05a', '#9a6fc9', '#5ac9c0', '#c95a9a', '#8a9ac9'];
-    var s = name || '?';
-    var hash = 0;
-    for (var i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-    return colors[hash % colors.length];
   }
 
   function handBacks(count) {

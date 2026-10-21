@@ -160,15 +160,6 @@ button:disabled { opacity: .5; cursor: default; }
 .settings-row input { width: 84px; }
 .settings-label { color: var(--gold); font-weight: 700; }
 
-/* 아바타 — 이름에서 생성 (외부 이미지 불필요) */
-.avatar {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 50%;
-  font-size: 14px; font-weight: 800; color: #10241a;
-  margin-right: 5px; vertical-align: -6px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .18) inset;
-}
-
 /* 카드 뒷장 */
 .card.back {
   background-image: url('../assets/hwatu/svg/back_red.svg');
@@ -523,7 +514,6 @@ button:disabled { opacity: .5; cursor: default; }
   .players { gap: 5px; padding: 5px 6px; }
   .player { padding: 4px 5px; }
   .player .pname { font-size: 14px; line-height: 1.3; }
-  .player .avatar { width: 19px; height: 19px; font-size: 11px; margin-right: 4px; vertical-align: -4px; }
   .player .pmeta, .player .pmoney { display: inline-block; font-size: 12px; line-height: 1.35; }
   .player .pmoney { margin-left: 6px; }
   .player .pready { font-size: 11px; line-height: 1.2; }
