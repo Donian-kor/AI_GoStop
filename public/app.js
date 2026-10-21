@@ -921,6 +921,25 @@
     el.overlay.className = 'overlay';
     el.overlay.innerHTML = '';
 
+    // 정산 사운드 — 내 gain/lose + 박 발생 시 sfx_bak
+    try {
+      if (window.GostopFx && GostopFx.playSound) {
+        var myRow = null;
+        for (var i = 0; i < r.rows.length; i++) {
+          if (r.rows[i].seat === mySeat) { myRow = r.rows[i]; break; }
+        }
+        if (myRow) {
+          if (myRow.amount > 0) GostopFx.playSound('sfx_money_gain.ogg');
+          else if (myRow.amount < 0) GostopFx.playSound('sfx_money_lose.ogg');
+        }
+        var anyBak = false;
+        for (var j = 0; j < r.rows.length; j++) {
+          if (r.rows[j].pibak || r.rows[j].gwangbak || r.rows[j].meongbak || r.rows[j].gobak) { anyBak = true; break; }
+        }
+        if (anyBak) GostopFx.playSound('sfx_bak.ogg');
+      }
+    } catch (e) {}
+
     var box = document.createElement('div');
     box.className = 'overlay-inner';
 

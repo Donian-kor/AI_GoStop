@@ -18,7 +18,10 @@
   };
 
   var EFFECTS = {
+    place: { text: null, sound: 'card_place.ogg', style: 'plain' },
+    capture: { text: null, sound: 'card_capture.ogg', style: 'plain' },
     bbeok: { text: '뻑!', sound: 'ppeok.wav', style: 'red' },
+    finished: { text: null, sound: null, style: 'plain' },
     cheotBbeok: { text: '첫뻑!', sound: 'ppeok.wav', style: 'red' },
     yeonBbeok: { text: '연뻑!', sound: 'double-ppeok.wav', style: 'red' },
     jabBbeok: { text: '자뻑!', sound: 'self-ppeok.wav', style: 'red' },
@@ -44,7 +47,8 @@
     'jjok.wav': 66, 'double-ppeok.wav': 64, 'self-ppeok.wav': 62, 'ppeok.wav': 60,
     'shake.wav': 58, 'bonus-two.wav': 50, 'bonus-three.wav': 50,
     'pee-transfer-two.wav': 40, 'pee-transfer-three.wav': 40,
-    'score.wav': 30, 'decision.wav': 20
+    'score.wav': 30, 'decision.wav': 20,
+    'card_place.ogg': 10, 'card_capture.ogg': 35, 'draw.ogg': 70
   };
 
   var CUTIN_KINDS = {
@@ -63,6 +67,18 @@
 
   try { muted = localStorage.getItem('gs_muted') === '1'; } catch (e) { muted = false; }
   try { bgmOn = localStorage.getItem('gs_bgm') === '1'; } catch (e) { bgmOn = false; }
+
+  // iOS/Android 자동재생 정책 대비: 첫 사용자 입력에서 오디오를 한 번 깨운다.
+  var audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    playSound('ui_click.ogg', 0);
+  }
+  if (document && document.addEventListener) {
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+  }
 
   // ── 사운드 ──────────────────────────────────────────────────────────────
 
@@ -294,6 +310,12 @@
     var def = EFFECTS[fx.kind];
     if (!def) return;
 
+    // 나가리(손패 소진) → 전용 사운드
+    if (fx.kind === 'finished') {
+      if (fx.text && /나가리/.test(fx.text)) playSound('draw.ogg');
+      return;
+    }
+
     var prio = SOUND_PRIORITY[def.sound] || 0;
     var now = new Date().getTime();
     if (prio < 30 && now - lastSoundAt < 250) return;
@@ -307,7 +329,7 @@
       }
     }
 
-    showBanner(text, def.style);
+    if (text) showBanner(text, def.style);
     playSound(def.sound);
 
     if (CUTIN_KINDS[fx.kind]) {
