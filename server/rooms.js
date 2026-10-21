@@ -461,6 +461,9 @@ class Room {
     this.result = null;
     this.prompt = null;
     this.deadline = null;
+    this.autoPlayAt = 0;
+    this.fx = []; // 새 판이면 이펙트 로그도 초기화
+    this.log = []; // 텍스트 로그도 초기화
     this.phase = ROOM_PHASE.SEON;
     this.logEvent('새 판을 시작합니다. 선을 정해 주세요.');
     this.touch();

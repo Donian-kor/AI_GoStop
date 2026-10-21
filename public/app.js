@@ -12,6 +12,15 @@
  */
 
 (function () {
+  // 사용자 입력(이름 등)을 innerHTML에 안전하게 넣기 위한 이스케이프
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
   var CARD_IMG = 'assets/hwatu/png/';
   var buildVersion = '1';
   var roomCode = null;
@@ -571,7 +580,7 @@
 
     var cur = state.players[state.currentSeat];
     if (state.phase === 'settle') el.turnInfo.innerHTML = '판이 끝났습니다.';
-    else if (cur) el.turnInfo.innerHTML = cur.seat === mySeat ? '내 차례입니다' : cur.name + ' 차례';
+    else if (cur) el.turnInfo.innerHTML = cur.seat === mySeat ? '내 차례입니다' : esc(cur.name) + ' 차례';
     else el.turnInfo.innerHTML = '';
 
     var canStart = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
@@ -631,7 +640,7 @@
       if (!Object.prototype.hasOwnProperty.call(dec, key)) continue;
       var p = state.players[key];
       var d = dec[key];
-      info.push((p ? p.name : '') + ': ' + (d === 'giveup' ? '포기' : d === 'sell' ? '광팔기' : '참가'));
+      info.push((p ? esc(p.name) : '') + ': ' + (d === 'giveup' ? '포기' : d === 'sell' ? '광팔기' : '참가'));
     }
     if (info.length) {
       var span = document.createElement('span');
@@ -642,7 +651,7 @@
     if (waiting !== mySeat) {
       var w = document.createElement('span');
       var wp = state.players[waiting];
-      w.innerHTML = waiting < 0 ? '협상이 끝났습니다.' : (wp ? wp.name : '') + ' 님이 결정하는 중…';
+      w.innerHTML = waiting < 0 ? '협상이 끝났습니다.' : (wp ? esc(wp.name) : '') + ' 님이 결정하는 중…';
       el.promptBox.appendChild(w);
       return;
     }
@@ -719,7 +728,7 @@
 
     if (p.seat !== mySeat) {
       var who = state.players[p.seat] ? state.players[p.seat].name : '상대';
-      el.promptBox.innerHTML = '<span>' + who + ' 님이 선택하는 중입니다…</span>';
+      el.promptBox.innerHTML = '<span>' + esc(who) + ' 님이 선택하는 중입니다…</span>';
       return;
     }
 
@@ -789,7 +798,7 @@
     top.className = 'jk-top';
     var name = document.createElement('span');
     name.className = 'jk-name';
-    name.innerHTML = s.name;
+    name.innerHTML = esc(s.name);
     var need = document.createElement('span');
     need.className = 'jk-need';
     need.innerHTML = (s.have > s.need ? s.need : s.have) + '/' + s.need + (s.done ? ' ✔' : '');
@@ -945,7 +954,7 @@
 
     var h = document.createElement('h2');
     var wname = state.players[r.winnerSeat] ? state.players[r.winnerSeat].name : '승자';
-    h.innerHTML = r.nagari ? '나가리' : wname + ' 승리!';
+    h.innerHTML = r.nagari ? '나가리' : esc(wname) + ' 승리!';
     box.appendChild(h);
 
     var sub = document.createElement('p');
@@ -960,7 +969,7 @@
       var line = document.createElement('div');
       line.className = 'rowline' + (row.seat === r.winnerSeat ? ' win' : '');
       var left = document.createElement('span');
-      left.innerHTML = row.name;
+      left.innerHTML = esc(row.name);
       var right = document.createElement('b');
       right.innerHTML = (row.amount > 0 ? '+' : '') + row.amount.toLocaleString() + ' P';
       line.appendChild(left);
