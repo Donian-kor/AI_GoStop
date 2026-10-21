@@ -142,7 +142,15 @@ test('AI 가 실제로 수를 두고 판이 끝까지 진행된다', async () =>
         if (!s2.state.myHand.length) {
           await c.post(`/api/room/${code}/action`, { type: 'flipOnly' });
         } else {
-          await c.post(`/api/room/${code}/action`, { type: 'playCard', payload: { handIndex: 0 } });
+          // 흔들기 등으로 내야 할 월이 정해진 경우를 대비해 합법한 카드를 찾는다
+          var played = false;
+          for (var hi = 0; hi < s2.state.myHand.length; hi++) {
+            var r = await c.post(`/api/room/${code}/action`, { type: 'playCard', payload: { handIndex: hi } });
+            if (r && r.ok) { played = true; break; }
+          }
+          if (!played) {
+            await c.post(`/api/room/${code}/action`, { type: 'flipOnly' });
+          }
         }
       }
     } else {
@@ -153,8 +161,9 @@ test('AI 가 실제로 수를 두고 판이 끝까지 진행된다', async () =>
   }
 
   assert.strictEqual(phase, 'settle', `판이 끝나야 한다 (현재 ${phase}, ${steps}단계)`);
-  assert.ok(aiMoved, 'AI 가 카드를 냈어야 한다');
   assert.ok(st.state.result, '결과가 있어야 한다');
+  // 딜 직후 총통으로 끝난 판은 AI 가 둘 기회가 없으므로 aiMoved 검사는 생략한다
+  if (steps > 0) assert.ok(aiMoved, 'AI 가 카드를 냈어야 한다');
 });
 
 test('AI 는 사람이 둔 뒤에 반응해서 카드를 낸다', async () => {
@@ -171,10 +180,17 @@ test('AI 는 사람이 둔 뒤에 반응해서 카드를 낸다', async () => {
     await wait(150);
   }
 
-  // 사람이 먼저 한 장을 둔다
+  // 사람이 먼저 한 장을 둔다 (합법한 카드를 찾아낸다)
   let st = await c.get(`/api/room/${code}/state`);
   if (st.state.currentSeat === 0 && st.state.myHand.length) {
-    await c.post(`/api/room/${code}/action`, { type: 'playCard', payload: { handIndex: 0 } });
+    var played2 = false;
+    for (var hi2 = 0; hi2 < st.state.myHand.length; hi2++) {
+      var r2 = await c.post(`/api/room/${code}/action`, { type: 'playCard', payload: { handIndex: hi2 } });
+      if (r2 && r2.ok) { played2 = true; break; }
+    }
+    if (!played2) {
+      await c.post(`/api/room/${code}/action`, { type: 'flipOnly' }).catch(function () {});
+    }
   }
 
   // AI 가 그에 반응해 카드를 낸다
@@ -182,8 +198,12 @@ test('AI 는 사람이 둔 뒤에 반응해서 카드를 낸다', async () => {
     .filter((p) => p.type === 'ai')
     .reduce((sum, p) => sum + p.handCount, 0);
   await wait(2500);
-  const after = (await c.get(`/api/room/${code}/state`)).state.players
-    .filter((p) => p.type === 'ai')
-    .reduce((sum, p) => sum + p.handCount, 0);
-  assert.ok(after < before, `AI 가 카드를 내야 한다 (${before} → ${after})`);
+  const afterState = await c.get(`/api/room/${code}/state`);
+  // 딜 직후 총통으로 끝난 판은 AI 가 둘 기회가 없으므로 검사를 생략한다
+  if (afterState.state.phase !== 'settle') {
+    const after = afterState.state.players
+      .filter((p) => p.type === 'ai')
+      .reduce((sum, p) => sum + p.handCount, 0);
+    assert.ok(after < before, `AI 가 카드를 내야 한다 (${before} → ${after})`);
+  }
 });
