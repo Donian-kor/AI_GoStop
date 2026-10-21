@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>고스톱</title>
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div id="app">
+  <!-- 입장 -->
+  <section id="lobby" class="screen">
+    <h1 class="logo">고스톱</h1>
+    <p class="sub">가족끼리 함께 치는 고스톱</p>
+    <input id="nameInput" type="text" placeholder="이름" maxlength="12" autocomplete="off">
+    <div class="row">
+      <select id="modeSelect">
+        <option value="multi-3">3명 (가족과 함께)</option>
+        <option value="multi-2">2인 맞고</option>
+        <option value="solo-2">혼자 · AI와 2인</option>
+        <option value="solo-3">혼자 · AI와 3인</option>
+      </select>
+      <select id="diffSelect">
+        <option value="easy">AI 쉬움</option>
+        <option value="normal" selected>AI 보통</option>
+        <option value="hard">AI 어려움</option>
+        <option value="expert">AI 초고수</option>
+      </select>
+    </div>
+    <div class="row">
+      <button id="createBtn" class="primary">방 만들기</button>
+      <button id="joinBtn">방 참가</button>
+    </div>
+    <div id="joinBox" class="hidden">
+      <input id="codeInput" type="text" placeholder="방 코드" maxlength="6" autocapitalize="characters">
+      <button id="joinGoBtn" class="primary">참가하기</button>
+    </div>
+    <p id="lobbyError" class="error"></p>
+  </section>
+
+  <!-- 방 -->
+  <section id="room" class="screen hidden">
+    <header class="topbar">
+      <button id="codeChip" class="chip" title="방 코드 (눌러서 복사)">------</button>
+      <span id="moneyChip" class="chip">0 P</span>
+    </header>
+
+    <div id="players" class="players"></div>
+
+    <div id="tableWrap" class="table-wrap">
+      <div id="table" class="table"></div>
+      <p id="tableHint" class="hint"></p>
+    </div>
+
+    <div id="promptBox" class="prompt hidden"></div>
+
+    <div id="handWrap" class="hand-wrap">
+      <div id="hand" class="hand"></div>
+    </div>
+
+    <footer class="bottombar">
+      <span id="turnInfo" class="turn"></span>
+      <span id="timer" class="timer"></span>
+      <button id="startBtn" class="primary hidden">판 시작</button>
+    </footer>
+
+    <div id="toast" class="toast hidden"></div>
+    <div id="overlay" class="overlay hidden"></div>
+  </section>
+</div>
+
+<script src="app.js?v=1"></script>
+</body>
+</html>

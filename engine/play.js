@@ -68,6 +68,7 @@ function newPlayer(seat, name) {
     reverseGo: false,
     cardDebt: 0,
     pendingShakeMonth: 0,
+    shakenMonths: [],
   };
 }
 
@@ -568,7 +569,16 @@ class TurnEngine {
       }
 
       const refill = this.drawNonBonus(player);
-      if (refill) player.hand.push(refill);
+      if (refill) {
+        player.hand.push(refill);
+        return { awaiting: null }; // 같은 차례에 실제 패를 한 번 더 낸다
+      }
+
+      // 뒷패가 비어 있어 보충할 수 없다면 — 보너스패를 낸 것으로 하고 턴을 끝낸다.
+      // (그대로 두면 턴이 넘어가지 않아 판이 멈춘다)
+      player.pendingShakeMonth = 0;
+      this.state.playCount += 1;
+      this.scoreAndFinish(player);
       return { awaiting: null };
     }
 
@@ -867,6 +877,7 @@ class TurnEngine {
 
     player.shakeCount++;
     player.pendingShakeMonth = month;
+    if (!player.shakenMonths.includes(month)) player.shakenMonths.push(month);
     this.addEvent(EVENT.SHAKE, this.state.current, month, `${player.name} 흔들기! (${month}월)`);
   }
 
@@ -1068,6 +1079,7 @@ class TurnEngine {
     return {
       uid: card.uid,
       id: card.id,
+      imageKey: card.imageKey,
       month: card.month,
       kind: card.kind,
       name: displayName(card),

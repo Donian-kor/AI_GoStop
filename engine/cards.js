@@ -97,12 +97,13 @@ const STANDARD_ROWS = [
   [12, KIND.DOUBLE_JUNK, 1, 'm12-04', 'december_kasu', 2, RIBBON.NONE, false, false, false, ['junk', 'double-junk']],
 ];
 
-// 보너스패: [순번, id, imageKey, 피값, 태그]
+// 보너스패: [순번, id, imageKey(파일명), 피값, 태그]
+// 보너스패는 정규 카드와 달리 itsent-lab 규약에 없으므로 파일명 stem 을 그대로 쓴다.
 const BONUS_ROWS = [
-  [1, 'bonus_ssangpi_1', 'bonus-pee-1', 2, ['junk', 'double-junk', 'bonus-pee']],
-  [2, 'bonus_ssangpi_2', 'bonus-pee-2', 2, ['junk', 'double-junk', 'bonus-pee']],
-  [3, 'bonus_sampi', 'bonus-double-pee-1', 3, ['junk', 'double-junk', 'triple-junk', 'bonus-pee']],
-  [4, 'bonus_joker', 'bonus-joker', 2, ['junk', 'double-junk', 'bonus-pee']],
+  [1, 'bonus_ssangpi_1', 'bonus_ssangpi_1', 2, ['junk', 'double-junk', 'bonus-pee']],
+  [2, 'bonus_ssangpi_2', 'bonus_ssangpi_2', 2, ['junk', 'double-junk', 'bonus-pee']],
+  [3, 'bonus_sampi', 'bonus_sampi', 3, ['junk', 'double-junk', 'triple-junk', 'bonus-pee']],
+  [4, 'bonus_joker', 'bonus_joker', 2, ['junk', 'double-junk', 'bonus-pee']],
 ];
 
 function rowToCard(row) {

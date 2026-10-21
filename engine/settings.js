@@ -7,7 +7,9 @@
 
 /** 기본 설정. */
 const DEFAULT_SETTINGS = {
-  playerCount: 3, // 2 = 맞고, 3 = 삼파전
+  playerCount: 3, // 좌석 수: 2 = 맞고, 3 = 삼파전
+  mode: 'multi', // 'multi' = 사람끼리 / 'solo' = 나 혼자 + AI 가 나머지
+  aiDifficulty: 'normal', // AI 상대 난이도: easy | normal | hard | expert
   bonusPack: 50, // 보너스패 구성: 48 | 50 | 51
   moneyPerPoint: 100, // 1점당 가상 포인트
   seedMoney: 30000, // 플레이어 시작 잔액
@@ -65,6 +67,11 @@ function normalizeSettings(input = {}) {
   if (![48, 50, 51].includes(Number(s.bonusPack))) s.bonusPack = DEFAULT_SETTINGS.bonusPack;
   s.playerCount = Number(s.playerCount);
   s.bonusPack = Number(s.bonusPack);
+
+  if (s.mode !== 'solo') s.mode = DEFAULT_SETTINGS.mode;
+  if (!['easy', 'normal', 'hard', 'expert'].includes(s.aiDifficulty)) {
+    s.aiDifficulty = DEFAULT_SETTINGS.aiDifficulty;
+  }
 
   s.moneyPerPoint = positiveInt(s.moneyPerPoint, DEFAULT_SETTINGS.moneyPerPoint, 1, 100000);
   s.seedMoney = nonNegativeInt(s.seedMoney, DEFAULT_SETTINGS.seedMoney, 0, 100000000);

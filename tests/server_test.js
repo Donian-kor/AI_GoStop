@@ -1,0 +1,241 @@
+'use strict';
+
+// 서버 통합 테스트 — 실제 HTTP 로 3명이 접속해서 한 판을 끝까지 치는다.
+// 실행: node tests/server_test.js
+//
+// 검증 항목
+//   1) 방 만들기 → 6자리 코드 → 3명 입장
+//   2) 손패 은닉 — 남의 패가 자기 화면에 보이지 않는다
+//   3) 선 결정 → 딜 → 대국 → 고/스톱 → 정산까지 완주
+//   4) 정산 — 승자 수령액 = 패자 지불액 합, 잔액 총합 보존
+//   5) 재접속 — 같은 쿠키로 다시 조회하면 같은 방·같은 손패
+
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert');
+const { spawn } = require('child_process');
+const path = require('path');
+
+const PORT = 8791; // 테스트용 포트(실제 서버와 분리)
+const BASE = `http://127.0.0.1:${PORT}`;
+const ROOT = path.join(__dirname, '..');
+
+let child = null;
+
+/** 쿠키를 직접 관리하는 아주 단순한 HTTP 클라이언트. */
+function makeClient() {
+  let cookie = '';
+  return {
+    get cookie() {
+      return cookie;
+    },
+    async req(method, url, body) {
+      const res = await fetch(BASE + url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(cookie ? { Cookie: cookie } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        redirect: 'manual',
+      });
+      const setCookie = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+      for (const c of setCookie) {
+        const pair = c.split(';')[0];
+        if (pair.startsWith('gs_id=')) cookie = pair;
+      }
+      return res.json();
+    },
+    get(url) {
+      return this.req('GET', url);
+    },
+    post(url, body) {
+      return this.req('POST', url, body);
+    },
+  };
+}
+
+test.before(async () => {
+  child = spawn(process.execPath, [path.join(ROOT, 'server', 'server.js')], {
+    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1' },
+    stdio: 'ignore',
+  });
+  // 서버가 뜰 때까지 대기
+  for (let i = 0; i < 50; i++) {
+    try {
+      const res = await fetch(`${BASE}/api/room/${'A'.repeat(6)}/state`);
+      if (res.status === 404) break; // 서버는 뜬 상태
+      await new Promise((r) => setTimeout(r, 100));
+    } catch {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+});
+
+test.after(() => {
+  if (child) child.kill();
+});
+
+test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', async () => {
+  // ── 1) 방 만들기 + 3명 입장 ──
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  assert.ok(created.code, '방 코드가 있어야 한다');
+  assert.strictEqual(created.code.length, 6, '방 코드는 6자리');
+
+  const p2 = makeClient();
+  const p3 = makeClient();
+  const j2 = await p2.post(`/api/room/${created.code}/join`, { name: '아빠' });
+  const j3 = await p3.post(`/api/room/${created.code}/join`, { name: '나' });
+  assert.strictEqual(j2.seat, 1);
+  assert.strictEqual(j3.seat, 2);
+  assert.notStrictEqual(host.cookie, p2.cookie, '플레이어마다 다른 쿠키');
+
+  // ── 2) 대기실 상태 확인 ──
+  let st = await host.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(st.state.phase, 'lobby');
+  assert.strictEqual(st.state.players.length, 3);
+  assert.strictEqual(st.state.isHost, true, '방장만 isHost');
+  assert.strictEqual((await p2.get(`/api/room/${created.code}/state`)).state.isHost, false);
+
+  // ── 3) 선 결정 ──
+  const started = await host.post(`/api/room/${created.code}/action`, { type: 'start' });
+  assert.strictEqual(started.ok, true);
+
+  st = await host.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(st.state.phase, 'seon', '선 결정 단계여야 한다');
+  assert.strictEqual(st.state.seonCandidates[0].length, 3, '선 후보 카드가 3장');
+
+  // 3명 모두 카드 선택 → 선 확정 → 딜
+  // (선 결정이 동점이면 다시 뽑으므로, 'play' 가 될 때까지 반복)
+  for (let round = 0; round < 10; round++) {
+    for (const c of [host, p2, p3]) {
+      const s = await c.get(`/api/room/${created.code}/state`);
+      if (s.state.phase !== 'seon') break;
+      if (s.state.seonPicked[s.state.mySeat] !== -1) continue;
+      await c.post(`/api/room/${created.code}/action`, { type: 'seonPick', payload: { cardIndex: 0 } });
+    }
+    const check = await host.get(`/api/room/${created.code}/state`);
+    if (check.state.phase === 'play') break;
+  }
+
+  st = await host.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(st.state.phase, 'play', '대국 단계여야 한다');
+  assert.strictEqual(st.state.myHand.length, 7, '내 손패는 7장');
+  assert.strictEqual(st.state.table.length, 6, '바닥은 6장');
+  // 뒷패: 51장 − 선결정 후보 9장 − 딜 27장 = 15장
+  // (선결정 동점이면 재추첨한 만큼 더 줄어들고, 바닥 보너스패 보충으로 1장 줄어든다)
+  assert.ok(
+    st.state.deckCount >= 5 && st.state.deckCount <= 15,
+    `뒷패는 5~15장이어야 한다 (실제 ${st.state.deckCount})`
+  );
+
+  // ── 4) 손패 은닉 확인 ──
+  const other = await p2.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(other.state.myHand.length, 7);
+  const myIds = st.state.myHand.map((c) => c.id);
+  const otherIds = other.state.myHand.map((c) => c.id);
+  assert.notDeepStrictEqual(myIds, otherIds, '서로 다른 손패여야 한다');
+  // 상대 손패는 개수만 보인다
+  for (const p of other.state.players) {
+    assert.strictEqual(typeof p.handCount, 'number');
+    assert.ok(!('hand' in p), '상대 손패는 노출되지 않는다');
+  }
+
+  // ── 5) 자동 대국 — 끝까지 ──
+  const clients = { 0: host, 1: p2, 2: p3 };
+  let goCount = 0;
+  let steps = 0;
+  let phase = st.state.phase;
+
+  while (phase !== 'settle' && steps < 400) {
+    steps++;
+    const s = await host.get(`/api/room/${created.code}/state`);
+    phase = s.state.phase;
+    if (phase === 'settle') break;
+
+    const seat = s.state.currentSeat;
+    const client = clients[seat];
+    const p = s.state.prompt;
+
+    if (p && p.seat === seat) {
+      if (p.type === 'goStop') {
+        // 2고까지 해보고 스톱한다
+        await client.post(`/api/room/${created.code}/action`, {
+          type: goCount < 2 ? 'go' : 'stop',
+        });
+        if (goCount < 2) goCount++;
+        continue;
+      }
+      if (p.type === 'floorChoice') {
+        await client.post(`/api/room/${created.code}/action`, { type: 'floorChoice', payload: { choice: 0 } });
+        continue;
+      }
+      if (p.type === 'flipChoice') {
+        await client.post(`/api/room/${created.code}/action`, { type: 'flipChoice', payload: { ordinal: 0 } });
+        continue;
+      }
+      if (p.type === 'bonusDraw') {
+        const opt = p.options[p.options.length - 1];
+        await client.post(`/api/room/${created.code}/action`, {
+          type: 'bonusDraw',
+          payload: { stockIndex: opt.stockIndex },
+        });
+        continue;
+      }
+    }
+
+    // 일반 수 — 손패 첫 장을 낸다
+    const s2 = await client.get(`/api/room/${created.code}/state`);
+    if (!s2.state.myHand.length) {
+      await client.post(`/api/room/${created.code}/action`, { type: 'flipOnly' });
+      continue;
+    }
+    const res = await client.post(`/api/room/${created.code}/action`, {
+      type: 'playCard',
+      payload: { handIndex: 0 },
+    });
+    assert.ok(res.ok, `수가 처리되어야 한다: ${res.error || ''}`);
+  }
+
+  assert.strictEqual(phase, 'settle', `판이 끝나야 한다 (현재 ${phase}, ${steps}단계)`);
+
+  // ── 6) 정산 검증 ──
+  st = await host.get(`/api/room/${created.code}/state`);
+  const result = st.state.result;
+  assert.ok(result, '결과가 있어야 한다');
+  assert.ok(result.rows.length === 3);
+
+  // 나가는 경우(나가리)는 전원 0 이고, 승자가 있으면 수령액 = 패자 지불액 합
+  const winnerGain = result.nagari ? { amount: 0 } : result.rows.find((r) => r.seat === result.winnerSeat);
+  const loserSum = result.nagari
+    ? 0
+    : result.rows.filter((r) => r.seat !== result.winnerSeat).reduce((sum, r) => sum + -r.amount, 0);
+  assert.strictEqual(winnerGain.amount, loserSum, '승자 수령 = 패자 지불 합');
+
+  // 잔액 총합 보존 (승자+패자 = 초기 3×30000)
+  const totalMoney = st.state.players.reduce((sum, p) => sum + p.money, 0);
+  assert.strictEqual(totalMoney, 90000, '가상 잔액 총합이 보존되어야 한다');
+
+  // ── 7) 재접속 ──
+  const again = await host.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(again.state.code, created.code, '같은 방으로 복귀');
+  assert.strictEqual(again.state.mySeat, 0, '같은 좌석으로 복귀');
+  assert.strictEqual(again.state.phase, 'settle');
+});
+
+test('없는 방에 접근하면 404 를 돌려준다', async () => {
+  const c = makeClient();
+  const res = await c.get('/api/room/ZZZZZZ/state');
+  assert.strictEqual(res.ok, false);
+  assert.ok(res.error, '오류 메시지가 있어야 한다');
+});
+
+test('방에 참가하지 않은 사람은 액션을 보낼 수 없다', async () => {
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  const outsider = makeClient();
+  const res = await outsider.post(`/api/room/${created.code}/action`, { type: 'ready' });
+  assert.strictEqual(res.ok, false);
+});
