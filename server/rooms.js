@@ -128,6 +128,7 @@ class Room {
     this.negotiation = null; // 광팔기 협상 상태
     this.lastSitOutSeat = -1; // 직전 판에 빠진 자리 (연사 방지)
     this.gwangSale = null; // 직전 판 광팔기 정산 내역
+    this.autoPlayAt = 0; // 연결 끊김 자동 진행 예약 시각
     this.version = 0; // 상태 변경 횟수 (긴 폴링용)
     this.changeWaiters = []; // 상태 변경을 기다리는 요청들
 
@@ -288,7 +289,8 @@ class Room {
   }
 
   get isEmpty() {
-    return this.humanCount === 0;
+    // 사람이 한 명도 연결되어 있지 않으면 정리 대상이다 (AI 자리는 상주)
+    return this.seats.every((s) => !s || s.type === 'ai' || !s.connected);
   }
 
   get isExpired() {
@@ -891,6 +893,65 @@ class Room {
   }
 
   // ── 타임아웃 ─────────────────────────────────────────────────────────────
+
+  // ── 연결 끊김 처리 ───────────────────────────────────────────────────────
+  //
+  // 배터리 방전 등으로 앱이 강제 종료되면 서버는 즉시 알 수 없다.
+  // 20초 이상 폴링이 없으면 '연결 끊김' 으로 표시하고,
+  // 그 사람 차례가 왔을 때 30초 더 기다린 뒤 자동으로 진행한다(다른 사람들이 멈추지 않도록).
+
+  /** 연결이 끊긴 플레이어를 표시하고, 차례가 오면 자동으로 진행한다. */
+  checkDisconnected() {
+    if (this.phase !== ROOM_PHASE.PLAY || !this.engine) return;
+    const now = Date.now();
+
+    for (const p of this.seats) {
+      if (p && p.type === 'human' && p.connected && now - p.lastSeen > 20000) {
+        p.connected = false;
+        this.logEvent(`${p.name} 님의 연결이 끊겼습니다.`);
+        this.bump();
+      }
+    }
+
+    const engineSeat = this.engine.state.current;
+    const cur = this.seats[this.physicalSeatOf(engineSeat)];
+    if (!cur || cur.type !== 'human' || cur.connected) {
+      this.autoPlayAt = 0;
+      return;
+    }
+
+    if (!this.autoPlayAt) this.autoPlayAt = now;
+    if (now - this.autoPlayAt > 30000) {
+      this.autoPlayAt = 0;
+      this.autoPlayFor(cur, engineSeat);
+    }
+  }
+
+  /** 연결이 끊긴 플레이어 대신 한 수를 둔다. */
+  autoPlayFor(player, engineSeat) {
+    this.logEvent(`${player.name} 님 연결이 끊겨 자동으로 진행합니다.`);
+    this.fx.push({
+      seq: this.fx.length + 1,
+      kind: 'autoPlay',
+      seat: player.seat,
+      month: 0,
+      text: `${player.name} 님 연결 끊김 — 자동 진행`,
+      victimSeat: -1,
+    });
+    try {
+      const hand = this.engine.state.players[engineSeat].hand;
+      if (hand.length > 0) {
+        const result = this.engine.playHandCard(0, null);
+        this.afterAction(result);
+      } else {
+        this.engine.flipOnly();
+        this.afterAction(null);
+      }
+    } catch (err) {
+      this.logEvent(`자동 진행 중 오류: ${err.message}`);
+      this.afterAction(null);
+    }
+  }
 
   /** 시간이 넘었으면 강제 진행한다. */
   checkTimeout() {

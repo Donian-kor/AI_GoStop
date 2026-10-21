@@ -339,10 +339,11 @@ setInterval(() => {
   for (const [code, room] of rooms) {
     try {
       room.checkTimeout();
+      room.checkDisconnected();
     } catch (err) {
       console.error(`[room ${code}] 타임아웃 처리 오류:`, err.message);
     }
-    if (room.isEmpty && Date.now() - room.lastActivity > 30 * 60 * 1000) {
+    if (room.isEmpty && Date.now() - room.lastActivity > 10 * 60 * 1000) {
       rooms.delete(code);
     } else if (room.isExpired) {
       rooms.delete(code);

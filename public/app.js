@@ -43,6 +43,7 @@
     codeChip: $('codeChip'),
     moneyChip: $('moneyChip'),
     muteBtn: $('muteBtn'),
+    leaveBtn: $('leaveBtn'),
     bgmBtn: $('bgmBtn'),
     deckStack: $('deckStack'),
     scorePanel: $('scorePanel'),
@@ -199,6 +200,39 @@
   });
 
   el.startBtn.addEventListener('click', function () { act('start'); });
+
+  // ── 나가기 ──────────────────────────────────────────────────────────────
+  el.leaveBtn.addEventListener('click', function () {
+    var code = roomCode;
+    // 서버에는 '접속 끊김' 으로 알리고, 방 복귀 정보는 지운다
+    if (code) {
+      postJson('/api/room/' + code + '/action', { type: 'leave', payload: {} }, function () {}, function () {});
+    }
+    try {
+      sessionStorage.removeItem('gs_room');
+      sessionStorage.removeItem('gs_name');
+    } catch (e) {}
+    roomCode = null;
+    mySeat = -1;
+    lastState = null;
+    lastFxSeq = 0;
+    lastVersion = -1;
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    el.room.className = 'screen hidden';
+    el.lobby.className = 'screen';
+    el.overlay.className = 'overlay hidden';
+    el.promptBox.className = 'prompt hidden';
+    el.scorePanel.innerHTML = '';
+    el.players.innerHTML = '';
+    el.table.innerHTML = '';
+    el.hand.innerHTML = '';
+    el.deckStack.innerHTML = '';
+    el.codeChip.innerHTML = '------';
+    el.moneyChip.innerHTML = '0 P';
+    el.turnInfo.innerHTML = '';
+    el.timer.innerHTML = '';
+    document.title = '고스톱';
+  });
 
   function enterRoom(code, seat) {
     roomCode = code;
