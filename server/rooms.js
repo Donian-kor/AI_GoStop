@@ -364,19 +364,32 @@ class Room {
   waitForChange(timeoutMs) {
     return new Promise((resolve) => {
       const startVersion = this.version;
-      const startTime = Date.now();
-      const check = () => {
-        if (this.version !== startVersion) {
-          resolve(true);
-          return;
-        }
-        if (Date.now() - startTime >= timeoutMs) {
-          resolve(false);
-          return;
-        }
-        this.changeWaiters.push(check);
-      };
-      this.changeWaiters.push(check);
+      const room = this;
+      let finished = false;
+      let timer = null;
+
+      function finish(changed) {
+        if (finished) return;
+        finished = true;
+        if (timer) clearTimeout(timer);
+        const i = room.changeWaiters.indexOf(check);
+        if (i >= 0) room.changeWaiters.splice(i, 1);
+        resolve(changed);
+      }
+
+      function check() {
+        if (finished) return;
+        if (room.version !== startVersion) finish(true);
+      }
+
+      // 이미 바뀌었으면 기다리지 않고 바로 응답한다
+      if (room.version !== startVersion) {
+        finish(true);
+        return;
+      }
+      room.changeWaiters.push(check);
+      // 상태 변화가 없어도 시간이 되면 응답한다 (하트비트)
+      timer = setTimeout(function () { finish(false); }, timeoutMs);
     });
   }
 
@@ -584,6 +597,15 @@ class Room {
     this.result = null;
     this.pushFxFromEngine();
     this.logEvent('참가자가 정해졌습니다. 대국을 시작합니다.');
+
+    // 딜 직후 총통으로 판이 끝난 경우에도 정산으로 넘긴다
+    if (this.engine.state.phase === PHASE.FINISHED) {
+      this.finishRound();
+      this.touch();
+      this.bump();
+      return;
+    }
+
     this.syncPrompt();
     this.scheduleAiTurn();
     this.touch();
@@ -666,6 +688,16 @@ class Room {
     this.result = null;
     this.pushFxFromEngine();
     this.logEvent(`${this.seats[seon] ? this.seats[seon].name : '선'}님이 선입니다. 대국을 시작합니다.`);
+
+    // 딜 직후 총통(바닥 4장·손패 4장)으로 판이 바로 끝날 수 있다.
+    // 정산으로 넘기지 않으면 아무도 둘 수 없어 '차례'에서 영원히 멈춘다.
+    if (this.engine.state.phase === PHASE.FINISHED) {
+      this.finishRound();
+      this.touch();
+      this.bump();
+      return;
+    }
+
     this.syncPrompt();
     this.scheduleAiTurn();
     this.touch();
@@ -888,6 +920,7 @@ class Room {
   /** AI 자리 차례면 곧바로 진행을 예약한다. */
   scheduleAiTurn() {
     if (this.phase !== ROOM_PHASE.PLAY || !this.engine) return;
+    if (this.engine.state.phase === PHASE.FINISHED) return;
     if (this.aiTimer) return;
     const engineSeat = this.engine.state.current;
     const seat = this.physicalSeatOf(engineSeat);
@@ -901,6 +934,11 @@ class Room {
         this.runAiTurn(seat);
       } catch (err) {
         console.error(`[room ${this.code}] AI 진행 오류:`, err.message);
+        // 오류 때문에 대국이 멈추지 않게 — 판이 이미 끝났으면 정산으로 넘긴다
+        if (this.engine && this.engine.state.phase === PHASE.FINISHED) {
+          this.finishRound();
+          this.bump();
+        }
       }
     }, delay);
   }
@@ -908,6 +946,7 @@ class Room {
   /** AI가 실제로 수를 둔다. */
   runAiTurn(seat) {
     if (!this.engine) return;
+    if (this.engine.state.phase === PHASE.FINISHED) return;
     const engineSeat = this.engineSeatOf(seat);
     if (this.engine.state.current !== engineSeat) return;
     const p = this.seats[seat];

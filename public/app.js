@@ -23,6 +23,10 @@
   var pollPending = false;
   var lastUpdateAt = 0;
   var lastState = null;
+  // 방에 새로 들어온 직후의 첫 응답 — 지난 이벤트를 다시 재생하지 않는다
+  var freshJoin = true;
+  // 정산 창을 한 번만 띄우기 위해 직전 phase 를 기억한다
+  var prevPhase = '';
   var busy = false;
   // 족보 패널 아래 '내가 먹은 패' 를 펼쳐 둘지 (기본은 접어서 화면을 넓게 쓴다)
   var showAllCaptured = false;
@@ -241,6 +245,8 @@
     roomCode = code;
     mySeat = seat;
     lastFxSeq = 0;
+    freshJoin = true;
+    prevPhase = '';
     // 새로고침해도 방으로 돌아올 수 있게 방 코드와 이름을 기억한다
     try {
       sessionStorage.setItem('gs_room', code);
@@ -297,11 +303,19 @@
         lastUpdateAt = new Date().getTime();
         if (typeof res.version === 'number') lastVersion = res.version;
         var fx = res.fx || [];
-        for (var i = 0; i < fx.length; i++) {
-          if (fx[i].seq > lastFxSeq) lastFxSeq = fx[i].seq;
-          try {
-            if (Fx) Fx.handleFx(fx[i], { seatEl: seatEl, mySeat: mySeat });
-          } catch (e) { /* 이펙트 오류가 게임을 멈추지 않게 */ }
+        if (freshJoin) {
+          // 새로고침·재입장 직후에는 지난 이벤트를 재생하지 않고 위치만 맞춘다
+          for (var f = 0; f < fx.length; f++) {
+            if (fx[f].seq > lastFxSeq) lastFxSeq = fx[f].seq;
+          }
+          freshJoin = false;
+        } else {
+          for (var i = 0; i < fx.length; i++) {
+            if (fx[i].seq > lastFxSeq) lastFxSeq = fx[i].seq;
+            try {
+              if (Fx) Fx.handleFx(fx[i], { seatEl: seatEl, mySeat: mySeat });
+            } catch (e) { /* 이펙트 오류가 게임을 멈추지 않게 */ }
+          }
         }
         lastState = res.state;
         try {
@@ -393,23 +407,54 @@
     var avail = Math.min(window.innerWidth - 16, 760);
     var gap = 3;
     var w = Math.floor((avail - (count - 1) * gap) / count);
-    if (w > 74) w = 74;
-    if (w < 54) w = 54;
+    // 화면 높이가 낮으면(가로 모드) 손패를 줄여 가운데 화투판 자리를 남긴다
+    var cap = 74;
+    var min = 54;
+    if (window.innerHeight < 700) cap = 64;
+    if (window.innerHeight < 560) { cap = 52; min = 50; }
+    if (w > cap) w = cap;
+    if (w < min) w = min;
     el.hand.style.setProperty('--hand-w', w + 'px');
   }
 
+  // PC 화면 — 바닥 화투패를 화면 크기에 맞춰 크게 (폰은 CSS 고정 크기를 쓴다)
+  function fitTableCards() {
+    if (window.innerWidth <= 480 || window.innerHeight <= 560) {
+      el.table.style.removeProperty('--floor-w');
+      return;
+    }
+    var wrap = el.table.parentNode;
+    var count = el.table.children ? el.table.children.length : 0;
+    if (!wrap || !count) return;
+    var deckH = el.deckStack ? el.deckStack.offsetHeight : 0;
+    var hintH = el.tableHint ? el.tableHint.offsetHeight : 0;
+    var availW = wrap.clientWidth - 12;
+    var availH = wrap.clientHeight - deckH - hintH - 26;
+    var size = 40;
+    for (var s = 126; s >= 40; s -= 2) {
+      var ch = Math.round(s * 1.63);
+      var perRow = Math.floor((availW + 4) / (s + 4));
+      if (perRow < 1) perRow = 1;
+      var rows = Math.ceil(count / perRow);
+      if (rows * ch + (rows - 1) * 4 <= availH) { size = s; break; }
+    }
+    el.table.style.setProperty('--floor-w', size + 'px');
+  }
+
   function render(state) {
+    var phaseBefore = prevPhase;
+    prevPhase = state.phase;
     var me = state.players[mySeat];
     el.moneyChip.innerHTML = (me ? me.money : 0).toLocaleString() + ' P';
 
-    // 플레이어
+    // 플레이어 — 나는 아래(손패·족보·머니칩)에 이미 나오므로 상단에는 상대만 보여준다
     el.players.innerHTML = '';
     for (var i = 0; i < state.players.length; i++) {
       var p = state.players[i];
+      if (p.seat === mySeat) continue;
       var div = document.createElement('div');
       var cls = 'player';
       if (p.seat === state.currentSeat) cls += ' turn';
-      if (p.seat === mySeat) cls += ' me';
       if (p.type === 'ai') cls += ' ai';
       div.className = cls;
       div.setAttribute('data-seat', String(p.seat));
@@ -436,7 +481,7 @@
       div.appendChild(money);
       div.appendChild(capturedSummary(p.captured));
 
-      if (p.seat !== mySeat && p.handCount > 0) {
+      if (p.handCount > 0) {
         div.appendChild(handBacks(p.handCount));
       }
       if (!p.connected) {
@@ -519,6 +564,7 @@
       })(k);
     }
     el.hand.className = 'hand' + (!myTurn && state.phase === 'play' ? ' waiting' : '');
+    fitTableCards();
 
     renderPrompt(state);
     renderScorePanel(state);
@@ -532,8 +578,12 @@
     el.startBtn.className = canStart ? 'primary' : 'primary hidden';
     el.startBtn.innerHTML = state.phase === 'settle' ? '다음 판' : '판 시작';
 
-    if (state.phase === 'settle' && state.result) showResult(state);
-    else el.overlay.className = 'overlay hidden';
+    // 정산 창은 판이 끝난 순간에만 띄운다 (닫은 뒤 몇 초마다 다시 뜨지 않게)
+    if (state.phase === 'settle' && state.result) {
+      if (phaseBefore !== 'settle') showResult(state);
+    } else {
+      el.overlay.className = 'overlay hidden';
+    }
   }
 
   function avatarColor(name) {
@@ -947,6 +997,16 @@
     el.timer.innerHTML = remain + '초';
     el.timer.style.color = remain <= 5 ? 'var(--red)' : 'var(--gold)';
   }, 250);
+
+  // 화면을 돌리거나 창 크기가 바뀌면 손패 크기를 다시 맞춘다
+  window.addEventListener('resize', function () {
+    try {
+      if (lastState && lastState.myHand && lastState.myHand.length) {
+        fitHandCards(lastState.myHand.length);
+        fitTableCards();
+      }
+    } catch (e) {}
+  }, false);
 
   // 첫 사용자 입력 시 오디오 재생 허용(모바일 자동재생 정책 대비)
   document.addEventListener('pointerdown', function () {

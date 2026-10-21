@@ -52,11 +52,14 @@ test('연결이 끊기면 ' + "'연결 끊김'" + ' 으로 표시된다', () => 
 test('연결이 끊긴 사람의 차례는 자동으로 진행된다', () => {
   const room = startPlay(makeRoom());
 
-  // 현재 차례인 사람이 한 수를 둔다
+  // 현재 차례인 사람이 한 수를 둔다 (보너스패는 같은 차례로 돌아오므로 일반패를 고른다)
   const before = room.engine.state.playCount;
   const curSeat = room.engine.state.current;
   const curPhysical = room.physicalSeatOf(curSeat);
-  room.act(room.seats[curPhysical], 'playCard', { handIndex: 0 });
+  const handCards = room.engine.currentPlayer.hand;
+  let playIdx = handCards.findIndex((c) => c.kind !== 'bonus');
+  if (playIdx < 0) playIdx = 0;
+  room.act(room.seats[curPhysical], 'playCard', { handIndex: playIdx });
   assert.ok(room.engine.state.playCount > before, '한 수가 진행되어야 한다');
 
   // 다음 사람이 1번(아빠)이 되도록, 현재 차례를 1번으로 맞춘다

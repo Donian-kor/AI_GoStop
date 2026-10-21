@@ -102,7 +102,12 @@ button:disabled { opacity: .5; cursor: default; }
 .error { color: var(--red); min-height: 1.2em; margin: 0; }
 
 /* ── 방 화면 ────────────────────────────────────────────── */
-#room { padding-bottom: 0; }
+/* 모바일에서는 스크롤 없이 화면에 꽉 차게 — 넘치는 부분은 각 칸이 줄어든다 */
+#room {
+  padding-bottom: 0;
+  position: relative;
+  overflow: hidden;
+}
 
 .topbar {
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
@@ -113,7 +118,7 @@ button:disabled { opacity: .5; cursor: default; }
 
 .chip {
   padding: 6px 12px; border-radius: 999px; background: var(--panel);
-  border: 1px solid var(--line); font-size: 14px;
+  border: 1px solid var(--line); font-size: 14px; white-space: nowrap;
 }
 .chip.icon { padding: 6px 10px; font-size: 15px; line-height: 1; }
 #codeChip { font-weight: 800; letter-spacing: 3px; }
@@ -127,7 +132,6 @@ button:disabled { opacity: .5; cursor: default; }
   position: relative; transition: border-color .2s, background .2s;
 }
 .player.turn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
-.player.me { background: var(--panel); }
 .player.ai .pname { color: #9fd0c4; }
 .player .pname { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player .pmeta { font-size: 14px; color: var(--muted); }
@@ -318,7 +322,8 @@ button:disabled { opacity: .5; cursor: default; }
    · 좌석은 좌우 상단, 바닥은 중앙 3단 그리드(왼쪽 카드 | 드로피 | 오른쪽 카드)
    · 정보 패널은 금색 테두리의 둥근 박스 */
 .table-field {
-  flex: 1 1 auto; min-height: 0;
+  /* 바닥패가 0으로 찌그러져 잘리지 않도록 최소 높이를 보장한다 (폰은 아래 미디어쿼리에서 더 키운다) */
+  flex: 1 1 auto; min-height: 120px;
   position: relative;
   display: flex; flex-direction: column;
   background:
@@ -419,7 +424,7 @@ button:disabled { opacity: .5; cursor: default; }
   -webkit-user-drag: none; user-select: none;
 }
 /* 바닥패 — 중앙에서 또렷하게 보이도록 크게 */
-.card.small { width: 54px; height: 88px; --band-h: 15px; --band-fs: 11px; --kind-fs: 11px; }
+.card.small { --card-w: 54px; --band-h: 15px; --band-fs: 11px; --kind-fs: 11px; }
 .card.pick { cursor: pointer; transition: transform .12s ease; }
 .card.pick:active { transform: scale(.94); }
 
@@ -438,7 +443,9 @@ button:disabled { opacity: .5; cursor: default; }
 .hand {
   display: flex; gap: 3px; overflow-x: auto; padding-bottom: 4px;
   justify-content: center; min-height: calc(var(--hand-w, 60px) * 1.63 + 8px);
+  scrollbar-width: none;
 }
+.hand::-webkit-scrollbar { display: none; height: 0; }
 .hand .card { width: var(--hand-w, 60px); height: calc(var(--hand-w, 60px) * 1.63); }
 .hand .card.pick { transition: transform .14s ease, box-shadow .14s ease; }
 .hand .card.pick:hover { transform: translateY(-9px); box-shadow: 0 6px 14px rgba(0, 0, 0, .55); }
@@ -451,12 +458,19 @@ button:disabled { opacity: .5; cursor: default; }
 .turn { flex: 1 1 auto; font-size: 17px; }
 .timer { font-variant-numeric: tabular-nums; font-size: 18px; color: var(--gold); }
 
+/* 고/스톱·뻑 선택 창 — 화면을 밀어내지 않고 바닥 위에 겹쳐서 뜬다 */
 .prompt {
-  margin: 0 12px 6px; padding: 8px 10px; border-radius: 10px;
+  position: absolute; left: 50%; top: 54%; transform: translate(-50%, -50%);
+  z-index: 30; width: max-content; max-width: calc(100% - 16px);
+  margin: 0; padding: 8px 10px; border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .55);
   background: var(--panel); border: 1px solid var(--gold);
   display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  justify-content: center;
 }
-.prompt .card.small { width: 34px; height: 55px; }
+.prompt.hidden { display: none; }
+.prompt strong { flex: 0 0 100%; text-align: center; }
+.prompt .card.small { width: 44px; height: 72px; }
 .prompt button { padding: 11px 18px; font-size: 16px; }
 
 /* ── 이펙트 배너 ───────────────────────────────────────── */
@@ -501,23 +515,119 @@ button:disabled { opacity: .5; cursor: default; }
 .step.total b { color: var(--gold); font-size: 16px; }
 
 /* ── 좁은 화면(폰) ────────────────────────────────────── */
+/* 플레이어 칸 — 세로 폰이거나 화면이 낮으면(가로 모드) 최대한 납작하게 */
+@media (max-width: 480px), (max-height: 560px) {
+  .players { gap: 5px; padding: 5px 6px; }
+  .player { padding: 4px 5px; }
+  .player .pname { font-size: 14px; line-height: 1.3; }
+  .player .avatar { width: 19px; height: 19px; font-size: 11px; margin-right: 4px; vertical-align: -4px; }
+  .player .pmeta, .player .pmoney { display: inline-block; font-size: 12px; line-height: 1.35; }
+  .player .pmoney { margin-left: 6px; }
+  .player .pready { font-size: 11px; line-height: 1.2; }
+  /* 손패 장수는 위 'N장' 에 이미 표시되고, 카드 그림은 족보 패널이 보여준다 */
+  .player .hand-backs { display: none; }
+  .player .captured-sum { gap: 2px; margin-top: 2px; }
+  .player .captured-sum i { font-size: 11px; padding: 1px 4px; }
+
+  /* 상단 바 — 320px 폭에서도 한 줄에 들어가게 */
+  .topbar { padding: 6px 8px; gap: 6px; }
+  .topbar-right { gap: 4px; }
+  .chip { padding: 5px 9px; font-size: 13px; }
+  .chip.icon { padding: 5px 8px; font-size: 14px; }
+  #codeChip { letter-spacing: 2px; }
+}
+
 @media (max-width: 480px) {
   /* 어르신용 — 작은 화면에서도 크기를 최대한 유지한다 */
-  .players { gap: 5px; padding: 6px 8px; }
-  .player { padding: 6px 4px; }
-  .player .pname { font-size: 15px; }
-  .player .pmeta, .player .pmoney { font-size: 13px; }
-  .card.small { width: 48px; height: 78px; --band-h: 13px; --band-fs: 10px; --kind-fs: 10px; }
+  .card.small { --card-w: clamp(42px, 13vw, 48px); --band-h: 13px; --band-fs: 10px; --kind-fs: 10px; }
   .banner { font-size: 26px; padding: 14px 26px; }
   .banner.cutin { font-size: 30px; padding: 16px 30px; }
   .hand { justify-content: flex-start; }
+  .hand-wrap { padding: 6px 8px; }
+  /* 좁은 화면에서 바닥패가 잘리지 않도록 여백과 최소 높이를 줄인다 */
+  .table-field { min-height: 170px; }
+  .table-wrap { padding: 6px 4px; gap: 6px; }
   .overlay h2 { font-size: 24px; }
   .score-panel .jk-card { width: 22px; height: 35px; }
   .score-panel .jk-body { height: 35px; }
   .score-panel .jk-name { font-size: 13px; }
 }
 
+/* PC — 바닥 화투패를 크게 (실제 크기는 app.js 의 fitTableCards 가 화면에 맞춰 정한다) */
+@media (min-width: 481px) {
+  .table .card.small {
+    width: var(--floor-w, 54px);
+    height: calc(var(--floor-w, 54px) * 1.63);
+    --band-h: calc(var(--floor-w, 54px) * 0.28);
+    --band-fs: calc(var(--floor-w, 54px) * 0.2);
+    --kind-fs: calc(var(--floor-w, 54px) * 0.2);
+  }
+
+  /* 선 결정·보너스·같은 패 고르기 창의 카드도 크게 */
+  .prompt .card.small {
+    width: var(--prompt-w, 96px);
+    height: calc(var(--prompt-w, 96px) * 1.63);
+    --band-h: calc(var(--prompt-w, 96px) * 0.28);
+    --band-fs: calc(var(--prompt-w, 96px) * 0.2);
+    --kind-fs: calc(var(--prompt-w, 96px) * 0.2);
+  }
+  .prompt { padding: 14px 18px; gap: 10px; }
+  .prompt button { padding: 14px 24px; font-size: 18px; }
+  .prompt strong { font-size: 20px; }
+}
+
+/* 아주 좁은 폰 — 상대 칸의 먹은 패 요약은 족보 패널로 대신하고 높이를 아낀다 */
+@media (max-width: 360px) {
+  .player .captured-sum { display: none; }
+  .score-panel .jk-card { width: 20px; height: 32px; }
+  .score-panel .jk-body { height: 32px; }
+}
+
 /* 화면이 낮은 폰 — 바닥(대국 테이블)이 좁아지지 않도록 족보 아래 문구를 접는다 */
 @media (max-height: 700px) {
   .score-panel .jk-foot { display: none; }
+}
+
+/* 가로 모드 — 위아래로 쌓으면 화투판이 안 보이므로 좌우 2단으로 배치한다 */
+@media (orientation: landscape) and (max-height: 560px) {
+  #room {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(150px, 32%, 260px);
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top     top"
+      "players players"
+      "table   panel"
+      "table   bottom"
+      "hand    hand";
+  }
+  #room > .topbar { grid-area: top; }
+  #room > .players { grid-area: players; margin: 0; }
+  #room > .score-panel { grid-area: panel; align-self: start; min-width: 0; }
+  #room > .table-field { grid-area: table; min-height: 0; }
+  #room > .hand-wrap { grid-area: hand; }
+  #room > .bottombar { grid-area: bottom; }
+  #room > .settings-row { display: none; }
+
+  .players { gap: 4px; padding: 3px 8px; }
+  .player { padding: 2px 6px; }
+  .player .captured-sum { display: none; }
+  .player .pname { font-size: 14px; line-height: 1.25; }
+  .player .pmeta, .player .pmoney { font-size: 12px; line-height: 1.3; }
+
+  .table-field { min-height: 0; }
+  .score-panel { padding: 4px 8px; overflow: hidden; }
+  .score-panel .jk-head { margin-bottom: 3px; }
+  .score-panel .jk-title { font-size: 12px; }
+  .score-panel .jk-score { font-size: 11px; }
+  .score-panel .jk-score b { font-size: 16px; }
+  .score-panel .jk-set { padding: 4px 5px; gap: 3px; }
+  .score-panel .jk-card { width: 18px; height: 29px; }
+  .score-panel .jk-body { height: 29px; }
+  .score-panel .jk-name { font-size: 12px; }
+  .score-panel .jk-need { font-size: 11px; }
+  .hand-wrap { padding: 4px 8px; }
+  .bottombar { padding: 4px 8px; }
+  .turn { font-size: 15px; }
+  .timer { font-size: 16px; }
 }
