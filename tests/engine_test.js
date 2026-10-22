@@ -563,6 +563,21 @@ test('가상 잔액 반영 — 승자는 증가하고 패자는 감소한다', (
   assert.strictEqual(next[1].money, 29500);
 });
 
+test('빚을 허용하는 정산은 잔액이 부족해도 총액을 보존한다', () => {
+  const players = [
+    { seat: 0, money: 10 },
+    { seat: 1, money: 100 },
+  ];
+  const next = applyToBalances(players, [
+    { seat: 0, amount: -100 },
+    { seat: 1, amount: 100 },
+  ]);
+
+  assert.strictEqual(next[0].money, -90);
+  assert.strictEqual(next[1].money, 200);
+  assert.strictEqual(next.reduce((sum, p) => sum + p.money, 0), 110);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 9) 딜 (§2)
 // ─────────────────────────────────────────────────────────────────────────────

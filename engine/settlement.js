@@ -66,7 +66,7 @@ function applyToBalances(players, rows) {
   const next = players.map((p) => ({ ...p }));
   for (const row of rows) {
     const target = next.find((p) => p.seat === row.seat);
-    if (target) target.money = Math.max(0, target.money + row.amount);
+    if (target) target.money += row.amount;
   }
   return next;
 }

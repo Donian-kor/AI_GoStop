@@ -192,6 +192,15 @@ const LOGGED_EVENTS = new Set([
   EVENT.FINISHED,
 ]);
 
+function playerNameError(name) {
+  if (name === undefined || name === null) return null;
+  if (typeof name !== 'string') return '이름은 문자열이어야 합니다.';
+  const normalized = name.trim();
+  if (normalized.length > 12) return '이름은 12자 이내로 입력해 주세요.';
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return '이름에 제어 문자를 사용할 수 없습니다.';
+  return null;
+}
+
 class Room {
   /**
    * @param {string} code 방 코드
@@ -226,6 +235,7 @@ class Room {
     this.autoPlayAt = 0; // 연결 끊김 자동 진행 예약 시각
     this.version = 0; // 상태 변경 횟수 (긴 폴링용)
     this.changeWaiters = []; // 상태 변경을 기다리는 요청들
+    this.closed = false;
 
     if (this.settings.mode === 'solo') this.setupAiSeats();
   }
@@ -268,11 +278,13 @@ class Room {
    * @returns {{seat:number, player:object}|null} 자리가 없으면 null
    */
   addPlayer(id, name) {
+    const nameError = playerNameError(name);
+    if (nameError) throw new EngineError(nameError);
     if (!this.hasFreeSeat()) return null;
     const seat = this.seats.findIndex((s) => s === null);
     const player = {
       id,
-      name: (name || '').trim().slice(0, 12) || `${seat + 1}번`,
+      name: (typeof name === 'string' ? name.trim() : '').slice(0, 12) || `${seat + 1}번`,
       seat,
       type: 'human',
       money: this.settings.seedMoney,
@@ -387,12 +399,27 @@ class Room {
     }
   }
 
+  close() {
+    this.closed = true;
+    if (this.aiTimer) clearTimeout(this.aiTimer);
+    this.aiTimer = null;
+    const waiters = this.changeWaiters.slice();
+    for (const waiter of waiters) {
+      try {
+        waiter();
+      } catch {
+        /* 무시 */
+      }
+    }
+    this.changeWaiters = [];
+  }
+
   /**
    * 상태가 바뀌거나 타임아웃할 때까지 기다린다 (긴 폴링).
    * @param {number} timeoutMs 최대 대기 시간
    * @returns {Promise<boolean>} 상태가 바뀌었으면 true
    */
-  waitForChange(timeoutMs) {
+  waitForChange(timeoutMs, signal) {
     return new Promise((resolve) => {
       const startVersion = this.version;
       const room = this;
@@ -403,21 +430,35 @@ class Room {
         if (finished) return;
         finished = true;
         if (timer) clearTimeout(timer);
+        if (signal) signal.removeEventListener('abort', abort);
         const i = room.changeWaiters.indexOf(check);
         if (i >= 0) room.changeWaiters.splice(i, 1);
         resolve(changed);
       }
 
+      function abort() {
+        finish(false);
+      }
+
       function check() {
         if (finished) return;
+        if (room.closed) {
+          finish(false);
+          return;
+        }
         if (room.version !== startVersion) finish(true);
       }
 
+      if (signal && signal.aborted) {
+        finish(false);
+        return;
+      }
       // 이미 바뀌었으면 기다리지 않고 바로 응답한다
       if (room.version !== startVersion) {
         finish(true);
         return;
       }
+      if (signal) signal.addEventListener('abort', abort, { once: true });
       room.changeWaiters.push(check);
       // 상태 변화가 없어도 시간이 되면 응답한다 (하트비트)
       timer = setTimeout(function () { finish(false); }, timeoutMs);
@@ -448,6 +489,8 @@ class Room {
 
     this.deck = shuffledDeck(this.settings.bonusPack);
     this.seonPool = null;
+    this.playSeats = null;
+    this.lastSitOutSeat = -1;
 
     // 4인 광팔기 — 먼저 포기/광팔기 협상을 한다
     if (this.settings.playerCount === 4) {
@@ -587,7 +630,7 @@ class Room {
     if (round.gwang.sold && round.gwang.valuePerPayer > 0) {
       for (const payer of round.gwang.payerSeats) {
         const p = this.seats[payer];
-        if (p) p.money = Math.max(0, p.money - round.gwang.valuePerPayer);
+        if (p) p.money -= round.gwang.valuePerPayer;
       }
       const seller = this.seats[round.gwang.sellerSeat];
       if (seller) seller.money += round.gwang.valuePerPayer * round.gwang.payerSeats.length;
@@ -906,11 +949,11 @@ class Room {
     this.pushFxFromEngine();
 
     if (result && result.awaiting === 'bonusDraw') {
-      this.prompt = { type: 'bonusDraw', seat: this.engine.state.current, options: this.bonusOptions() };
+      this.prompt = { type: 'bonusDraw', seat: this.physicalSeatOf(this.engine.state.current), options: this.bonusOptions() };
     } else if (result && result.awaiting === 'floorChoice') {
-      this.prompt = { type: 'floorChoice', seat: this.engine.state.current, options: result.options };
+      this.prompt = { type: 'floorChoice', seat: this.physicalSeatOf(this.engine.state.current), options: result.options };
     } else if (result && result.awaiting === 'flipChoice') {
-      this.prompt = { type: 'flipChoice', seat: this.engine.state.current, options: result.options };
+      this.prompt = { type: 'flipChoice', seat: this.physicalSeatOf(this.engine.state.current), options: result.options };
     } else {
       this.syncPrompt();
     }
@@ -942,13 +985,13 @@ class Room {
     }
     const phase = this.engine.state.phase;
     if (phase === PHASE.AWAITING_GO_STOP) {
-      this.prompt = { type: 'goStop', seat: this.engine.state.current, options: [] };
+      this.prompt = { type: 'goStop', seat: this.physicalSeatOf(this.engine.state.current), options: [] };
     } else if (phase === PHASE.AWAITING_FLOOR_CHOICE) {
-      this.prompt = { type: 'floorChoice', seat: this.engine.state.current, options: [] };
+      this.prompt = { type: 'floorChoice', seat: this.physicalSeatOf(this.engine.state.current), options: [] };
     } else if (phase === PHASE.AWAITING_FLIP_CHOICE) {
-      this.prompt = { type: 'flipChoice', seat: this.engine.state.current, options: [] };
+      this.prompt = { type: 'flipChoice', seat: this.physicalSeatOf(this.engine.state.current), options: [] };
     } else if (phase === PHASE.AWAITING_BONUS_DRAW) {
-      this.prompt = { type: 'bonusDraw', seat: this.engine.state.current, options: this.bonusOptions() };
+      this.prompt = { type: 'bonusDraw', seat: this.physicalSeatOf(this.engine.state.current), options: this.bonusOptions() };
     } else {
       this.prompt = null;
     }
@@ -958,7 +1001,7 @@ class Room {
   computeDeadline() {
     if (!this.engine || !this.settings.timeLimit.enabled) return null;
     if (this.engine.state.phase === PHASE.FINISHED) return null;
-    const seat = this.engine.state.current;
+    const seat = this.physicalSeatOf(this.engine.state.current);
     if (!this.seats[seat]) return null;
     const limit = this.settings.timeLimit.base + this.settings.timeLimit.increment * this.engine.state.playCount;
     return Date.now() + limit * 1000;
@@ -971,8 +1014,7 @@ class Room {
     if (this.phase !== ROOM_PHASE.PLAY || !this.engine) return;
     if (this.engine.state.phase === PHASE.FINISHED) return;
     if (this.aiTimer) return;
-    const engineSeat = this.engine.state.current;
-    const seat = this.physicalSeatOf(engineSeat);
+    const seat = this.physicalSeatOf(this.engine.state.current);
     const p = this.seats[seat];
     if (!p || p.type !== 'ai') return;
 
@@ -1174,7 +1216,8 @@ class Room {
     if (this.phase !== ROOM_PHASE.PLAY || !this.engine) return false;
     if (!this.deadline || Date.now() < this.deadline) return false;
 
-    const seat = this.engine.state.current;
+    const engineSeat = this.engine.state.current;
+    const seat = this.physicalSeatOf(engineSeat);
     const player = this.seats[seat];
     this.logEvent(`${player ? player.name : '플레이어'} 시간 초과 — 자동으로 넘어갑니다.`);
     this.fx.push({ seq: ++this.fxSeq, kind: 'timeout', seat, month: 0, text: '시간 초과!', victimSeat: -1 });
@@ -1205,10 +1248,15 @@ class Room {
 
   finishRound() {
     if (this.settle) return;
-    const result = settleGame(this.engine, {
+    const engineResult = settleGame(this.engine, {
       moneyPerPoint: this.settings.moneyPerPoint,
       stakeMultiplier: this.settings.stakeMultiplier,
     });
+    const result = {
+      ...engineResult,
+      winnerSeat: engineResult.winnerSeat < 0 ? -1 : this.physicalSeatOf(engineResult.winnerSeat),
+      rows: engineResult.rows.map((row) => ({ ...row, seat: this.physicalSeatOf(row.seat) })),
+    };
 
     const balances = this.seats.map((p, seat) => ({ seat, money: p ? p.money : 0 }));
     const updated = applyToBalances(balances, result.rows);
@@ -1247,7 +1295,6 @@ class Room {
       code: this.code,
       phase: this.phase || ROOM_PHASE.LOBBY,
       playerCount: this.playerCount,
-      hostId: this.hostId,
       isHost: Boolean(viewerId) && viewerId === this.hostId,
       settings: this.settings,
       mySeat: viewerSeat,
@@ -1271,7 +1318,7 @@ class Room {
             goCount: inGame ? this.engine.state.players[e].goCount : 0,
             shakeCount: inGame ? this.engine.state.players[e].shakeCount : 0,
             cardDebt: inGame ? this.engine.state.players[e].cardDebt : 0,
-            shakableMonths: inGame
+            shakableMonths: inGame && seat === viewerSeat
               ? (() => {
                   const pl = this.engine.state.players[e];
                   if (pl.pendingShakeMonth !== 0) return [];
@@ -1347,7 +1394,9 @@ class Room {
       base.currentSeat = this.physicalSeatOf(this.engine.state.current);
       base.table = this.engine.state.floor.map((c) => this.engine.describeCard(c));
       base.deckCount = this.engine.state.stock.length;
-      base.winnerSeat = this.engine.state.winner;
+      base.winnerSeat = this.engine.state.winner < 0
+        ? -1
+        : this.physicalSeatOf(this.engine.state.winner);
       if (viewerSeat >= 0) {
         const e = this.engineSeatOf(viewerSeat);
         base.myHand = e >= 0 ? this.engine.state.players[e].hand.map((c) => this.engine.describeCard(c)) : [];
@@ -1374,4 +1423,5 @@ module.exports = {
   CODE_LENGTH,
   randomCode,
   DEFAULT_SETTINGS,
+  playerNameError,
 };

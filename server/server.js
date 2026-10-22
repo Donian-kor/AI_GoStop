@@ -17,7 +17,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
-const { Room, ROOM_PHASE, randomCode } = require('./rooms');
+const { Room, ROOM_PHASE, randomCode, playerNameError } = require('./rooms');
 const { EngineError } = require('../engine/play');
 
 const IDLE_MINUTES = Number(process.env.IDLE_MINUTES || 30); // 0 = 비활성화
@@ -52,6 +52,14 @@ function parseCookies(req) {
     if (k) out[k] = decodeURIComponent(v);
   }
   return out;
+}
+
+function sessionCookie(req, id) {
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const isHttps = req.socket.encrypted ||
+    (forwardedProto && forwardedProto.split(',')[0].trim().toLowerCase() === 'https');
+  const secure = isHttps ? '; Secure' : '';
+  return `gs_id=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure}`;
 }
 
 function readJsonBody(req) {
@@ -182,21 +190,93 @@ function getRoom(code) {
   return rooms.get(String(code || '').toUpperCase()) || null;
 }
 
-/** 중복 요청 방지용: 플레이어별 최근 requestId 기록 */
-const seenRequests = new Map(); // `${code}:${playerId}` → Set
+const REQUEST_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_REQUESTS_PER_PLAYER = 50;
+const MAX_CACHED_REQUESTS = 10000;
+const requestResponses = new Map(); // 요청 키 → 최초 응답(삽입 순서 유지)
+const requestKeysByPlayer = new Map(); // `${code}:${playerId}` → requestId 와 요청 키
 
-function isDuplicateRequest(code, playerId, requestId) {
-  if (!requestId) return false;
-  const key = `${code}:${playerId}`;
-  if (!seenRequests.has(key)) seenRequests.set(key, new Set());
-  const set = seenRequests.get(key);
-  if (set.has(requestId)) return true;
-  set.add(requestId);
-  if (set.size > 50) {
-    const first = set.values().next().value;
-    set.delete(first);
+function removeCachedResponse(scope, requestId, requestKey) {
+  requestResponses.delete(requestKey);
+  const requests = requestKeysByPlayer.get(scope);
+  if (!requests) return;
+  requests.delete(requestId);
+  if (!requests.size) requestKeysByPlayer.delete(scope);
+}
+
+function pruneExpiredResponses(now) {
+  for (const [requestKey, entry] of requestResponses) {
+    if (entry.expiresAt > now) break;
+    removeCachedResponse(entry.scope, entry.requestId, requestKey);
   }
-  return false;
+}
+
+function getCachedResponse(code, playerId, requestId) {
+  if (typeof requestId !== 'string' || !requestId) return null;
+  const scope = `${code}:${playerId}`;
+  const requests = requestKeysByPlayer.get(scope);
+  if (!requests) return null;
+  const requestKey = requests.get(requestId);
+  if (!requestKey) return null;
+  const entry = requestResponses.get(requestKey);
+  if (!entry || entry.expiresAt <= Date.now()) {
+    removeCachedResponse(scope, requestId, requestKey);
+    return null;
+  }
+  return entry.response;
+}
+
+function cacheResponse(code, playerId, requestId, response) {
+  if (typeof requestId !== 'string' || !requestId) return;
+  const now = Date.now();
+  pruneExpiredResponses(now);
+  const scope = `${code}:${playerId}`;
+  let requests = requestKeysByPlayer.get(scope);
+  if (!requests) {
+    requests = new Map();
+    requestKeysByPlayer.set(scope, requests);
+  }
+
+  const previousKey = requests.get(requestId);
+  if (previousKey) removeCachedResponse(scope, requestId, previousKey);
+
+  const requestKey = JSON.stringify([scope, requestId]);
+  requestResponses.set(requestKey, {
+    scope,
+    requestId,
+    response: JSON.parse(JSON.stringify(response)),
+    expiresAt: now + REQUEST_CACHE_TTL_MS,
+  });
+  requests = requestKeysByPlayer.get(scope);
+  if (!requests) {
+    requests = new Map();
+    requestKeysByPlayer.set(scope, requests);
+  }
+  requests.set(requestId, requestKey);
+
+  while (requests.size > MAX_REQUESTS_PER_PLAYER) {
+    const oldestId = requests.keys().next().value;
+    removeCachedResponse(scope, oldestId, requests.get(oldestId));
+    requests = requestKeysByPlayer.get(scope) || new Map();
+  }
+  while (requestResponses.size > MAX_CACHED_REQUESTS) {
+    const oldest = requestResponses.entries().next().value;
+    if (!oldest) break;
+    removeCachedResponse(oldest[1].scope, oldest[1].requestId, oldest[0]);
+  }
+}
+
+function closeRoom(room) {
+  rooms.delete(room.code);
+  room.close();
+  const prefix = `${room.code}:`;
+  for (const scope of requestKeysByPlayer.keys()) {
+    if (scope.startsWith(prefix)) {
+      const requests = requestKeysByPlayer.get(scope);
+      for (const requestKey of requests.values()) requestResponses.delete(requestKey);
+      requestKeysByPlayer.delete(scope);
+    }
+  }
 }
 
 // ── 라우팅 ─────────────────────────────────────────────────────────────────
@@ -227,6 +307,11 @@ async function handleApi(req, res, url) {
   // POST /api/room — 방 만들기
   if (segments[1] === 'room' && segments.length === 2 && req.method === 'POST') {
     const body = await readJsonBody(req);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return sendJson(res, 400, { ok: false, error: '요청 형식이 올바르지 않습니다.' });
+    }
+    const nameError = playerNameError(body.name);
+    if (nameError) return sendJson(res, 400, { ok: false, error: nameError });
     // 방 모드: 'multi' = 사람끼리 / 'solo' = 나 혼자 + AI
     const options = {
       mode: body.mode === 'solo' ? 'solo' : 'multi',
@@ -239,7 +324,7 @@ async function handleApi(req, res, url) {
     const room = createRoom(options);
     const id = crypto.randomUUID();
     const joined = room.addPlayer(id, body.name);
-    const headers = { 'Set-Cookie': `gs_id=${id}; Path=/; SameSite=Lax; Max-Age=86400` };
+    const headers = { 'Set-Cookie': sessionCookie(req, id) };
     return sendJson(res, 200, { code: room.code, seat: joined.seat, name: joined.player.name, mode: room.settings.mode }, headers);
   }
 
@@ -256,6 +341,11 @@ async function handleApi(req, res, url) {
   // POST /api/room/:code/join — 입장
   if (segments.length === 4 && segments[3] === 'join' && req.method === 'POST') {
     const body = await readJsonBody(req);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return sendJson(res, 400, { ok: false, error: '요청 형식이 올바르지 않습니다.' });
+    }
+    const nameError = playerNameError(body.name);
+    if (nameError) return sendJson(res, 400, { ok: false, error: nameError });
     let id = playerId;
     let joined = id ? room.findPlayer(id) : null;
 
@@ -268,7 +358,7 @@ async function handleApi(req, res, url) {
     }
     room.markSeen(id);
     const headers = id !== playerId
-      ? { 'Set-Cookie': `gs_id=${id}; Path=/; SameSite=Lax; Max-Age=86400` }
+      ? { 'Set-Cookie': sessionCookie(req, id) }
       : {};
     // joined 의 형태가 두 가지다: 새로 들어온 경우 { seat, player }, 이미 있던 경우 플레이어 객체
     const seat = joined.seat;
@@ -283,16 +373,33 @@ async function handleApi(req, res, url) {
 
   // GET /api/room/:code/state — 상태 조회(긴 폴링)
   if (segments.length === 4 && segments[3] === 'state' && req.method === 'GET') {
-    if (playerId) room.markSeen(playerId);
-    const player = playerId ? room.findPlayer(playerId) : null;
-    const seat = player ? player.seat : -1;
+    if (!playerId) {
+      return sendJson(res, 401, { ok: false, error: '먼저 방에 입장해 주세요.' });
+    }
+    const player = room.findPlayer(playerId);
+    if (!player) {
+      return sendJson(res, 403, { ok: false, error: '이 방의 참가자가 아닙니다.' });
+    }
+    room.markSeen(playerId);
+    const seat = player.seat;
     const since = Number(url.searchParams.get('since') || 0);
     const clientVersion = Number(url.searchParams.get('v') || -1);
 
     // 긴 폴링 — 상태가 바뀌면 즉시 응답한다(지연 없음).
     // 바뀌지 않으면 20초 뒤 현재 상태로 응답한다(하트비트).
     if (clientVersion >= 0 && clientVersion === room.version) {
-      await room.waitForChange(8000);
+      const controller = new AbortController();
+      const onDisconnect = () => controller.abort();
+      if (req.aborted || res.destroyed) controller.abort();
+      req.once('aborted', onDisconnect);
+      res.once('close', onDisconnect);
+      try {
+        await room.waitForChange(8000, controller.signal);
+      } finally {
+        req.removeListener('aborted', onDisconnect);
+        res.removeListener('close', onDisconnect);
+      }
+      if (controller.signal.aborted || res.destroyed) return;
     }
 
     // 기다리는 동안 방장이 나가 방이 닫혔다면 404 로 알려 대기실로 돌아가게 한다
@@ -313,6 +420,14 @@ async function handleApi(req, res, url) {
   // POST /api/room/:code/action — 액션
   if (segments.length === 4 && segments[3] === 'action' && req.method === 'POST') {
     const body = await readJsonBody(req);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return sendJson(res, 400, { ok: false, error: '요청 형식이 올바르지 않습니다.' });
+    }
+    const requestId = body.requestId;
+    if (requestId !== undefined && requestId !== null &&
+        (typeof requestId !== 'string' || !requestId || requestId.length > 128)) {
+      return sendJson(res, 400, { ok: false, error: '요청 ID 형식이 올바르지 않습니다.' });
+    }
     if (!playerId) {
       return sendJson(res, 401, { ok: false, error: '먼저 방에 입장해 주세요.' });
     }
@@ -322,27 +437,35 @@ async function handleApi(req, res, url) {
     }
     room.markSeen(playerId);
 
-    if (isDuplicateRequest(code, playerId, body.requestId)) {
-      return sendJson(res, 200, { ok: true, duplicate: true });
+    const cached = getCachedResponse(code, playerId, requestId);
+    if (cached) {
+      return sendJson(res, cached.status, cached.payload);
     }
 
+    let status = 200;
+    let payload;
     try {
       const result = room.act(player, body.type, body.payload || {});
+      payload = { ok: true, ...result };
       // 방장이 방을 나가면 방을 바로 없앤다.
       // (기다리는 사람들도 곧바로 404 를 받아 대기실로 돌아간다)
       if (body.type === 'leave' && player.id === room.hostId) {
-        rooms.delete(code);
-        room.bump();
-        return sendJson(res, 200, { ok: true, ...result, roomClosed: true });
+        payload.roomClosed = true;
+        closeRoom(room);
+        return sendJson(res, status, payload);
       }
-      return sendJson(res, 200, { ok: true, ...result });
     } catch (err) {
       if (err instanceof EngineError) {
-        return sendJson(res, 200, { ok: false, error: err.message });
+        payload = { ok: false, error: err.message };
+      } else {
+        console.error('[api] 액션 처리 오류:', err);
+        status = 500;
+        payload = { ok: false, error: '처리 중 오류가 발생했습니다.' };
       }
-      console.error('[api] 액션 처리 오류:', err);
-      return sendJson(res, 500, { ok: false, error: '처리 중 오류가 발생했습니다.' });
     }
+    const response = { status, payload };
+    cacheResponse(code, playerId, requestId, response);
+    return sendJson(res, status, payload);
   }
 
   return sendJson(res, 404, { ok: false, error: '없는 경로입니다.' });
@@ -376,9 +499,9 @@ setInterval(() => {
       console.error(`[room ${code}] 타임아웃 처리 오류:`, err.message);
     }
     if (room.isEmpty && Date.now() - room.lastActivity > 60 * 1000) {
-      rooms.delete(code);
+      closeRoom(room);
     } else if (room.isExpired) {
-      rooms.delete(code);
+      closeRoom(room);
     }
   }
 }, 1000);

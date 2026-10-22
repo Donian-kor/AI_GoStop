@@ -26,22 +26,28 @@ let child = null;
 /** 쿠키를 직접 관리하는 아주 단순한 HTTP 클라이언트. */
 function makeClient() {
   let cookie = '';
+  let setCookie = '';
   return {
     get cookie() {
       return cookie;
     },
-    async req(method, url, body) {
+    get setCookie() {
+      return setCookie;
+    },
+    async req(method, url, body, extraHeaders) {
       const res = await fetch(BASE + url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           ...(cookie ? { Cookie: cookie } : {}),
+          ...(extraHeaders || {}),
         },
         body: body ? JSON.stringify(body) : undefined,
         redirect: 'manual',
       });
-      const setCookie = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
-      for (const c of setCookie) {
+      const setCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+      for (const c of setCookies) {
+        setCookie = c;
         const pair = c.split(';')[0];
         if (pair.startsWith('gs_id=')) cookie = pair;
       }
@@ -83,6 +89,7 @@ test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', asy
   const created = await host.post('/api/room', { name: '엄마' });
   assert.ok(created.code, '방 코드가 있어야 한다');
   assert.strictEqual(created.code.length, 6, '방 코드는 6자리');
+  assert.match(host.setCookie, /;\s*HttpOnly(?:;|$)/i, '세션 쿠키는 HttpOnly여야 한다');
 
   const p2 = makeClient();
   const p3 = makeClient();
@@ -91,12 +98,14 @@ test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', asy
   assert.strictEqual(j2.seat, 1);
   assert.strictEqual(j3.seat, 2);
   assert.notStrictEqual(host.cookie, p2.cookie, '플레이어마다 다른 쿠키');
+  assert.match(p2.setCookie, /;\s*HttpOnly(?:;|$)/i, '참가 쿠키도 HttpOnly여야 한다');
 
   // ── 2) 대기실 상태 확인 ──
   let st = await host.get(`/api/room/${created.code}/state`);
   assert.strictEqual(st.state.phase, 'lobby');
   assert.strictEqual(st.state.players.length, 3);
   assert.strictEqual(st.state.isHost, true, '방장만 isHost');
+  assert.ok(!('hostId' in st.state), '상태 응답에 방장 인증 토큰이 없어야 한다');
   assert.strictEqual((await p2.get(`/api/room/${created.code}/state`)).state.isHost, false);
 
   // ── 3) 선 결정 ──
@@ -238,6 +247,82 @@ test('방에 참가하지 않은 사람은 액션을 보낼 수 없다', async (
   const outsider = makeClient();
   const res = await outsider.post(`/api/room/${created.code}/action`, { type: 'ready' });
   assert.strictEqual(res.ok, false);
+});
+
+test('방 미참가자는 상세 상태를 읽을 수 없다', async () => {
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  const outsider = makeClient();
+  await outsider.post('/api/room', { name: '다른 방 참가자' });
+
+  const res = await outsider.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.error, '이 방의 참가자가 아닙니다.');
+});
+
+test('잘못된 플레이어 이름은 방 생성·입장을 거부한다', async () => {
+  const host = makeClient();
+  const badCreate = await host.post('/api/room', { name: { value: '이름' } });
+  assert.strictEqual(badCreate.ok, false);
+  assert.strictEqual(badCreate.error, '이름은 문자열이어야 합니다.');
+
+  const created = await host.post('/api/room', { name: '엄마' });
+  const guest = makeClient();
+  const badJoin = await guest.post(`/api/room/${created.code}/join`, { name: '가'.repeat(13) });
+  assert.strictEqual(badJoin.ok, false);
+  assert.strictEqual(badJoin.error, '이름은 12자 이내로 입력해 주세요.');
+
+  const controlName = await guest.post(`/api/room/${created.code}/join`, { name: '이름\n공격' });
+  assert.strictEqual(controlName.ok, false);
+  assert.strictEqual(controlName.error, '이름에 제어 문자를 사용할 수 없습니다.');
+});
+
+test('HTTPS 프록시를 통한 방 생성은 Secure 쿠키를 설정한다', async () => {
+  const client = makeClient();
+  await client.req('POST', '/api/room', { name: '안전한 방장' }, { 'X-Forwarded-Proto': 'https' });
+  assert.match(client.setCookie, /;\s*Secure(?:;|$)/i);
+});
+
+test('중복 액션 요청은 최초 성공 응답을 재사용하고 액션을 반복하지 않는다', async () => {
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  const actionUrl = `/api/room/${created.code}/action`;
+  const request = { type: 'ready', requestId: 'retry-ready-1' };
+
+  const first = await host.post(actionUrl, request);
+  const duplicate = await host.post(actionUrl, request);
+
+  assert.deepStrictEqual(duplicate, first);
+  assert.strictEqual(first.ready, true);
+  const state = await host.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(state.state.players[0].ready, true, '같은 액션이 두 번 실행되면 안 된다');
+});
+
+test('중복 액션 요청은 최초 실패 응답을 성공으로 바꾸지 않는다', async () => {
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  const actionUrl = `/api/room/${created.code}/action`;
+  const request = { type: 'playCard', requestId: 'retry-invalid-action-1' };
+
+  const first = await host.post(actionUrl, request);
+  const duplicate = await host.post(actionUrl, request);
+
+  assert.deepStrictEqual(duplicate, first);
+  assert.deepStrictEqual(duplicate, { ok: false, error: '지금은 대국할 수 없습니다.' });
+});
+
+test('요청 ID는 문자열이며 최대 128자여야 한다', async () => {
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  const actionUrl = `/api/room/${created.code}/action`;
+
+  const nonString = await host.post(actionUrl, { type: 'ready', requestId: { id: 1 } });
+  const tooLong = await host.post(actionUrl, { type: 'ready', requestId: 'x'.repeat(129) });
+
+  assert.strictEqual(nonString.ok, false);
+  assert.strictEqual(tooLong.ok, false);
+  const state = await host.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(state.state.players[0].ready, false);
 });
 
 test('방 목록 API — 참가 가능 여부와 내가 있던 방을 알려준다', async () => {

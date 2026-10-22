@@ -95,7 +95,7 @@ AI 난이도는 쉬움 / 보통 / 어려움 / 초고수 중에서 고릅니다.
 - **고/스톱**: 3인 3점 / 2인 7점부터. 고는 계속하고 스톱은 즉시 승리. 3고부터 배수 2배
 - **박**: 피박 · 광박 · 멍박 · 고박(독박)
 - **특수**: 뻑 · 첫뻑 · 연뻑 · 자뻑 · 쪽 · 따닥 · 싹쓸이 · 흔들기 · 폭탄 · 총통 · 쓰리뻑 · 역고
-- **정산**: (족보점수 + 고보너스) × 배수. 패자가 한 장도 못 먹으면 점수는 유지하고 지급만 면제됩니다
+- **정산**: (족보점수 + 고보너스) × 배수. 패자가 한 장도 못 먹으면 점수는 유지하고 지급만 면제되며, 잔액이 부족하면 빚(음수 잔액)을 허용합니다
 
 정본 규칙은 [civilian7/gostop 의 game-rules.md](https://github.com/civilian7/gostop/blob/main/docs/game-rules.md) 를 따릅니다.
 세부 규칙이 다른 부분은 [BENCHMARK.md §10](./BENCHMARK.md) 에 정리해 두었습니다.
@@ -137,19 +137,20 @@ AI 난이도는 쉬움 / 보통 / 어려움 / 초고수 중에서 고릅니다.
 npm test
 ```
 
-전체 **83개**가 모두 통과해야 합니다.
+전체 **96개**가 모두 통과해야 합니다.
 
 | 명령 | 내용 | 개수 |
 |---|---|---|
-| `npm run test:engine` | 규칙 엔진 단위 테스트 | 44 |
+| `npm run test:engine` | 규칙 엔진 단위 테스트 | 45 |
 | `npm run test:contract` | 카드·점수 계약 테스트 | 10 |
 | `npm run test:replay` | 기록 재생 스모크 테스트 | 3 |
-| `npm run test:server` | HTTP 통합 테스트 (3인 실전 대국 → 정산, 방 목록, 방장 퇴장) | 6 |
+| `npm run test:server` | HTTP 통합 테스트 (상태 접근·인증, 중복 요청, 입력 검증, 3인 대국) | 12 |
+| `npm run test:fourplayer` | 4인 광팔기 좌석 매핑·정산 회귀 테스트 | 5 |
 | `npm run test:ai` | AI 상대 대국 테스트 | 3 |
 | `npm run test:disconnect` | 연결 끊김 자동 진행·바닥 선택 회귀 테스트 | 4 |
 | `npm run test:jokbo` | 족보 그림 타일 렌더 테스트 | 4 |
 | `npm run test:deal` | 딜 직후 총통 정산·선 후보 덱 보존 테스트 | 3 |
-| `npm run test:fx` | 카드 연출 연결·이벤트 카드 id 테스트 | 6 |
+| `npm run test:fx` | 카드 연출 연결·이벤트 카드 id 테스트 | 7 |
 
 Node.js 기본 `node:test` 를 사용하므로 외부 테스트 패키지가 필요 없습니다.
 
