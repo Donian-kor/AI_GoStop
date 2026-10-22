@@ -180,6 +180,19 @@
     setColor: SET_COLOR
   });
 
+  var handView = window.GostopHandView({
+    el: el,
+    mySeat: function () { return mySeat; },
+    fitHandCards: fitHandCards,
+    makeCardEl: makeCardEl,
+    playCard: playCard
+  });
+
+  var tableDeckView = window.GostopTableDeckView({
+    el: el,
+    makeCardEl: makeCardEl
+  });
+
   // ── 네트워크 (XMLHttpRequest — 구형 브라우저 대응) ───────────────────────
 
   function request(method, url, body, onOk, onErr) {
@@ -906,58 +919,9 @@
       return;
     }
 
-    // 바닥
-    el.table.innerHTML = '';
-    for (var f = 0; f < state.table.length; f++) {
-      var fc = makeCardEl(state.table[f], 'small');
-      fc.setAttribute('data-card-id', state.table[f].id);
-      el.table.appendChild(fc);
-    }
-    el.tableHint.innerHTML = state.table.length ? '바닥 ' + state.table.length + '장' : '';
+    tableDeckView.render(state);
 
-    // 뒷패 더미
-    el.deckStack.innerHTML = '';
-    if (state.deckCount > 0) {
-      var stack = document.createElement('div');
-      stack.className = 'deck';
-      for (var d = 0; d < Math.min(state.deckCount, 5); d++) {
-        var b = document.createElement('div');
-        b.className = 'card back';
-        stack.appendChild(b);
-      }
-      el.deckStack.appendChild(stack);
-      var dl = document.createElement('span');
-      dl.className = 'deck-count';
-      dl.innerHTML = '뒷패 ' + state.deckCount + '장';
-      el.deckStack.appendChild(dl);
-    }
-
-    // 내 손패
-    var myTurn = state.currentSeat === mySeat && !state.prompt;
-    fitHandCards(state.myHand.length);
-    el.hand.innerHTML = '';
-    // 바닥에 같은 월이 있으면 '낼수있음' 표시 — 고를 때 한눈에 보이게
-    var floorMonths = {};
-    for (var tf = 0; tf < state.table.length; tf++) floorMonths[state.table[tf].month] = true;
-    for (var k = 0; k < state.myHand.length; k++) {
-      (function (index) {
-        var cardData = state.myHand[index];
-        var canMatch = myTurn && floorMonths[cardData.month];
-        var card = makeCardEl(cardData, (myTurn ? 'pick ' : '') + (canMatch ? 'match' : ''));
-        card.setAttribute('data-card-id', cardData.id);
-        if (myTurn) {
-          if (canMatch) {
-            var badge = document.createElement('span');
-            badge.className = 'can-play';
-            badge.innerHTML = '낼수있음';
-            card.appendChild(badge);
-          }
-          card.addEventListener('click', function () { playCard(card, index); });
-        }
-        el.hand.appendChild(card);
-      })(k);
-    }
-    el.hand.className = 'hand' + (!myTurn && state.phase === 'play' ? ' waiting' : '');
+    handView.render(state);
 
     phaseViews.renderPrompt(state);
     scorePanel.render(state);
