@@ -213,6 +213,7 @@ class Room {
     this.deadline = null; // 현재 차례 마감 시각(epoch ms)
     this.settle = null; // 마지막 정산 결과
     this.fx = []; // 이펙트 로그 (seq 증가)
+    this.fxSeq = 0; // 판이 바뀌어도 유지되는 이펙트 번호
     this.log = []; // 텍스트 로그
     this.lastActivity = Date.now();
     this.result = null; // 마지막 판 결과
@@ -750,7 +751,7 @@ class Room {
       if (evt._pushed) continue;
       evt._pushed = true;
       const fx = {
-        seq: this.fx.length + 1,
+        seq: ++this.fxSeq,
         kind: evt.kind,
         seat: evt.seat,
         month: evt.month,
@@ -1110,7 +1111,7 @@ class Room {
   autoPlayFor(player, engineSeat) {
     this.logEvent(`${player.name} 님 연결이 끊겨 자동으로 진행합니다.`);
     this.fx.push({
-      seq: this.fx.length + 1,
+      seq: ++this.fxSeq,
       kind: 'autoPlay',
       seat: player.seat,
       month: 0,
@@ -1176,7 +1177,7 @@ class Room {
     const seat = this.engine.state.current;
     const player = this.seats[seat];
     this.logEvent(`${player ? player.name : '플레이어'} 시간 초과 — 자동으로 넘어갑니다.`);
-    this.fx.push({ seq: this.fx.length + 1, kind: 'timeout', seat, month: 0, text: '시간 초과!', victimSeat: -1 });
+    this.fx.push({ seq: ++this.fxSeq, kind: 'timeout', seat, month: 0, text: '시간 초과!', victimSeat: -1 });
 
     try {
       if (this.engine.state.phase === PHASE.AWAITING_GO_STOP) {

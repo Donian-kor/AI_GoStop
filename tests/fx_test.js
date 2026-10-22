@@ -140,3 +140,29 @@ test('방의 이펙트 로그에도 카드 id 가 담긴다', () => {
     '카드 id 는 문자열이어야 한다'
   );
 });
+
+test('다음 판에서도 이펙트 번호가 이어진다', () => {
+  const room = new Room('TESTFXSEQ', { mode: 'multi', playerCount: 2 });
+  room.addPlayer('p0', '엄마');
+  room.addPlayer('p1', '아빠');
+
+  room.startRound();
+  room.engine = {
+    state: {
+      events: [{ kind: 'place', seat: 0, month: 1, text: '패를 냈습니다.', cards: ['january_kasu_1'] }],
+    },
+  };
+  room.pushFxFromEngine();
+  const firstSequence = room.fx[0].seq;
+
+  room.startRound();
+  assert.strictEqual(room.fx.length, 0, '새 판의 이펙트 로그는 초기화되어야 한다');
+  room.engine = {
+    state: {
+      events: [{ kind: 'place', seat: 0, month: 1, text: '패를 냈습니다.', cards: ['january_kasu_2'] }],
+    },
+  };
+  room.pushFxFromEngine();
+
+  assert.ok(room.fx[0].seq > firstSequence, '새 판의 이펙트 번호는 이전 판보다 커야 한다');
+});
