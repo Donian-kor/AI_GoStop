@@ -137,7 +137,7 @@ AI 난이도는 쉬움 / 보통 / 어려움 / 초고수 중에서 고릅니다.
 npm test
 ```
 
-전체 **103개**가 모두 통과해야 합니다.
+전체 **106개**가 모두 통과해야 합니다.
 
 | 명령 | 내용 | 개수 |
 |---|---|---|
@@ -152,6 +152,7 @@ npm test
 | `npm run test:score-panel` | 족보·획득 카드 점수판 렌더 테스트 | 2 |
 | `npm run test:result-view` | 정산 결과 화면 렌더 테스트 | 2 |
 | `npm run test:phase-views` | 협상·선 결정·턴 프롬프트 렌더 테스트 | 3 |
+| `npm run test:opponent-view` | 상대 플레이어·먹은 패 렌더 테스트 | 3 |
 | `npm run test:deal` | 딜 직후 총통 정산·선 후보 덱 보존 테스트 | 3 |
 | `npm run test:fx` | 카드 연출 연결·이벤트 카드 id 테스트 | 7 |
 
@@ -185,6 +186,7 @@ public/
   score-panel.js        족보·획득 카드 점수판 렌더링
   result-view.js        정산 결과 화면
   phase-views.js        협상·선 결정·턴 프롬프트 렌더링
+  opponent-view.js      상대 정보·먹은 패 렌더링
   app.js                상태 수신 → 렌더링
   fx.js                 이펙트·애니메이션·사운드
 assets/

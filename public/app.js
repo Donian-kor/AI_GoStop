@@ -167,6 +167,19 @@
     act: act
   });
 
+  var opponentView = window.GostopOpponentView({
+    el: el,
+    mySeat: function () { return mySeat; },
+    oppView: function () { return oppView; },
+    formatMoney: won,
+    makeCardEl: makeCardEl,
+    cardsOfKinds: cardsOfKinds,
+    capGroups: CAP_GROUPS,
+    setTags: SET_TAGS,
+    dotColor: DOT_COLOR,
+    setColor: SET_COLOR
+  });
+
   // ── 네트워크 (XMLHttpRequest — 구형 브라우저 대응) ───────────────────────
 
   function request(method, url, body, onOk, onErr) {
@@ -668,27 +681,6 @@
     return d;
   }
 
-  function capturedSummary(sum) {
-    var wrap = document.createElement('div');
-    wrap.className = 'captured-sum';
-    if (!sum) return wrap;
-    var items = [
-      ['guang', '광', sum.bright],
-      ['', '열', sum.animal],
-      ['ribbon', '띠', sum.ribbon],
-      ['junk', '피', sum.junk + sum.doubleJunk + sum.bonus]
-    ];
-    for (var i = 0; i < items.length; i++) {
-      var cls = items[i][0];
-      var n = items[i][2];
-      var tag = document.createElement('i');
-      tag.className = (cls ? cls + ' ' : '') + (n > 0 ? 'on' : '');
-      tag.innerHTML = '<span>' + items[i][1] + '</span><b>' + n + '</b>';
-      wrap.appendChild(tag);
-    }
-    return wrap;
-  }
-
   function fitHandCards(count) {
     if (!count) return;
     // 좌우 여백(핸드 감싸는 패딩)과 부채꼴 회전으로 생기는 바깥쪽 여유까지 빼고 계산한다
@@ -741,114 +733,6 @@
     return list;
   }
 
-  // 상대가 먹은 패 — 종류별 2×2 묶음, 각 묶음은 옆으로 넘겨 볼 수 있다
-  function oppCaptured(cards) {
-    var wrap = document.createElement('div');
-    wrap.className = 'opp-caps';
-    for (var g = 0; g < CAP_GROUPS.length; g++) {
-      var grp = CAP_GROUPS[g];
-      var list = cardsOfKinds(cards, grp.kinds);
-      var cell = document.createElement('div');
-      cell.className = 'opp-cap opp-cap-' + grp.key;
-
-      var label = document.createElement('span');
-      label.className = 'opp-cap-label';
-      label.innerHTML = grp.label + ' <b>' + list.length + '</b>';
-      cell.appendChild(label);
-
-      var strip = document.createElement('div');
-      strip.className = 'opp-cap-cards';
-      if (!list.length) {
-        var none = document.createElement('span');
-        none.className = 'opp-cap-none';
-        none.innerHTML = '—';
-        strip.appendChild(none);
-      } else {
-        for (var i = 0; i < list.length; i++) {
-          var card = makeCardEl(list[i], 'micro');
-          var tags = list[i].tags || [];
-          var setTag = null;
-          for (var t = 0; t < tags.length; t++) {
-            if (SET_TAGS.join(' ').indexOf(tags[t]) >= 0) { setTag = tags[t]; break; }
-          }
-          if (setTag) {
-            card.className += ' in-set';
-            card.style.setProperty('--sc', DOT_COLOR[SET_COLOR[setTag]] || '#e8c46a');
-          }
-          strip.appendChild(card);
-        }
-      }
-      cell.appendChild(strip);
-      wrap.appendChild(cell);
-    }
-    return wrap;
-  }
-
-  // 상대 플레이어 — 나는 아래(손패·족보·머니칩)에 이미 나오므로 상단에는 상대만 보여준다
-  function renderOpponents(state) {
-    el.players.innerHTML = '';
-    for (var i = 0; i < state.players.length; i++) {
-      var p = state.players[i];
-      if (p.seat === mySeat) continue;
-      var div = document.createElement('div');
-      var cls = 'player';
-      if (p.seat === state.currentSeat) cls += ' active';
-      if (p.type === 'ai') cls += ' ai';
-      if (!p.connected) cls += ' off';
-      div.className = cls;
-      div.setAttribute('data-seat', String(p.seat));
-
-      // 이름 · 점수 · 돈 — 한 줄 알약
-      var pill = document.createElement('div');
-      pill.className = 'opp-pill';
-
-      var name = document.createElement('span');
-      name.className = 'pname';
-      name.appendChild(document.createTextNode(p.name + (p.type === 'ai' ? ' 🤖' : '')));
-      pill.appendChild(name);
-
-      var meta = document.createElement('span');
-      meta.className = 'pmeta';
-      meta.innerHTML = '점수 <b>' + p.score + '</b> · ' + p.handCount + '장';
-      pill.appendChild(meta);
-
-      var money = document.createElement('span');
-      money.className = 'pmoney';
-      money.innerHTML = won(p.money);
-      pill.appendChild(money);
-
-      if (!p.connected) {
-        var off = document.createElement('span');
-        off.className = 'pready off';
-        off.innerHTML = '연결 끊김';
-        pill.appendChild(off);
-      } else if (p.goCount > 0) {
-        var go = document.createElement('span');
-        go.className = 'pready go';
-        go.innerHTML = '🔥 ' + p.goCount + '고!';
-        pill.appendChild(go);
-      }
-      div.appendChild(pill);
-
-      // 먹은 패 — 숫자(요약) 또는 종류별 그림
-      var box = document.createElement('div');
-      box.className = 'opp-box';
-      if (oppView === 'image' && p.capturedCards && p.capturedCards.length) {
-        box.appendChild(oppCaptured(p.capturedCards));
-      } else if (oppView === 'image') {
-        var empty = document.createElement('div');
-        empty.className = 'opp-caps-empty';
-        empty.innerHTML = '먹은 패 없음';
-        box.appendChild(empty);
-      } else {
-        box.appendChild(capturedSummary(p.captured));
-      }
-      div.appendChild(box);
-
-      el.players.appendChild(div);
-    }
-  }
-
   // 상대 패 보기 토글 — 선택은 이 기기에 저장한다
   function updateOppViewButtons() {
     if (!el.oppViewToggle) return;
@@ -863,7 +747,7 @@
     oppView = v === 'text' ? 'text' : 'image';
     try { localStorage.setItem('gs_opp_view', oppView); } catch (e) {}
     updateOppViewButtons();
-    if (lastState) renderOpponents(lastState);
+    if (lastState) opponentView.render(lastState);
   }
 
   if (el.oppViewToggle) {
@@ -984,7 +868,7 @@
     }
 
     // 플레이어 — 나는 아래(손패·족보·머니칩)에 이미 나오므로 상단에는 상대만 보여준다
-    renderOpponents(state);
+    opponentView.render(state);
 
     // 4인 광팔기 협상
     if (state.phase === 'negotiate') {
