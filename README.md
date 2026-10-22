@@ -165,6 +165,7 @@ engine/                 게임 규칙과 상태 처리 (서버 전용)
   deal.js               패 나누기와 선 결정
   play.js               턴 진행과 특수 상황
   score.js              족보·점수·박 계산
+  final-settlement.js   승자·패자별 최종 점수 정산
   settlement.js         가상 포인트 정산
   settings.js           기본 규칙 및 설정 정규화
   ai.js                 AI 상대 (수 후보 평가 + 난이도)
@@ -172,10 +173,12 @@ engine/                 게임 규칙과 상태 처리 (서버 전용)
 server/
   server.js             HTTP 서버 (폴링 API + 정적 파일)
   rooms.js              방·대국 진행·AI 자동 진행·정산
+  room-snapshot.js      참가자별 공개 상태 스냅샷 생성
   version.js            게임 버전·빌드 번호
 public/
   index.html            화면
   style.css             스타일 (모바일 우선)
+  room-browser.js       로비 방 목록·참가 처리
   app.js                상태 수신 → 렌더링
   fx.js                 이펙트·애니메이션·사운드
 assets/

@@ -10,14 +10,14 @@
 //   mode = 'solo'  → 0번 자리는 사람, 나머지는 AI (혼자 치기 / 2인 맞고)
 
 const { TurnEngine, EngineError, PHASE, EVENT } = require('../engine/play');
-const { KIND, STANDARD, displayName } = require('../engine/cards');
-const { evaluate } = require('../engine/score');
+const { displayName } = require('../engine/cards');
 const { shuffledDeck, shuffle } = require('../engine/deck');
 const { pickSeon, deal } = require('../engine/deal');
 const { normalizeSettings, toScoreOptions, DEFAULT_SETTINGS } = require('../engine/settings');
 const { settleGame, applyToBalances } = require('../engine/settlement');
 const { chooseAiMove, chooseAiGoStop, chooseAiFloorMatch } = require('../engine/ai');
 const fourplayer = require('../engine/fourplayer');
+const { snapshot: createSnapshot } = require('./room-snapshot');
 
 /** 방 코드에 사용할 문자 (혼동되는 I·O·0·1 제외). */
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -47,131 +47,6 @@ function randomCode() {
 }
 
 /** 카드 종류별 개수 (획득 요약판용). */
-function countKinds(cards) {
-  const out = { bright: 0, animal: 0, ribbon: 0, junk: 0, doubleJunk: 0, bonus: 0, total: cards.length };
-  for (const c of cards) {
-    if (out[c.kind] !== undefined) out[c.kind]++;
-  }
-  return out;
-}
-
-/** 족보 달성 진행도 (족보 패널용). */
-function setProgress(cards) {
-  const tag = (t) => cards.filter((c) => c.tags && c.tags.includes(t)).length;
-  return {
-    bright: cards.filter((c) => c.kind === KIND.BRIGHT).length,
-    animal: cards.filter((c) => c.kind === KIND.ANIMAL).length,
-    ribbon: cards.filter((c) => c.kind === KIND.RIBBON).length,
-    junk: cards.filter((c) => c.kind === KIND.JUNK || c.kind === KIND.DOUBLE_JUNK || c.kind === KIND.BONUS).length,
-    godori: tag('godori'),
-    hongdan: tag('hongdan'),
-    cheongdan: tag('cheongdan'),
-    chodan: tag('chodan'),
-  };
-}
-
-/** 카드 요약 정보(클라이언트가 족보 묶음을 만들 수 있도록 태그까지). */
-function describeCards(engine, cards) {
-  return cards.map((c) => ({
-    id: c.id,
-    imageKey: c.imageKey,
-    month: c.month,
-    kind: c.kind,
-    tags: c.tags || [],
-  }));
-}
-
-// ── 족보 표시용 정의 ──────────────────────────────────────────────────────
-//
-// 화면에서 "이 족보를 만들려면 어떤 카드가 필요한지"를 그림으로 보여주려면
-// 카드 한 장 한 장의 정체를 알아야 한다. 덱은 항상 같은 48장이므로 여기서
-// 한 번만 만들어 두고, 상태를 낼 때 '내가 먹었는지'만 표시한다.
-
-/** 카드 그림으로 보여주는 고정 세트 (광·고도리·홍단·청단·초단). */
-const FIXED_SETS = [
-  {
-    code: 'guang',
-    name: '광',
-    line: 'bright',
-    need: 3,
-    cards: STANDARD.filter((c) => c.kind === KIND.BRIGHT),
-  },
-  {
-    code: 'godori',
-    name: '고도리',
-    line: 'godori',
-    need: 3,
-    cards: STANDARD.filter((c) => (c.tags || []).includes('godori')),
-  },
-  {
-    code: 'hongdan',
-    name: '홍단',
-    line: 'hongdan',
-    need: 3,
-    cards: STANDARD.filter((c) => (c.tags || []).includes('hongdan')),
-  },
-  {
-    code: 'cheongdan',
-    name: '청단',
-    line: 'cheongdan',
-    need: 3,
-    cards: STANDARD.filter((c) => (c.tags || []).includes('cheongdan')),
-  },
-  {
-    code: 'chodan',
-    name: '초단',
-    line: 'chodan',
-    need: 3,
-    cards: STANDARD.filter((c) => (c.tags || []).includes('chodan')),
-  },
-];
-
-/** 개수로 세는 세트 (열꽃·띠·피) — 필요한 카드가 정해져 있지 않다. */
-const COUNT_SETS = [
-  { code: 'animal', name: '열꽃', line: 'animal', need: 5 },
-  { code: 'ribbon', name: '띠', line: 'ribbon', need: 5 },
-  { code: 'junk', name: '피', line: 'junk', need: 10 },
-];
-
-/**
- * 족보 패널에 그릴 내역.
- * 고정 세트는 필요한 카드 전부를(먹은 것/못 먹은 것 구분), 개수 세트는 달성 수치를 낸다.
- * @param {Array} captured 내가 먹은 카드
- * @param {object} ev evaluate() 결과 (점수·개수 해석이 이미 반영됨)
- */
-function describeJokbo(captured, ev) {
-  const owned = new Set(captured.map((c) => c.id));
-  const lines = ev.lines || [];
-  const points = {};
-  for (const line of lines) points[line.code] = line.points;
-  const count = { animal: ev.animalCount, ribbon: ev.ribbonCount, junk: ev.junkValue };
-
-  const sets = [];
-  for (const set of FIXED_SETS) {
-    const have = set.cards.filter((c) => owned.has(c.id)).length;
-    sets.push({
-      code: set.code,
-      name: set.name,
-      need: set.need,
-      have,
-      done: !!points[set.line],
-      points: points[set.line] || 0,
-      cards: set.cards.map((c) => ({ id: c.id, owned: owned.has(c.id) })),
-    });
-  }
-  for (const set of COUNT_SETS) {
-    sets.push({
-      code: set.code,
-      name: set.name,
-      need: set.need,
-      have: count[set.code],
-      done: !!points[set.line],
-      points: points[set.line] || 0,
-    });
-  }
-  return sets;
-}
-
 /** 사람이 읽는 로그로 남길 이벤트 종류. */
 const LOGGED_EVENTS = new Set([
   EVENT.BBEOK,
@@ -1291,129 +1166,7 @@ class Room {
    * @param {string} viewerId 보는 사람의 식별자 (방장 여부 판정용)
    */
   snapshot(viewerSeat = -1, viewerId = null) {
-    const base = {
-      code: this.code,
-      phase: this.phase || ROOM_PHASE.LOBBY,
-      playerCount: this.playerCount,
-      isHost: Boolean(viewerId) && viewerId === this.hostId,
-      settings: this.settings,
-      mySeat: viewerSeat,
-      currentSeat: -1,
-      deadline: this.deadline,
-      prompt: this.prompt,
-      players: this.seats
-        .map((p, seat) => {
-          if (!p) return null;
-          const e = this.engineSeatOf(seat);
-          const inGame = this.engine && e >= 0;
-          return {
-            seat: p.seat,
-            name: p.name,
-            type: p.type,
-            money: p.money,
-            ready: p.ready,
-            connected: p.connected,
-            handCount: inGame ? this.engine.state.players[e].hand.length : p.hand ? p.hand.length : 0,
-            score: inGame ? this.engine.scoreOf(e).total : 0,
-            goCount: inGame ? this.engine.state.players[e].goCount : 0,
-            shakeCount: inGame ? this.engine.state.players[e].shakeCount : 0,
-            cardDebt: inGame ? this.engine.state.players[e].cardDebt : 0,
-            shakableMonths: inGame && seat === viewerSeat
-              ? (() => {
-                  const pl = this.engine.state.players[e];
-                  if (pl.pendingShakeMonth !== 0) return [];
-                  const months = [];
-                  const seen = {};
-                  for (const c of pl.hand) {
-                    if (seen[c.month]) continue;
-                    seen[c.month] = true;
-                    if (pl.shakenMonths.includes(c.month)) continue;
-                    if (pl.hand.filter((x) => x.month === c.month).length >= 3) months.push(c.month);
-                  }
-                  return months;
-                })()
-              : [],
-            captured: inGame ? countKinds(this.engine.state.players[e].captured) : countKinds(p.hand || []),
-            // 상대가 먹은 패를 그림으로 보여주기 위한 공개 정보 (먹은 패는 원래 공개된다)
-            capturedCards: inGame ? describeCards(this.engine, this.engine.state.players[e].captured) : [],
-            sittingOut: Boolean(this.lastSitOutSeat === seat && this.phase === ROOM_PHASE.PLAY),
-          };
-        })
-        .filter(Boolean),
-      table: [],
-      deckCount: 0,
-      myHand: [],
-      seonCandidates: [],
-      seonPicked: [],
-      settle: this.settle,
-      result: this.result,
-      serverTime: Date.now(),
-    };
-
-    if (this.phase === ROOM_PHASE.SEON) {
-      base.seonCandidates = this.seonCandidates.map((cards, seat) =>
-        cards && (seat === viewerSeat || this.seonPicked[seat] !== -1)
-          ? cards.map((c) => ({ uid: c.uid, id: c.id, imageKey: c.imageKey, month: c.month, name: `${c.month}월` }))
-          : []
-      );
-      base.seonPicked = this.seonPicked.slice();
-      // 선 결정 단계에는 아직 덱이 그대로 있다 — 섞는 연출이 실제 덱 장수를 쓰게 한다
-      base.deckCount = this.deck ? this.deck.length : 0;
-      return base;
-    }
-
-    if (this.phase === ROOM_PHASE.NEGOTIATE) {
-      // 협상 중에는 바닥 1장만 공개한다 (나머지 5장을 보면 치팅이 된다)
-      const openFloor = this.fourFloor && this.fourFloor.length ? [this.fourFloor[0]] : [];
-      base.table = openFloor.map((c) => this.engine ? this.engine.describeCard(c) : { id: c.id, imageKey: c.imageKey, month: c.month });
-      base.deckCount = this.fourStock ? this.fourStock.length : 0;
-      base.negotiation = {
-        waitingSeat: this.negotiateWaitingSeat(),
-        decisions: { ...this.negotiation.decisions },
-        p4Sell: this.negotiation.p4Sell,
-        mySaleCards:
-          this.negotiateWaitingSeat() === 3 && this.seats[3]
-            ? fourplayer.saleCards(this.seats[3].hand || [], toScoreOptions(this.settings)).map((c) => ({
-                uid: c.uid,
-                id: c.id,
-                imageKey: c.imageKey,
-                month: c.month,
-                name: displayName(c),
-              }))
-            : [],
-        gwangCount:
-          this.negotiateWaitingSeat() === 3 && this.seats[3]
-            ? fourplayer.gwangCount(this.seats[3].hand || [], toScoreOptions(this.settings))
-            : 0,
-      };
-      base.myHand = viewerSeat >= 0 && this.seats[viewerSeat] ? (this.seats[viewerSeat].hand || []).map((c) => this.engine ? this.engine.describeCard(c) : { id: c.id, imageKey: c.imageKey, month: c.month, name: displayName(c) }) : [];
-      return base;
-    }
-
-    if (this.engine) {
-      base.currentSeat = this.physicalSeatOf(this.engine.state.current);
-      base.table = this.engine.state.floor.map((c) => this.engine.describeCard(c));
-      base.deckCount = this.engine.state.stock.length;
-      base.winnerSeat = this.engine.state.winner < 0
-        ? -1
-        : this.physicalSeatOf(this.engine.state.winner);
-      if (viewerSeat >= 0) {
-        const e = this.engineSeatOf(viewerSeat);
-        base.myHand = e >= 0 ? this.engine.state.players[e].hand.map((c) => this.engine.describeCard(c)) : [];
-        base.mySets = e >= 0 ? setProgress(this.engine.state.players[e].captured) : null;
-        // 내가 먹은 패 (실제 화투처럼 카드로 보여주기)
-        base.myCaptured = e >= 0 ? describeCards(this.engine, this.engine.state.players[e].captured) : [];
-        // 족보 패널 — 필요한 카드를 그림으로 보여주기 위한 내역
-        // 점수 옵션은 엔진이 쓰는 것과 똑같이 맞춘다(화면과 정산이 어긋나지 않게).
-        base.myJokbo = e >= 0
-          ? describeJokbo(
-              this.engine.state.players[e].captured,
-              evaluate(this.engine.state.players[e].captured, this.engine.options)
-            )
-          : null;
-      }
-    }
-    return base;
+    return createSnapshot(this, viewerSeat, viewerId, ROOM_PHASE);
   }
 }
 

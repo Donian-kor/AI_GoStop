@@ -30,7 +30,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 
 ### 현재 상태 기준선 (2026-10-22 · 4차 갱신)
 
-- `engine/` 8개 모듈 + `tests/` 10개 파일이 구현되어 있다. **테스트 96개 전부 통과.**
+- `engine/` 9개 모듈 + `tests/` 10개 파일이 구현되어 있다. **테스트 96개 전부 통과.**
   - `node tests/engine_test.js` → 45개 (규칙 단위, 정본 소스에서 직접 도출)
   - `node tests/contract_test.js` → 10개 (itsent-lab 규약과의 교차 검증: 카드 매핑·점수 라인·정산 단계·지급면제)
   - `node tests/replay_test.js` → 3개 (참조 레코드 6개 스모크 + 정산 불변식)
@@ -185,6 +185,7 @@ gostop-game/
 ├─ server/
 │  ├─ server.js          HTTP + 폴링 서버 (의존성 0개)
 │  ├─ rooms.js           방·자리·대국 진행·AI 자동 진행·정산
+│  ├─ room-snapshot.js   참가자별 공개 상태 스냅샷 생성
 │  └─ version.js         게임 버전·빌드 번호
 ├─ engine/               ← 서버 전용 권위 엔진 (클라이언트에 규칙 로직 없음)
 │  ├─ cards.js           48+보너스 카탈로그
@@ -198,6 +199,7 @@ gostop-game/
 │  └─ fourplayer.js      4인 광팔기 협상·광팔기 정산
 ├─ public/
 │  ├─ index.html
+│  ├─ room-browser.js   로비 방 목록·참가 처리
 │  ├─ style.css
 │  ├─ app.js             상태 수신 → 렌더링 (폴링·액션 포함)
 │  └─ fx.js              이징·이펙트·카드 연출·사운드
