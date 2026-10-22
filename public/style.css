@@ -444,6 +444,36 @@ select option {
 }
 .card.tiny.in-set { outline: 3px solid var(--sc, var(--gold)); outline-offset: -1px; }
 
+/* ── 카드 등장 · 이동 연출 (FLIP) ─────────────────────────────
+   새 카드는 위에서 살짝 떨어지며 나타나고, 옮겨진 카드는 미끄러진다.
+   벤치마킹: bipark/gostop-ts web/style.css (PolyForm Noncommercial 1.0.0) */
+.card.enter { animation: cardEnter 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.25) both; }
+@keyframes cardEnter {
+  from { transform: translateY(-16px) scale(0.88); opacity: 0; }
+}
+
+/* 패 섞는 연출 (딜 직전) — 뒷장 카드가 흩어졌다 모인다 */
+.shuffle-overlay {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 35;
+  background: radial-gradient(circle at 50% 45%, #34683f 0%, #264e30 65%, #193820 100%);
+}
+.shuffle-overlay.out { opacity: 0; transition: opacity 0.2s ease; }
+.shuffle-tip {
+  position: absolute; top: 9%; left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 14px; border-radius: 999px;
+  background: rgba(0, 0, 0, .55); border: 1px solid rgba(245, 196, 81, .6);
+  font-size: 15px; font-weight: 800; color: #ffe08a; white-space: nowrap;
+}
+.shuffle-card {
+  position: absolute; width: 44px; height: 72px; border-radius: 5px;
+  background: repeating-linear-gradient(45deg, #dc1c27 0 5px, #9e1018 5px 10px);
+  border: 2px solid #f0daa7;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
+  transition: left 0.18s ease, top 0.18s ease, transform 0.18s ease;
+}
+
 /* 12개월 전통 색 */
 .m01 { --mc: #2f7d4f; } .m02 { --mc: #d1558f; } .m03 { --mc: #ef8fb0; }
 .m04 { --mc: #2b4a3f; } .m05 { --mc: #7b5ea7; } .m06 { --mc: #b9a98a; }
@@ -701,12 +731,16 @@ select option {
   border-color: transparent; box-shadow: 0 8px 22px rgba(0, 0, 0, .6);
 }
 .flying-card .card-img { border-radius: 6px; }
+.flying-card.pic {
+  background-size: cover; background-position: center;
+  border: 2px solid #8e1818; background-color: #fffcf5;
+}
 
 /* ── 정산 · 규칙 오버레이 ──────────────────────────────── */
 .overlay {
   position: fixed; top: 0; right: 0; bottom: 0; left: 0;
   background: rgba(12, 7, 3, .94);
-  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30;
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 9999;
   overflow-y: auto;
 }
 .overlay-inner {

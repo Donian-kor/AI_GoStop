@@ -814,6 +814,7 @@
         lastUpdateAt = new Date().getTime();
         if (typeof res.version === 'number') lastVersion = res.version;
         var fx = res.fx || [];
+        var moveFx = []; // 상대가 낸 패·먹은 패 연출에 쓸 이벤트
         if (freshJoin) {
           // 새로고침·재입장 직후에는 지난 이벤트를 재생하지 않고 위치만 맞춘다
           for (var f = 0; f < fx.length; f++) {
@@ -823,6 +824,7 @@
         } else {
           for (var i = 0; i < fx.length; i++) {
             if (fx[i].seq > lastFxSeq) lastFxSeq = fx[i].seq;
+            moveFx.push(fx[i]);
             try {
               if (Fx) Fx.handleFx(fx[i], { seatEl: seatEl, mySeat: mySeat });
             } catch (e) { /* 이펙트 오류가 게임을 멈추지 않게 */ }
@@ -836,6 +838,10 @@
           if (!window.console || !console.error) return;
           console.error('[render]', e);
         }
+        // 화면을 그린 뒤 — 상대가 낸 패·먹은 패가 날아가는 연출
+        try {
+          playOpponentMoves(moveFx);
+        } catch (e) { /* 연출 오류가 게임을 멈추지 않게 */ }
       },
       function (xhr) {
         pollPending = false;
@@ -1111,7 +1117,88 @@
   }
   updateOppViewButtons();
 
+  // 카드 연출 — 그리기 전 자리 기억 → 다시 그림 → 옮겨진 카드는 미끄러지고
+  // 새로 생긴 카드는 위에서 떨어지며 나타난다. (벤치마킹: bipark/gostop-ts)
+  var CARD_ANIM_SELECTOR = '#hand .card, #table .card, #promptBox .card';
+  // 직전 화면의 카드 자리 — 상대가 먹은 패가 어디서 날아왔는지 알 때 쓴다
+  var prevCardRects = {};
+  // 상대가 내는 중인 카드 — 바닥에 먼저 도착하지 않게 잠시 가려둔다
+  var flyingCards = {};
+
   function render(state) {
+    prevCardRects = Fx.captureRects(CARD_ANIM_SELECTOR);
+    renderState(state);
+    Fx.flipCards(prevCardRects, CARD_ANIM_SELECTOR);
+    // 날아가는 중인 카드는 화면이 갱신돼도 계속 가려둔다
+    for (var id in flyingCards) {
+      var flown = el.table.querySelector('[data-card-id="' + id + '"]');
+      if (flown) flown.style.opacity = '0';
+    }
+  }
+
+  /**
+   * 상대가 낸 패 · 먹은 패 연출
+   *   - 낸 카드  : 상대의 자리 → 바닥으로 날아온다
+   *   - 먹은 패  : 바닥 → 상대의 먹은 패 자리로 날아간다
+   */
+  function playOpponentMoves(fxs) {
+    if (!fxs || !fxs.length) return;
+    for (var i = 0; i < fxs.length; i++) {
+      var fx = fxs[i];
+      if (!fx || !fx.cards || !fx.cards.length) continue;
+      if (fx.seat < 0) continue;
+      var isMe = fx.seat === mySeat;
+      var seat = isMe ? null : seatEl(fx.seat);
+      if (!isMe && !seat) continue;
+      var seatRect = isMe ? el.meCaptured.getBoundingClientRect() : seat.getBoundingClientRect();
+
+      if (fx.kind === 'place' || fx.kind === 'bbeok') {
+        // 상대가 낸 카드가 자리에서 바닥으로 날아온다 (내가 낸 카드는 playCard 가 맡는다)
+        if (isMe) continue;
+        for (var c = 0; c < fx.cards.length; c++) {
+          var id = fx.cards[c];
+          var target = el.table.querySelector('[data-card-id="' + id + '"]');
+          if (!target) continue; // 곧바로 먹힌 카드는 먹은 패 연출로 이어진다
+          var toRect = target.getBoundingClientRect();
+          // 출발은 상대의 자리 가운데, 크기는 바닥 카드와 똑같이
+          var fromBox = cardBox(seatRect, toRect.width, toRect.height);
+          target.style.opacity = '0';
+          flyingCards[id] = 1;
+          Fx.animateCardMove(fromBox, toRect, cardImg({ id: id }), 340, -8, (function (cardId, node) {
+            return function () {
+              delete flyingCards[cardId];
+              var again = node && node.parentNode
+                ? node
+                : el.table.querySelector('[data-card-id="' + cardId + '"]');
+              if (again) again.style.opacity = '';
+            };
+          })(id, target));
+        }
+      } else if (fx.kind === 'capture') {
+        // 먹은 패가 바닥에서 먹은 패 자리로 날아간다
+        var rack = isMe ? el.meCaptured : (seat.querySelector('.opp-box') || seat);
+        var rackRect = rack.getBoundingClientRect();
+        for (var k = 0; k < fx.cards.length; k++) {
+          var cid = fx.cards[k];
+          var old = prevCardRects[cid];
+          var from = old || cardBox(seatRect, 54, 88);
+          Fx.animateCardMove(from, rackRect, cardImg({ id: cid }), 380, 10);
+        }
+      }
+    }
+  }
+
+  /** 자리 가운데에 카드 크기의 상자를 만든다. */
+  function cardBox(centerRect, w, h) {
+    return {
+      left: centerRect.left + centerRect.width / 2 - w / 2,
+      top: centerRect.top + centerRect.height / 2 - h / 2,
+      width: w,
+      height: h
+    };
+  }
+
+  function renderState(state) {
     var phaseBefore = prevPhase;
     prevPhase = state.phase;
     var me = state.players[mySeat];
@@ -1143,7 +1230,11 @@
     // 4인 광팔기 협상
     if (state.phase === 'negotiate') {
       el.table.innerHTML = '';
-      for (var t = 0; t < state.table.length; t++) el.table.appendChild(makeCardEl(state.table[t], 'small'));
+      for (var t = 0; t < state.table.length; t++) {
+        var nc = makeCardEl(state.table[t], 'small');
+        nc.setAttribute('data-card-id', state.table[t].id);
+        el.table.appendChild(nc);
+      }
       el.tableHint.innerHTML = '바닥 1장만 공개됩니다 (협상 중)';
       el.hand.innerHTML = '';
       for (var h = 0; h < state.myHand.length; h++) el.hand.appendChild(makeCardEl(state.myHand[h], ''));
@@ -1166,13 +1257,17 @@
       // 새 판이 시작됐으므로 지난 판의 먹은 패·점수판을 비운다
       renderScorePanel(state);
       renderSeon(state);
+      // 덱을 섞는 연출 — 판이 넘어가 '선 결정' 으로 넘어갈 때 한 번
+      if (phaseBefore !== 'seon') Fx.playShuffle();
       return;
     }
 
     // 바닥
     el.table.innerHTML = '';
     for (var f = 0; f < state.table.length; f++) {
-      el.table.appendChild(makeCardEl(state.table[f], 'small'));
+      var fc = makeCardEl(state.table[f], 'small');
+      fc.setAttribute('data-card-id', state.table[f].id);
+      el.table.appendChild(fc);
     }
     el.tableHint.innerHTML = state.table.length ? '바닥 ' + state.table.length + '장' : '';
 
@@ -1256,7 +1351,17 @@
   function playCard(cardEl, index) {
     if (busy) return;
     if (!lastState || lastState.currentSeat !== mySeat || lastState.prompt) return;
+    var cardId = cardEl.getAttribute('data-card-id');
     Fx.animateCardFlight(cardEl, el.table, -6, 260);
+    // 날아가는 동안 바닥에는 카드가 아직 없는 것처럼 보여 준다
+    if (cardId) {
+      flyingCards[cardId] = 1;
+      setTimeout(function () {
+        delete flyingCards[cardId];
+        var node = el.table.querySelector('[data-card-id="' + cardId + '"]');
+        if (node) node.style.opacity = '';
+      }, 320);
+    }
     setTimeout(function () { act('playCard', { handIndex: index }); }, 120);
   }
 
@@ -1350,6 +1455,7 @@
     for (var i = 0; i < cands.length; i++) {
       (function (index) {
         var c = makeCardEl(cands[index], 'pick small');
+        c.setAttribute('data-card-id', cands[index].id);
         c.addEventListener('click', function () { act('seonPick', { cardIndex: index }); });
         el.promptBox.appendChild(c);
       })(i);
@@ -1391,6 +1497,7 @@
       for (var i = 0; i < opts.length; i++) {
         (function (index) {
           var c = makeCardEl(opts[index], 'pick small');
+          c.setAttribute('data-card-id', opts[index].id);
           c.addEventListener('click', function () {
             if (p.type === 'floorChoice') act('floorChoice', { choice: index });
             else act('flipChoice', { ordinal: index });
