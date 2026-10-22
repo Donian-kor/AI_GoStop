@@ -179,6 +179,7 @@ public/
   index.html            화면
   style.css             스타일 (모바일 우선)
   room-browser.js       로비 방 목록·참가 처리
+  score-panel.js        족보·획득 카드 점수판 렌더링
   app.js                상태 수신 → 렌더링
   fx.js                 이펙트·애니메이션·사운드
 assets/
