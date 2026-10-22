@@ -738,7 +738,7 @@
     closeRoomList();
     el.turnInfo.innerHTML = '';
     el.timer.innerHTML = '';
-    document.title = '고스톱';
+    document.title = '명지네고스톱';
     if (message) el.lobbyError.textContent = message;
   }
 
@@ -766,7 +766,7 @@
     el.lobby.className = 'screen hidden';
     el.room.className = 'screen';
     el.codeChip.innerHTML = code;
-    document.title = '고스톱 ' + code;
+    document.title = '명지네고스톱 ' + code;
     startPolling();
   }
 
