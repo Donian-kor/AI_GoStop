@@ -120,8 +120,10 @@ class TurnEngine {
     return this.state.players[this.state.current];
   }
 
-  addEvent(kind, seat, month, text, victimSeat = -1) {
+  addEvent(kind, seat, month, text, victimSeat = -1, cards = null) {
     const evt = { kind, seat, month, text, victimSeat };
+    // cards — 이 이벤트에 포함된 카드 id (상대가 낸 패·먹은 패 연출용)
+    if (cards && cards.length) evt.cards = cards.map((c) => c.id);
     this.state.events.push(evt);
     return evt;
   }
@@ -321,9 +323,9 @@ class TurnEngine {
 
     if (captured.length > 0) {
       player.captured.push(...captured);
-      this.addEvent(EVENT.CAPTURE, this.state.current, draw.month, `${player.name} 뒤집어 ${captured.length}장 먹음`);
+      this.addEvent(EVENT.CAPTURE, this.state.current, draw.month, `${player.name} 뒤집어 ${captured.length}장 먹음`, -1, captured);
     } else {
-      this.addEvent(EVENT.PLACE, this.state.current, draw.month, `${player.name} 뒤집은 카드 바닥에 놓음`);
+      this.addEvent(EVENT.PLACE, this.state.current, draw.month, `${player.name} 뒤집은 카드 바닥에 놓음`, -1, [draw]);
     }
 
     if (this.state.floor.length === 0 && captured.length > 0 && this.hasMoreToPlay(player)) {
@@ -613,7 +615,7 @@ class TurnEngine {
     if (hasDraw && handMatches.length === 1 && draw.month === month) {
       this.state.floor.push(handCard);
       this.state.floor.push(draw);
-      this.addEvent(EVENT.BBEOK, this.state.current, month, `${player.name} 뻑! (${month}월)`);
+      this.addEvent(EVENT.BBEOK, this.state.current, month, `${player.name} 뻑! (${month}월)`, -1, [handCard, draw]);
 
       // 이번 턴에 획득한 보너스패는 뻑 무더기에 함께 묻힌다
       const bury = this.pendingBonus.concat(this.flipBonus);
@@ -623,7 +625,7 @@ class TurnEngine {
           if (idx >= 0) player.captured.splice(idx, 1);
           this.state.floor.push({ ...bonus, month });
         }
-        this.addEvent(EVENT.PLACE, this.state.current, month, `${player.name} 보너스패도 뻑 더미에 묻힘`);
+        this.addEvent(EVENT.PLACE, this.state.current, month, `${player.name} 보너스패도 뻑 더미에 묻힘`, -1, bury);
         this.pendingBonus = [];
         this.flipBonus = [];
       }
@@ -652,10 +654,12 @@ class TurnEngine {
 
     // ── 손패 처리 ──
     const captured = [];
+    const placed = []; // 바닥에 놓인 카드 (상대 연출용)
     let playedCaptured = false;
 
     if (handMatches.length === 0) {
       this.state.floor.push(handCard);
+      placed.push(handCard);
     } else {
       playedCaptured = true;
       captured.push(handCard);
@@ -673,6 +677,7 @@ class TurnEngine {
       const drawMatches = this.matchIndices(draw.month);
       if (drawMatches.length === 0) {
         this.state.floor.push(draw);
+        placed.push(draw);
       } else if (
         this.rules.flipChoiceEnabled &&
         drawMatches.length === 2 &&
@@ -682,7 +687,7 @@ class TurnEngine {
         // 뒤집은 패가 바닥 2장(서로 다른 종류)과 매칭 → 가져갈 패 선택 대기
         if (captured.length > 0) {
           player.captured.push(...captured);
-          this.addEvent(EVENT.CAPTURE, this.state.current, month, `${player.name} ${captured.length}장 먹음`);
+          this.addEvent(EVENT.CAPTURE, this.state.current, month, `${player.name} ${captured.length}장 먹음`, -1, captured);
           captured.length = 0;
         }
 
@@ -714,9 +719,9 @@ class TurnEngine {
 
     if (captured.length > 0) {
       player.captured.push(...captured);
-      this.addEvent(EVENT.CAPTURE, this.state.current, month, `${player.name} ${captured.length}장 먹음`);
+      this.addEvent(EVENT.CAPTURE, this.state.current, month, `${player.name} ${captured.length}장 먹음`, -1, captured);
     } else {
-      this.addEvent(EVENT.PLACE, this.state.current, month, `${player.name} 못 먹고 바닥에 놓음`);
+      this.addEvent(EVENT.PLACE, this.state.current, month, `${player.name} 못 먹고 바닥에 놓음`, -1, placed);
     }
 
     // 마지막 장(더 둘 게 없음)에서는 쪽·따닥·싹쓸이를 인정하지 않는다.

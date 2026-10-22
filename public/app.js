@@ -1258,7 +1258,8 @@
       renderScorePanel(state);
       renderSeon(state);
       // 덱을 섞는 연출 — 판이 넘어가 '선 결정' 으로 넘어갈 때 한 번
-      if (phaseBefore !== 'seon') Fx.playShuffle();
+      // (섞는 카드 수는 서버가 알려주는 실제 덱 장수를 따른다)
+      if (phaseBefore !== 'seon') Fx.playShuffle(state.deckCount);
       return;
     }
 

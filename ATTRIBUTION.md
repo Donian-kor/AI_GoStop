@@ -70,7 +70,24 @@
 
 ---
 
-## 3. 이 프로젝트 자체 코드
+## 3. 카드 연출(애니메이션) 참고 소스
+
+- **출처**: [bipark/gostop-ts](https://github.com/bipark/gostop-ts) (루미 고스톱 TypeScript 버전)
+  - `web/main.ts` — FLIP 기법(카드가 제자리로 미끄러지는 이동 연출), 카드 DOM 구성
+  - `web/style.css` — 카드 등장 키프레임(`cardEnter`)
+- **직접 만든 부분**: 패 섞는 연출(`.shuffle-overlay` · `.shuffle-card`)은 아이디어만 참고하고
+  이 프로젝트에서 다시 설계했다 — 실제 덱 장수(48/50/51)만큼 촘촘히 모으고, 여러 번 짧게 뒤섞은 뒤
+  가운데로 모이는 연출. 앞의 FLIP·카드 등장 기법만 참고 코드다.
+- **라이선스**: [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)
+- **필수 고지 (Required Notice)**: Copyright (c) 2024-2026 fullbit computing (https://github.com/civilian7)
+- **변경사항**: TypeScript → ES5 바닐라 JS 로 옮기고, 이 프로젝트의 카드 DOM 구조(`#hand` · `#table` · `#promptBox`)와
+  서버 권한(폴링) 구조에 맞게 조정했다. 상대가 낸 패·먹은 패 연출은 이 저장소 엔진 이벤트를 확장해 구현했다.
+- **이용 범위**: 이 프로젝트는 가족끼리 함께 즐기는 **비상업적** 용도다.
+  PolyForm Noncommercial 라이선스는 상업적 이용을 허용하지 않으므로, 상업적으로 쓰려면 별도 허가를 받아야 한다.
+
+---
+
+## 4. 이 프로젝트 자체 코드
 
 - MIT License (아래 LICENSE 참고)
 - 엔진·규칙 구현은 `civilian7/gostop` 의 `docs/game-rules.md` 와
@@ -78,7 +95,7 @@
 
 ---
 
-## 4. 아직 포함하지 않은 자산 (필요 시 추가)
+## 5. 아직 포함하지 않은 자산 (필요 시 추가)
 
 | 자산 | 출처 | 라이선스 | 조건 |
 |---|---|---|---|

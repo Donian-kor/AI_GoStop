@@ -7,7 +7,7 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "test": "node tests/engine_test.js && node tests/contract_test.js && node tests/replay_test.js && node tests/server_test.js && node tests/ai_test.js && node tests/disconnect_test.js && node tests/jokbo_test.js && node tests/deal_finish_test.js",
+    "test": "node tests/engine_test.js && node tests/contract_test.js && node tests/replay_test.js && node tests/server_test.js && node tests/ai_test.js && node tests/disconnect_test.js && node tests/jokbo_test.js && node tests/deal_finish_test.js && node tests/fx_test.js",
     "test:engine": "node tests/engine_test.js",
     "test:contract": "node tests/contract_test.js",
     "test:replay": "node tests/replay_test.js",
@@ -16,6 +16,7 @@
     "test:disconnect": "node tests/disconnect_test.js",
     "test:jokbo": "node tests/jokbo_test.js",
     "test:deal": "node tests/deal_finish_test.js",
+    "test:fx": "node tests/fx_test.js",
     "check:es5": "node tools/check-es5.js",
     "fetch-assets": "node tools/fetch-assets.js"
   },

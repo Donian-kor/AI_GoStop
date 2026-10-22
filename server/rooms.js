@@ -749,14 +749,17 @@ class Room {
     for (const evt of this.engine.state.events) {
       if (evt._pushed) continue;
       evt._pushed = true;
-      this.fx.push({
+      const fx = {
         seq: this.fx.length + 1,
         kind: evt.kind,
         seat: evt.seat,
         month: evt.month,
         text: evt.text,
         victimSeat: evt.victimSeat,
-      });
+      };
+      // 낸 패·먹은 패의 카드 id (화면에서 카드가 날아가는 연출에 쓴다)
+      if (evt.cards && evt.cards.length) fx.cards = evt.cards;
+      this.fx.push(fx);
     }
     for (const evt of this.engine.state.events) {
       if (evt._logged) continue;
@@ -1306,6 +1309,8 @@ class Room {
           : []
       );
       base.seonPicked = this.seonPicked.slice();
+      // 선 결정 단계에는 아직 덱이 그대로 있다 — 섞는 연출이 실제 덱 장수를 쓰게 한다
+      base.deckCount = this.deck ? this.deck.length : 0;
       return base;
     }
 

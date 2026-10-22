@@ -467,11 +467,15 @@ select option {
   font-size: 15px; font-weight: 800; color: #ffe08a; white-space: nowrap;
 }
 .shuffle-card {
-  position: absolute; width: 44px; height: 72px; border-radius: 5px;
+  position: absolute; width: 36px; height: 58px; border-radius: 4px;
   background: repeating-linear-gradient(45deg, #dc1c27 0 5px, #9e1018 5px 10px);
   border: 2px solid #f0daa7;
   box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
-  transition: left 0.18s ease, top 0.18s ease, transform 0.18s ease;
+  transition: left 0.07s linear, top 0.07s linear, transform 0.07s linear;
+}
+/* 마지막에 가운데로 모을 때만 살짝 천천히 */
+.shuffle-overlay.gather .shuffle-card {
+  transition: left 0.16s ease-out, top 0.16s ease-out, transform 0.16s ease-out;
 }
 
 /* 12개월 전통 색 */
