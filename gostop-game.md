@@ -17,7 +17,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 
 | 항목 | 결정 |
 |---|---|
-| 인원 | **3인 삼파전**(주요) + **2인 맞고**. 4인 광팔기 → v2 |
+| 인원 | **3인 삼파전**(주요) + **2인 맞고** + **4인 광팔기**(구현 완료) |
 | 보너스패 | 방 설정에서 48 / **50(기본)** / 51 선택. 50장 구성 세부 카드는 구현 전 확정 필요 |
 | 돈 | **가상 포인트만**. 시작 30,000P, 점당 금액 방에서 설정 |
 | 시간제한 | 기본 꺼짐. 방에서 선택 (꺼짐 / 30+5 / 45+5 / 60+10) |
@@ -56,7 +56,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 - **나가리 과다 수정 (v0.23)**: 선 결정 후보 카드 3장×인원수를 딜 덱에서 직접 빼던 것을 별도 복사본에서 뽑도록 바꿨다. 3인 기준 9장이 사라져 50장 덱이 41장으로 줄던 문제를 고쳤고, 시뮬레이션 나가리율이 3인 66%대 → 3%대로 줄었다.
 - **itsent-lab/hwatu 벤치마킹 반영 완료** (2차). 카드 ID 를 `m01-01` 규약으로 통일하고,
   점수 라인·정산 단계·지급면제 규칙을 추가했다. 자세한 내용은 [`BENCHMARK.md`](./BENCHMARK.md).
-- 자산 확보 완료: 화투 SVG 105개(카드 48×2 체계 + 뒷장 5 + 보너스 4), 효과음 64종(OGG 27 + WAV 37).
+- 자산 확보 완료: 화투 SVG 105개(카드 48×2 체계 + 뒷장 5 + 보너스 4), 효과음 68종(OGG 27 + WAV 36 + MP3 5).
 - `README.md` 작성 완료(가족용 실행 안내·모드 선택·규칙 요약).
 - `public/` 에 이펙트 모듈(`fx.js`) 추가 — 카드 비행(Web Animations API)·이펙트 배너·사운드.
 - 방 설정 UI(방장 전용): 시간제한 · 점당 금액.
@@ -93,7 +93,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 | `docs/game-rules.md` | 규칙 정본 | 엔진 구현 기준 |
 | `docs/game-feel-audit.md` | 필감 개선 과제 목록 | 공용 이징·이펙트 배너·히트스톱을 처음부터 적용 |
 | `assets/audio/*.ogg` (30종, CC0) | 효과음 | 그대로 사용 (출처 표기 불필요) |
-| `assets/hwatu/svg/*.svg` (57개) | 화투 이미지 | 그대로 사용 (CC BY-SA 4.0 → 출처 표기 필수) |
+| `assets/hwatu/svg/*.svg` (105개) | 화투 이미지 | 그대로 사용 (CC BY-SA 4.0 → 출처 표기 필수) |
 
 ### 2-1. `.rec` 인코딩 (원본과 엔진 어댑터 재검증 필요)
 
@@ -118,7 +118,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 | 7 | DeclareShake | A=월 | `declareShake(a)` |
 | 8 | PlayBomb | A=월 | `playBomb(a)` |
 | 9 | FlipOnly | — | `flipOnly()` |
-| 10 | Negotiation | A=P2포기, B=P3포기, C=P4광팔기 | (4인) v2 |
+| 10 | Negotiation | A=P2포기, B=P3포기, C=P4광팔기 | (4인) **구현 완료** — `engine/fourplayer.js` |
 | 11 | Shodang | A=1 수락/0 거절 | (3인 쇼당) v2 |
 | 12 | GiriCut | A=컷 인덱스(-1=퉁) | v1은 기리 없이 단순 딜 → 미사용 |
 
@@ -183,8 +183,8 @@ civillian7 의 몬테카를로 AI(46KB Delphi) 는 웹 이식성이 낮아 채�
 gostop-game/
 ├─ server/
 │  ├─ server.js          HTTP + 폴링 서버 (의존성 0개)
-│  ├─ room.js            방·자리·재접속·타이머 관리
-│  └─ api.js             라우팅 및 요청 파싱
+│  ├─ rooms.js           방·자리·대국 진행·AI 자동 진행·정산
+│  └─ version.js         게임 버전·빌드 번호
 ├─ engine/               ← 서버 전용 권위 엔진 (클라이언트에 규칙 로직 없음)
 │  ├─ cards.js           48+보너스 카탈로그
 │  ├─ deck.js            덱 생성/셔플
@@ -192,23 +192,37 @@ gostop-game/
 │  ├─ play.js            턴 진행·특수상황
 │  ├─ score.js           족보 점수 계산
 │  ├─ settlement.js      박·배수·정산
-│  └─ settings.js        하우스룰 기본값
+│  ├─ settings.js        하우스룰 기본값
+│  ├─ ai.js              AI 수 후보 평가·난이도
+│  └─ fourplayer.js      4인 광팔기 협상·광팔기 정산
 ├─ public/
 │  ├─ index.html
 │  ├─ style.css
-│  ├─ app.js             상태 수신 → 렌더링
-│  ├─ net.js             폴링 + fetch POST 클라이언트
-│  └─ fx.js              이징·이펙트·사운드
+│  ├─ app.js             상태 수신 → 렌더링 (폴링·액션 포함)
+│  └─ fx.js              이징·이펙트·카드 연출·사운드
 ├─ assets/
-│  ├─ hwatu/svg/         57개 SVG (카드 48 + 보너스 4 + 뒷장 5)
-│  └─ audio/             30개 OGG
+│  ├─ hwatu/svg/         105개 SVG (카드 48 + 보너스 4 + 뒷장 5 + 규격별)
+│  ├─ hwatu/png/         52장 PNG (게임 화면용)
+│  └─ audio/             68종 효과음
 ├─ tests/
 │  ├─ engine_test.js     규칙 단위 테스트
+│  ├─ contract_test.js   카드·점수 계약 테스트
 │  ├─ replay_test.js     .rec 리플레이 회귀 테스트
+│  ├─ server_test.js     HTTP 통합 테스트 (3인 실전 대국 → 정산)
+│  ├─ ai_test.js         AI 대국 테스트
+│  ├─ disconnect_test.js 연결 끊김 자동 진행 테스트
+│  ├─ jokbo_test.js      족보 타일 렌더 테스트
+│  ├─ deal_finish_test.js 딜 직후 총통·선 후보 덱 보존 테스트
+│  ├─ fx_test.js         카드 연출 연결·이벤트 카드 id 테스트
 │  └─ records/           .rec 6개
 ├─ tools/
-│  └─ fetch-assets.js    자산 1회 다운로드 스크립트
-├─ ATTRIBUTION.md        CC BY-SA 4.0 출처 표기
+│  ├─ fetch-assets.js    자산 1회 다운로드 스크립트
+│  ├─ check-es5.js       구형 브라우저용 ES6+ 문법 검사
+│  ├─ check-2p.js        2인 맞고 실전 점검
+│  ├─ check-3p-live.js   3인 실전 대국 점검
+│  ├─ check-4p.js        4인 광팔기 점검
+│  └─ check-rejoin.js    재접속 점검
+├─ ATTRIBUTION.md        자산 출처·라이선스 표기 (CC BY-SA 4.0 · CC0 · PolyForm NC)
 ├─ README.md
 └─ package.json          {"type":"commonjs"} + scripts (의존성 없음)
 ```
@@ -232,6 +246,8 @@ gostop-game/
 
 | 메서드 | 경로 | 요청 | 응답 |
 |---|---|---|---|
+| GET | `/api/version` | — | `{version, gameVersion}` — 클라이언트 자동 갱신용 |
+| GET | `/api/rooms` | 같은 출처 쿠키 | 만들어진 방 목록(방장 이름·인원·빈자리·대국 단계·참가 가능 여부) |
 | POST | `/api/room` | `{name}` | `{code}` + 플레이어 식별 쿠키 설정 |
 | POST | `/api/room/:code/join` | `{name}` | `{code}` + 플레이어 식별 쿠키 설정 |
 | GET | `/api/room/:code/state` | 같은 출처 쿠키 | 상태 스냅샷 (1~2초 주기로 폴링) |
@@ -246,7 +262,7 @@ gostop-game/
 | 필드 | 내용 |
 |---|---|
 | `state` | 게임 상태 스냅샷 (상대방 손패는 개수만) |
-| `fx` | 직전 응답 이후 발생한 이펙트/사운드 트리거 (쪽!, 따닥!, 뻑, 스톱, 폭탄 등) |
+| `fx` | 직전 응답 이후 발생한 이펙트/사운드 트리거 (쪽!, 따닥!, 뻑, 스톱, 폭탄 등). `place`·`capture`·`bbeok` 은 해당 카드 id(`cards`)를 함께 실어 보낸다 — 화면에서 카드가 날아가는 연출에 쓴다 |
 | `log` | 텍스트 로그 (최근 N개) |
 | `serverTime` | 서버 시각(epoch ms) — 클라이언트 카운트다운 보정용 |
 
@@ -254,7 +270,7 @@ gostop-game/
 
 `playCard`(handIndex, floorChoice) / `flipChoice`(ordinal) / `bonusDraw`(stockIndex) /
 `go` / `stop` / `shake`(month) / `bomb`(month) / `flipOnly` /
-`seonPick`(cardIndex) / `ready` / `settings`(방장 한정) / `nextGame`
+`seonPick`(cardIndex) / `ready` / `settings`(방장 한정) / `nextGame` / `leave`(나가기 — 방장이면 방이 즉시 닫힌다)
 
 ### 4-4. 상태 스냅샷 형태 (사람별 필터링 후)
 
@@ -429,8 +445,8 @@ gostop-game/
 ```
 
 - 방 코드: 대문자/숫자 6자리 (`HJS7K2` 형식, 혼동문자 I/O/0/1 제외)
-- 빈 방 정리: 마지막 활동 2시간 경과 시 삭제 (setInterval)
-- 최대 인원 3 (4인 광팔기는 v2)
+- 빈 방 정리: 사람이 모두 나간 빈 방은 1분 뒤, 마지막 활동이 6시간 지난 방은 즉시 삭제 (setInterval)
+- 최대 인원 4 (2·3·4인 지원 — 4인은 광팔기 협상 포함)
 
 ### 6-2. 타이머
 
@@ -520,7 +536,7 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 | 더미 뒤집기 | 3D flip 180ms | `card_flip` |
 | 먹기 | 카드 슬라이드 + 플래시 | `card_capture` |
 | 쪽 | 배너 + 피 카운터 감소 강조 | `sfx_jjok` |
-| 따닥 | 배너 + 화면 흔들림(轻微) | `sfx_ttadak` |
+| 따닥 | 배너 + 화면 흔들림(미세) | `sfx_ttadak` |
 | 싹쓸이 | 배너 + 파티클 느낌의 반짝임 | `sfx_sseul` |
 | 뻑 | 배너 + 히트스톱 60ms + 흔들림 | `sfx_bbeok` |
 | 폭탄 | 배너 + 강한 흔들림 + 히트스톱 120ms | `sfx_bomb` |
@@ -564,7 +580,7 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 |---|---|---|
 | 화투 기본 48장 SVG | **CC BY-SA 4.0** (Marcus Richert, Louie Mantia / Spenĉjo) | `ATTRIBUTION.md`에 저작자·원본 링크 표기 + 동일조건 공유 |
 | 화투 보너스 4장 / 뒷장 5장 | 자체 제작 (자유 사용) | 표기 불필요 |
-| 효과음 64종 (OGG 27 + WAV 37) | **CC0** (Kenney) | 출처 표기 불필요 (예의상 표기) |
+| 효과음 68종 (OGG 27 + WAV 36 + MP3 5) | **CC0** (Kenney) | 출처 표기 불필요 (예의상 표기) |
 
 `ATTRIBUTION.md` 내용:
 - 화투 이미지: Wikimedia Commons Category:Hwatu, 저작자별 출처 (attribution.tsv 내용 이식)
@@ -587,7 +603,14 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 - `node tests/engine_test.js` → **44개 통과** (규칙 단위. 정본 소스에서 직접 도출한 기대값)
 - `node tests/contract_test.js` → **10개 통과** (itsent-lab 규약 교차 검증: 카드 매핑·점수 라인·정산 단계·지급면제)
 - `node tests/replay_test.js` → **3개 통과** (레코드 6개 스모크 + 정산 불변식)
-- `npm test` → 위 3개 연속 실행, **전부 통과해야 성공**
+- `node tests/server_test.js` → **6개 통과** (3인 실전 대국 → 정산, 방 목록 API, 방장 퇴장)
+- `node tests/ai_test.js` → **3개 통과** (혼자 AI 와 대국)
+- `node tests/disconnect_test.js` → **4개 통과** (연결 끊김 자동 진행)
+- `node tests/jokbo_test.js` → **4개 통과** (족보 그림 타일)
+- `node tests/deal_finish_test.js` → **3개 통과** (딜 직후 총통·선 후보 덱 보존)
+- `node tests/fx_test.js` → **6개 통과** (카드 연출 연결·이벤트 카드 id)
+- `npm test` → 위 9개 연속 실행, **전부 통과해야 성공** (총 83개)
+- `npm run check:es5` → `public/` 의 ES6+ 문법이 없음을 확인 (구형 안드로이드 4.4.4 호환)
 - `.rec` 완전 재현은 형식상 불가능(§2-2). 따라서 리플레이는 "예외 없이 진행 + 정산 불변식"까지만 검증하고, 규칙 정합성은 앞의 두 테스트가 담당한다.
 - 스냅샷은 일반 테스트 중 자동 생성하지 않는다. `update-snapshots` 같은 별도 명령으로만 생성하고 기준 파일을 저장소에 보관한다.
 
@@ -706,12 +729,12 @@ node server/server.js
 ## 13. v2로 넘길 것 (이번 범위 밖)
 
 - **쇼당**(3인 전용 협상: 나가리/밀어주기/독박 판정)
-- **4인 광팔기**(P2/P3 순서 참가协商, 광값 선불, 연사 규칙)
 - **기보 리플레이 UI** (`.rec` 기록/재생 기능)
-- **AI 상대** (_DELPHI `Gostop.Engine.AI.pas` 원형)
 - **아바타 / 캐릭터 대사** (원본 `assets/avatars/quotes.json` 참조)
 - **BGM / 나레이터 음원** (원본에 미생성)
 - **PWA 설치 / 앱 스토어 배포**
+
+> ※ 4인 광팔기(P2/P3 순서 참가 협상, 광값 선불, 연사 규칙)는 **v0.x 에서 이미 구현**되어 있다.
 
 ---
 
