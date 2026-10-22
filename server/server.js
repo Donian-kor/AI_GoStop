@@ -211,6 +211,19 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { ok: true, version: BUILD_VERSION, gameVersion: GAME_VERSION });
   }
 
+  // GET /api/rooms — 만들어진 방 목록 (참가 가능한 방 우선, 최신순)
+  if (segments.length === 2 && segments[1] === 'rooms' && req.method === 'GET') {
+    const list = [];
+    for (const [code, room] of rooms) {
+      list.push(room.lobbyInfo(playerId));
+    }
+    list.sort((a, b) => {
+      if (a.canJoin !== b.canJoin) return a.canJoin ? -1 : 1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    return sendJson(res, 200, { ok: true, rooms: list });
+  }
+
   // POST /api/room — 방 만들기
   if (segments[1] === 'room' && segments.length === 2 && req.method === 'POST') {
     const body = await readJsonBody(req);
@@ -282,6 +295,11 @@ async function handleApi(req, res, url) {
       await room.waitForChange(8000);
     }
 
+    // 기다리는 동안 방장이 나가 방이 닫혔다면 404 로 알려 대기실로 돌아가게 한다
+    if (!rooms.has(code)) {
+      return sendJson(res, 404, { ok: false, error: '방이 닫혔습니다.', roomClosed: true });
+    }
+
     const fx = room.fx.filter((e) => e.seq > since);
     return sendJson(res, 200, {
       ok: true,
@@ -310,6 +328,13 @@ async function handleApi(req, res, url) {
 
     try {
       const result = room.act(player, body.type, body.payload || {});
+      // 방장이 방을 나가면 방을 바로 없앤다.
+      // (기다리는 사람들도 곧바로 404 를 받아 대기실로 돌아간다)
+      if (body.type === 'leave' && player.id === room.hostId) {
+        rooms.delete(code);
+        room.bump();
+        return sendJson(res, 200, { ok: true, ...result, roomClosed: true });
+      }
       return sendJson(res, 200, { ok: true, ...result });
     } catch (err) {
       if (err instanceof EngineError) {

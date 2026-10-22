@@ -239,3 +239,101 @@ test('방에 참가하지 않은 사람은 액션을 보낼 수 없다', async (
   const res = await outsider.post(`/api/room/${created.code}/action`, { type: 'ready' });
   assert.strictEqual(res.ok, false);
 });
+
+test('방 목록 API — 참가 가능 여부와 내가 있던 방을 알려준다', async () => {
+  const host = makeClient();
+  const multi = await host.post('/api/room', { name: '엄마', mode: 'multi', playerCount: 3 });
+  assert.ok(multi.code);
+
+  const fullHost = makeClient();
+  const full = await fullHost.post('/api/room', { name: '아빠', mode: 'multi', playerCount: 2 });
+  const guest = makeClient();
+  const joined = await guest.post(`/api/room/${full.code}/join`, { name: '나' });
+  assert.strictEqual(joined.ok, true);
+
+  const soloHost = makeClient();
+  const solo = await soloHost.post('/api/room', { name: '할머니', mode: 'solo', playerCount: 3 });
+
+  const viewer = makeClient();
+  const list = await viewer.get('/api/rooms');
+  assert.strictEqual(list.ok, true);
+  assert.ok(Array.isArray(list.rooms));
+  assert.strictEqual(list.rooms[0].canJoin, true, '참가 가능한 방이 먼저 온다');
+
+  const byCode = {};
+  for (const r of list.rooms) byCode[r.code] = r;
+
+  const m = byCode[multi.code];
+  assert.ok(m, '새로 만든 방이 목록에 있어야 한다');
+  assert.strictEqual(m.hostName, '엄마');
+  assert.strictEqual(m.mode, 'multi');
+  assert.strictEqual(m.playerCount, 3);
+  assert.strictEqual(m.humanCount, 1);
+  assert.strictEqual(m.openSeats, 2);
+  assert.strictEqual(m.phase, 'lobby');
+  assert.strictEqual(m.canJoin, true);
+  assert.strictEqual(m.isMember, false);
+  assert.strictEqual(typeof m.createdAt, 'number');
+
+  const f = byCode[full.code];
+  assert.ok(f);
+  assert.strictEqual(f.humanCount, 2);
+  assert.strictEqual(f.openSeats, 0);
+  assert.strictEqual(f.canJoin, false, '가득 찬 방은 참가할 수 없다');
+
+  const s = byCode[solo.code];
+  assert.ok(s);
+  assert.strictEqual(s.mode, 'solo');
+  assert.strictEqual(s.openSeats, 0);
+  assert.strictEqual(s.canJoin, false, 'AI 혼자 치는 방은 참가할 수 없다');
+
+  const own = await host.get('/api/rooms');
+  const mine = own.rooms.filter((r) => r.code === multi.code)[0];
+  assert.ok(mine);
+  assert.strictEqual(mine.isMember, true, '내가 만든 방은 다시 참가할 수 있다');
+  assert.strictEqual(mine.canJoin, true);
+});
+
+test('방장이 방을 나가면 방이 바로 사라진다', async () => {
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  const guest = makeClient();
+  await guest.post(`/api/room/${created.code}/join`, { name: '아빠' });
+
+  let list = await host.get('/api/rooms');
+  assert.ok(
+    list.rooms.some((r) => r.code === created.code),
+    '나가기 전에는 목록에 있어야 한다'
+  );
+
+  const res = await host.post(`/api/room/${created.code}/action`, { type: 'leave' });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.roomClosed, true, '방장이 나가면 방이 닫혔다고 알려준다');
+
+  list = await host.get('/api/rooms');
+  assert.ok(
+    !list.rooms.some((r) => r.code === created.code),
+    '방장이 나간 방은 목록에서 바로 사라진다'
+  );
+
+  // 남아 있던 사람은 방이 없어졌다는 404 를 받는다
+  const state = await guest.get(`/api/room/${created.code}/state`);
+  assert.strictEqual(state.ok, false, '남은 사람에게는 방이 없다는 응답이 온다');
+});
+
+test('방장이 아닌 사람이 나가면 방은 그대로 남는다', async () => {
+  const host = makeClient();
+  const created = await host.post('/api/room', { name: '엄마' });
+  const guest = makeClient();
+  await guest.post(`/api/room/${created.code}/join`, { name: '아빠' });
+
+  const res = await guest.post(`/api/room/${created.code}/action`, { type: 'leave' });
+  assert.strictEqual(res.ok, true);
+  assert.notStrictEqual(res.roomClosed, true, '방장이 아니면 방을 닫지 않는다');
+
+  const list = await host.get('/api/rooms');
+  assert.ok(
+    list.rooms.some((r) => r.code === created.code),
+    '방장이 남아 있으면 방도 남는다'
+  );
+});

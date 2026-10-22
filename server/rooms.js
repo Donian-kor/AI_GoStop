@@ -200,6 +200,7 @@ class Room {
   constructor(code, options = {}) {
     this.code = code;
     this.settings = normalizeSettings(options);
+    this.createdAt = Date.now();
     this.hostId = null;
     this.seats = new Array(this.settings.playerCount).fill(null); // 좌석 고정 배열 (빈 자리는 null)
     this.aiTimer = null;
@@ -318,6 +319,34 @@ class Room {
   /** 사람이 앉아 있는 자리 수. */
   get humanCount() {
     return this.seats.filter((s) => s && s.type === 'human').length;
+  }
+
+  /**
+   * 로비 방 목록에 보여줄 요약.
+   * viewerId 가 이미 이 방의 참가자라면 자리가 없어도 다시 들어갈 수 있다.
+   */
+  lobbyInfo(viewerId = null) {
+    const phase = this.phase || ROOM_PHASE.LOBBY;
+    const member = viewerId ? this.findPlayer(viewerId) : null;
+    const host = (this.hostId ? this.findPlayer(this.hostId) : null)
+      || this.seats.find((s) => s && s.type === 'human')
+      || null;
+    const openSeats = this.seats.filter((s) => s === null).length;
+    const canJoin = Boolean(member)
+      || (this.settings.mode === 'multi' && openSeats > 0);
+
+    return {
+      code: this.code,
+      hostName: host ? host.name : '',
+      mode: this.settings.mode,
+      playerCount: this.settings.playerCount,
+      humanCount: this.humanCount,
+      openSeats,
+      phase,
+      canJoin,
+      isMember: Boolean(member),
+      createdAt: this.createdAt,
+    };
   }
 
   markSeen(id) {

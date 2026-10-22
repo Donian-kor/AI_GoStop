@@ -750,6 +750,93 @@ select option {
 }
 .set-note { margin: 8px 0 4px; font-size: 12px; line-height: 1.45; color: #c8ab7a; word-break: keep-all; }
 
+/* ── 방 참가 목록 ─────────────────────────────────────── */
+.room-list-inner { max-width: 520px; }
+.room-list-sub { font-size: 15px; line-height: 1.5; }
+.room-list {
+  margin: 12px 0 8px;
+  max-height: 330px;
+  max-height: 52vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+.room-list-empty {
+  margin: 0;
+  padding: 24px 8px;
+  color: #c8ab7a;
+  font-size: 16px;
+  line-height: 1.6;
+  text-align: center;
+}
+.overlay button.room-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 8px 0;
+  padding: 12px 14px;
+  text-align: left;
+  border-radius: 12px;
+  background: #2a1709;
+  color: #ffe9b8;
+  border: 2px solid #7a5323;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, .08);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.overlay button.room-item.selected {
+  background: #3d2a0e;
+  border-color: #ffd76a;
+  box-shadow: 0 0 0 2px rgba(255, 215, 106, .25);
+}
+.overlay button.room-item.is-disabled { opacity: .58; }
+.room-item-main { flex: 1 1 auto; min-width: 0; }
+.room-item-title {
+  display: block;
+  font-size: 19px;
+  font-weight: 800;
+  color: #ffe9b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-item-meta {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  color: #c8ab7a;
+  word-break: keep-all;
+}
+.room-item-status {
+  flex: 0 0 auto;
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #8fe0a8;
+  white-space: nowrap;
+}
+.room-item-status.off { color: #c8ab7a; }
+.room-list-error {
+  min-height: 20px;
+  margin: 6px 0 0;
+  color: #e2685f;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  word-break: keep-all;
+}
+.overlay button.room-list-join {
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px 14px;
+  font-size: 18px;
+}
+.room-list-actions { margin-top: 10px; }
+.room-list-actions button { padding: 8px 12px; font-size: 15px; }
+
 .steps { text-align: left; margin: 12px 0; border-radius: 10px; padding: 10px; background: rgba(0, 0, 0, .4); }
 .steps h3 { margin: 0 0 6px; font-size: 14px; color: #c8ab7a; font-weight: 600; }
 .step { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 13px; }

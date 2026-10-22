@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>고스톱</title>
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 <!-- Tailwind CSS CDN (로비 디자인 의존) -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 </head>
@@ -254,9 +254,27 @@
       </div>
     </div>
   </div>
+
+  <!-- 방 참가 목록 -->
+  <div id="roomListOverlay" class="overlay hidden">
+    <div class="overlay-inner room-list-inner">
+      <h2>참가할 방 선택</h2>
+      <p class="overlay-sub room-list-sub">방을 한 번 누르면 선택되고,<br>같은 방을 두 번 누르면 바로 참가합니다.</p>
+      <div id="roomList" class="room-list">
+        <p class="room-list-empty">방 목록을 불러오는 중입니다.</p>
+      </div>
+      <p id="roomListError" class="room-list-error"></p>
+      <button id="roomListJoinBtn" class="primary room-list-join" type="button" disabled>선택한 방 참가</button>
+      <div class="row room-list-actions">
+        <button id="roomListRefreshBtn" type="button">새로고침</button>
+        <button id="roomListCodeBtn" type="button">코드 직접 입력</button>
+        <button id="roomListCloseBtn" type="button">닫기</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="fx.js?v=4"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
