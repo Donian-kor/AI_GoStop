@@ -174,6 +174,15 @@
 
   el.nameInput.addEventListener('input', function () { rememberName(this.value.replace(/^\s+|\s+$/g, '')); });
 
+  // 드롭다운 선택 시 표시 텍스트 갱신 (선택 옵션의 텍스트를 표시에 반영)
+  function refreshSelectLabel(selectEl) {
+    var label = selectEl.options[selectEl.selectedIndex].text;
+    var span = selectEl.parentNode.querySelector('span.z-0');
+    if (span) { span.textContent = label; }
+  }
+  el.modeSelect.addEventListener('change', function () { refreshSelectLabel(this); });
+  el.diffSelect.addEventListener('change', function () { refreshSelectLabel(this); });
+
   el.createBtn.addEventListener('click', function () {
     var name = currentName();
     el.lobbyError.textContent = '';

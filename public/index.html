@@ -4,41 +4,138 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>고스톱</title>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
+<!-- Tailwind CSS CDN (로비 디자인 의존) -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 </head>
 <body>
 <div id="app">
-  <!-- 입장 -->
-  <section id="lobby" class="screen">
-    <h1 class="logo">고스톱</h1>
-    <p class="sub">가족끼리 함께 치는 고스톱</p>
-    <div class="version-badge">버전 <b id="appVersion">{{GAME_VERSION}}</b></div>
-    <input id="nameInput" type="text" placeholder="이름" maxlength="12" autocomplete="off">
-    <div class="row">
-      <select id="modeSelect">
-        <option value="multi-3">3명 (가족과 함께)</option>
-        <option value="multi-2">2인 맞고</option>
-        <option value="multi-4">4인 광팔기</option>
-        <option value="solo-2">혼자 · AI와 2인</option>
-        <option value="solo-3">혼자 · AI와 3인</option>
-      </select>
-      <select id="diffSelect">
-        <option value="easy">AI 쉬움</option>
-        <option value="normal" selected>AI 보통</option>
-        <option value="hard">AI 어려움</option>
-        <option value="expert">AI 초고수</option>
-      </select>
+  <!-- 입장 (로비.html 디자인 적용, 기존 앱 ID 유지) -->
+  <section id="lobby" class="screen relative z-10 w-full min-h-[100dvh] sm:max-h-[920px] overflow-hidden flex flex-col items-center justify-center shadow-2xl select-none">
+    <!-- 배경(한옥 실내) -->
+    <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+      <img alt="전통 한옥 실내 배경" class="w-full h-full object-cover object-center transform scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2qxOvbkuez8v0XKwfbFbuOnZIayAOIqyeH9GqWpR7gK1IC2uIEUfvqQ4yfUa8s4QfSNlvFEvVJDNMTEf86Je_894ZYjSWvOnA2YpP52-oD5uLb8DYZa-2jmhbh8mATclKB-Jx7od8Bv4cWBRKpJCGE9a4C-Zagtnlth7IoxaMUA9yEAiUui55PcIntABFPTJH83eauZ_tMglcmvoQb0yVFUTAgaKmG4upsv5hVY4VzvkiLMQdlz93n4K66r2NzRAZJQ"/>
+      <div class="absolute inset-0 bg-radial from-amber-500/10 via-transparent to-black/40 mix-blend-overlay"></div>
     </div>
-    <div class="row">
-      <button id="createBtn" class="primary">방 만들기</button>
-      <button id="joinBtn">방 참가</button>
-      <button id="rulesBtn">게임 방법</button>
+
+    <!-- 상단 빠른 접근 바 -->
+    <header class="relative z-20 w-full pt-2 px-3 flex justify-between items-center text-amber-100/90 drop-shadow-md">
+      <button aria-label="음악 및 소리 설정" class="w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm" type="button">
+        <svg class="w-4 h-4 text-amber-300" fill="currentColor" viewbox="0 0 24 24"><path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zm-2.5 0L6.5 7.99H3c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h3.5l5 4.77c.66.63 1.5-.02 1.5-.77V4c0-.75-.84-1.4-1.5-.77z"></path></svg>
+      </button>
+      <div class="flex-1"></div>
+      <button aria-label="설정" class="w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2" type="button">
+        <svg class="w-4 h-4 text-amber-300" fill="currentColor" viewbox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"></path></svg>
+      </button>
+    </header>
+
+    <!-- 메인 카드(전통 두루미/판지 판) -->
+    <div class="relative z-10 w-full sm:w-[90%] sm:max-w-[370px] parchment-bg rounded-lg border-[5px] border-[#432311] wood-card-border p-4 pt-5 pb-5 flex flex-col items-center self-center transition-all">
+      <!-- 안쪽 고대 목재 테두리 -->
+      <div class="absolute inset-[2px] border border-[#a27845]/40 rounded-sm pointer-events-none"></div>
+      <!-- 장식 금속 코너 캡 -->
+      <div class="absolute -top-1 -left-1 w-7 h-7 border-t-4 border-l-4 border-[#b78637] rounded-tl-sm pointer-events-none drop-shadow">
+        <div class="absolute w-2 h-2 top-0.5 left-0.5 rounded-full bg-[#52300b] border border-[#f3ca77]"></div>
+      </div>
+      <div class="absolute -top-1 -right-1 w-7 h-7 border-t-4 border-r-4 border-[#b78637] rounded-tr-sm pointer-events-none drop-shadow">
+        <div class="absolute w-2 h-2 top-0.5 right-0.5 rounded-full bg-[#52300b] border border-[#f3ca77]"></div>
+      </div>
+      <div class="absolute -bottom-1 -left-1 w-7 h-7 border-b-4 border-l-4 border-[#b78637] rounded-bl-sm pointer-events-none drop-shadow">
+        <div class="absolute w-2 h-2 bottom-0.5 left-0.5 rounded-full bg-[#52300b] border border-[#f3ca77]"></div>
+      </div>
+      <div class="absolute -bottom-1 -right-1 w-7 h-7 border-b-4 border-r-4 border-[#b78637] rounded-br-sm pointer-events-none drop-shadow">
+        <div class="absolute w-2 h-2 bottom-0.5 right-0.5 rounded-full bg-[#52300b] border border-[#f3ca77]"></div>
+      </div>
+
+      <!-- 타이틀 & 로고 -->
+      <header class="flex flex-col items-center text-center select-none mb-2">
+        <h1 class="text-[64px] sm:text-[70px] leading-none tracking-tight font-black font-calligraphy gold-foil-title mt-1 transform scale-y-105">고스톱</h1>
+        <p class="text-[17px] sm:text-[18px] font-bold text-[#3d220f] tracking-tight -mt-1 drop-shadow-sm">가족끼리 함께 치는 고스톱</p>
+        <div class="mt-2.5 px-3.5 py-0.5 rounded-full bg-[#1e130c] border border-[#a17a45] shadow-inner flex items-center justify-center">
+          <span class="text-xs tracking-wider text-[#e7c992] font-semibold">버전 <span id="appVersion">v0.19</span></span>
+        </div>
+      </header>
+
+      <!-- 사용자 입력(플레이어 이름) -->
+      <div class="w-full mt-3 px-1">
+        <div class="relative w-full rounded bg-[#432312] p-[3px] shadow-md">
+          <div class="relative flex items-center bg-[#decaa5] rounded border border-[#2b160b] px-3 py-1.5 shadow-inner">
+            <span class="absolute left-1 w-1.5 h-1.5 rounded-full bg-[#b88c47] border border-[#4d2c0b]"></span>
+            <span class="absolute right-1 w-1.5 h-1.5 rounded-full bg-[#b88c47] border border-[#4d2c0b]"></span>
+            <input id="nameInput" class="w-full bg-transparent text-center text-[#2b170c] font-bold text-lg sm:text-xl border-none focus:ring-0 p-0 placeholder-[#8b6c4b]" type="text" placeholder="이름을 입력하세요" value="이름" maxlength="12" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <!-- 모드 및 AI 설정(드롭다운) -->
+      <div class="w-full grid grid-cols-2 gap-2 mt-3 px-1">
+        <div class="relative rounded bg-[#522f18] p-[2.5px] shadow wood-bezel">
+          <div class="relative flex items-center justify-between bg-[#663b20] hover:bg-[#724224] transition rounded border border-[#30190a] px-2.5 py-1.5 cursor-pointer">
+            <select id="modeSelect" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer bg-transparent z-10">
+              <option value="multi-3">3명 (가족과 함께)</option>
+              <option value="multi-2">2인 맞고</option>
+              <option value="multi-4">4인 광팔기</option>
+              <option value="solo-2">혼자 · AI와 2인</option>
+              <option value="solo-3">혼자 · AI와 3인</option>
+            </select>
+            <span class="text-[#f7e0b5] text-xs sm:text-[13px] font-bold truncate z-0">3명 (가족과 함께)</span>
+            <svg class="w-3.5 h-3.5 text-[#e5be7a] ml-1 flex-shrink-0 z-0" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+        <div class="relative rounded bg-[#522f18] p-[2.5px] shadow wood-bezel">
+          <div class="relative flex items-center justify-between bg-[#663b20] hover:bg-[#724224] transition rounded border border-[#30190a] px-3 py-1.5 cursor-pointer">
+            <select id="diffSelect" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer bg-transparent z-10">
+              <option value="easy">AI 쉬움</option>
+              <option value="normal" selected>AI 보통</option>
+              <option value="hard">AI 어려움</option>
+              <option value="expert">AI 초고수</option>
+            </select>
+            <span class="text-[#f7e0b5] text-xs sm:text-[13px] font-bold text-center w-full truncate z-0">AI 보통</span>
+            <svg class="w-3.5 h-3.5 text-[#e5be7a] ml-1 flex-shrink-0 z-0" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 액션 버튼 행 -->
+      <div class="w-full flex items-center justify-between gap-1.5 mt-4 pt-1 px-0.5">
+        <button id="createBtn" class="flex-1 relative btn-gold-ornate rounded-xl border-[2px] border-[#915d11] p-[1px] group transition-all" type="button">
+          <div class="relative py-2.5 sm:py-3 px-1 rounded-[10px] border border-[#ffeea1]/50 flex items-center justify-center">
+            <span class="text-[#3b1c00] font-black text-sm sm:text-base tracking-tighter whitespace-nowrap drop-shadow-[0_1px_0_rgba(255,255,255,0.6)]">방 만들기</span>
+          </div>
+        </button>
+        <button id="joinBtn" class="flex-1 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all" type="button">
+          <div class="relative py-2.5 sm:py-3 px-1 rounded-[10px] border border-[#48a178]/30 flex items-center justify-center">
+            <span class="text-[#d8f0e3] font-bold text-sm sm:text-base tracking-tighter whitespace-nowrap">방 참가</span>
+          </div>
+        </button>
+        <button id="rulesBtn" class="flex-1 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all" type="button">
+          <div class="relative py-2.5 sm:py-3 px-1 rounded-[10px] border border-[#48a178]/30 flex items-center justify-center">
+            <span class="text-[#d8f0e3] font-bold text-sm sm:text-base tracking-tighter whitespace-nowrap">게임 방법</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- 방 코드 입력(기본 숨김) -->
+      <div id="joinBox" class="hidden w-full mt-3 px-1">
+        <div class="relative w-full rounded bg-[#432312] p-[3px] shadow-md">
+          <div class="relative flex items-center bg-[#decaa5] rounded border border-[#2b160b] px-3 py-1.5 shadow-inner">
+            <input id="codeInput" class="w-full bg-transparent text-center text-[#2b170c] font-bold text-lg sm:text-xl border-none focus:ring-0 p-0 placeholder-[#8b6c4b] uppercase tracking-widest" type="text" placeholder="방 코드" maxlength="6" autocapitalize="characters" spellcheck="false">
+          </div>
+        </div>
+        <button id="joinGoBtn" class="flex-1 relative btn-gold-ornate rounded-xl border-[2px] border-[#915d11] p-[1px] group transition-all mt-2" type="button">
+          <div class="relative py-2.5 sm:py-3 px-1 rounded-[10px] border border-[#ffeea1]/50 flex items-center justify-center">
+            <span class="text-[#3b1c00] font-black text-sm sm:text-base tracking-tighter whitespace-nowrap drop-shadow-[0_1px_0_rgba(255,255,255,0.6)]">참가하기</span>
+          </div>
+        </button>
+      </div>
+
+      <p id="lobbyError" class="text-[#e2685f] text-sm mt-2 text-center"></p>
     </div>
-    <div id="joinBox" class="hidden">
-      <input id="codeInput" type="text" placeholder="방 코드" maxlength="6" autocapitalize="characters">
-      <button id="joinGoBtn" class="primary">참가하기</button>
-    </div>
-    <p id="lobbyError" class="error"></p>
+
+    <!-- 푸터 / 세이프 에리어 -->
+    <footer class="relative z-20 pb-2 text-center">
+      <p class="text-[11px] text-amber-200/50 drop-shadow">온 가족이 함께 즐기는 건전한 민속 화투 게임</p>
+    </footer>
   </section>
 
   <!-- 방 -->
