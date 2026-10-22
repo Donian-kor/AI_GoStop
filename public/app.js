@@ -152,6 +152,13 @@
     mySeat: function () { return mySeat; }
   });
 
+  var resultView = window.GostopResultView({
+    el: el,
+    escapeHtml: esc,
+    formatMoney: won,
+    mySeat: function () { return mySeat; }
+  });
+
   // ── 네트워크 (XMLHttpRequest — 구형 브라우저 대응) ───────────────────────
 
   function request(method, url, body, onOk, onErr) {
@@ -1087,7 +1094,7 @@
 
     // 정산 창은 판이 끝난 순간에만 띄운다 (닫은 뒤 몇 초마다 다시 뜨지 않게)
     if (state.phase === 'settle' && state.result) {
-      if (phaseBefore !== 'settle') showResult(state);
+      if (phaseBefore !== 'settle') resultView.render(state);
     } else {
       el.overlay.className = 'overlay hidden';
     }
@@ -1267,97 +1274,6 @@
   }
 
   // ── 정산 화면 ───────────────────────────────────────────────────────────
-
-  function showResult(state) {
-    var r = state.result;
-    el.overlay.className = 'overlay';
-    el.overlay.innerHTML = '';
-
-    // 정산 사운드 — 내 gain/lose + 박 발생 시 sfx_bak
-    try {
-      if (window.GostopFx && GostopFx.playSound) {
-        var myRow = null;
-        for (var i = 0; i < r.rows.length; i++) {
-          if (r.rows[i].seat === mySeat) { myRow = r.rows[i]; break; }
-        }
-        if (myRow) {
-          if (myRow.amount > 0) GostopFx.playSound('sfx_money_gain.ogg');
-          else if (myRow.amount < 0) GostopFx.playSound('sfx_money_lose.ogg');
-        }
-        var anyBak = false;
-        for (var j = 0; j < r.rows.length; j++) {
-          if (r.rows[j].pibak || r.rows[j].gwangbak || r.rows[j].meongbak || r.rows[j].gobak) { anyBak = true; break; }
-        }
-        if (anyBak) GostopFx.playSound('sfx_bak.ogg');
-      }
-    } catch (e) {}
-
-    var box = document.createElement('div');
-    box.className = 'overlay-inner';
-
-    var h = document.createElement('h2');
-    var wname = state.players[r.winnerSeat] ? state.players[r.winnerSeat].name : '승자';
-    h.innerHTML = r.nagari ? '나가리' : esc(wname) + ' 승리!';
-    box.appendChild(h);
-
-    var sub = document.createElement('p');
-    sub.className = 'overlay-sub';
-    sub.innerHTML = r.nagari ? '이번 판은 승패가 없습니다. 다음 판은 2배입니다.' : '정산 결과';
-    box.appendChild(sub);
-
-    var rows = document.createElement('div');
-    rows.className = 'rows';
-    for (var i = 0; i < r.rows.length; i++) {
-      var row = r.rows[i];
-      var line = document.createElement('div');
-      line.className = 'rowline' + (row.seat === r.winnerSeat ? ' win' : '');
-      var left = document.createElement('span');
-      left.innerHTML = esc(row.name);
-      var right = document.createElement('b');
-      right.innerHTML = (row.amount > 0 ? '+' : '') + won(row.amount);
-      line.appendChild(left);
-      line.appendChild(right);
-      if (row.reasons && row.reasons.length) {
-        var why = document.createElement('small');
-        why.innerHTML = row.reasons.join(' · ');
-        line.appendChild(why);
-      }
-      rows.appendChild(line);
-    }
-    box.appendChild(rows);
-
-    var steps = null;
-    for (var j = 0; j < r.rows.length; j++) {
-      if (r.rows[j].steps && r.rows[j].steps.length) { steps = r.rows[j]; break; }
-    }
-    if (steps) {
-      var wrap = document.createElement('div');
-      wrap.className = 'steps';
-      var title2 = document.createElement('h3');
-      title2.innerHTML = '점수 계산';
-      wrap.appendChild(title2);
-      for (var s = 0; s < steps.steps.length; s++) {
-        var l = document.createElement('div');
-        l.className = 'step';
-        l.innerHTML = '<span>' + steps.steps[s].label + '</span><b>' + steps.steps[s].formula + ' = ' + steps.steps[s].value + '</b>';
-        wrap.appendChild(l);
-      }
-      var money = document.createElement('div');
-      money.className = 'step total';
-      var total2 = steps.steps[steps.steps.length - 1];
-      money.innerHTML = '<span>최종 점수</span><b>' + total2.value + '점</b>';
-      wrap.appendChild(money);
-      box.appendChild(wrap);
-    }
-
-    var btn = document.createElement('button');
-    btn.className = 'primary';
-    btn.innerHTML = '닫기';
-    btn.addEventListener('click', function () { el.overlay.className = 'overlay hidden'; });
-    box.appendChild(btn);
-
-    el.overlay.appendChild(box);
-  }
 
   // ── 타이머 ──────────────────────────────────────────────────────────────
 

@@ -201,6 +201,7 @@ gostop-game/
 │  ├─ index.html
 │  ├─ room-browser.js   로비 방 목록·참가 처리
 │  ├─ score-panel.js    족보·획득 카드 점수판 렌더링
+│  ├─ result-view.js    정산 결과 화면
 │  ├─ style.css
 │  ├─ app.js             상태 수신 → 렌더링 (폴링·액션 포함)
 │  └─ fx.js              이징·이펙트·카드 연출·사운드
