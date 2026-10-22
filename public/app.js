@@ -159,6 +159,14 @@
     mySeat: function () { return mySeat; }
   });
 
+  var phaseViews = window.GostopPhaseViews({
+    el: el,
+    mySeat: function () { return mySeat; },
+    escapeHtml: esc,
+    makeCardEl: makeCardEl,
+    act: act
+  });
+
   // ── 네트워크 (XMLHttpRequest — 구형 브라우저 대응) ───────────────────────
 
   function request(method, url, body, onOk, onErr) {
@@ -993,7 +1001,7 @@
       el.timer.innerHTML = '';
       el.startBtn.className = 'primary hidden';
       el.overlay.className = 'overlay hidden';
-      renderNegotiation(state);
+      phaseViews.renderNegotiation(state);
       return;
     }
 
@@ -1007,7 +1015,7 @@
       el.overlay.className = 'overlay hidden';
       // 새 판이 시작됐으므로 지난 판의 먹은 패·점수판을 비운다
       scorePanel.render(state);
-      renderSeon(state);
+      phaseViews.renderSeon(state);
       // 덱을 섞는 연출 — 판이 넘어가 '선 결정' 으로 넘어갈 때 한 번
       // (섞는 카드 수는 서버가 알려주는 실제 덱 장수를 따른다)
       if (phaseBefore !== 'seon') Fx.playShuffle(state.deckCount);
@@ -1067,7 +1075,7 @@
     }
     el.hand.className = 'hand' + (!myTurn && state.phase === 'play' ? ' waiting' : '');
 
-    renderPrompt(state);
+    phaseViews.renderPrompt(state);
     scorePanel.render(state);
     // 족보 줄까지 그린 뒤에 바닥패 크기를 계산해야 실제 남은 높이가 맞는다
     fitTableCards();
@@ -1119,158 +1127,6 @@
 
   function seatEl(seat) {
     return el.players.querySelector('.player[data-seat="' + seat + '"]');
-  }
-
-  // ── 4인 광팔기 협상 ─────────────────────────────────────────────────────
-
-  function renderNegotiation(state) {
-    var n = state.negotiation || {};
-    var waiting = n.waitingSeat;
-    el.promptBox.className = 'prompt';
-    el.promptBox.innerHTML = '';
-
-    var dec = n.decisions || {};
-    var info = [];
-    for (var key in dec) {
-      if (!Object.prototype.hasOwnProperty.call(dec, key)) continue;
-      var p = state.players[key];
-      var d = dec[key];
-      info.push((p ? esc(p.name) : '') + ': ' + (d === 'giveup' ? '포기' : d === 'sell' ? '광팔기' : '참가'));
-    }
-    if (info.length) {
-      var span = document.createElement('span');
-      span.innerHTML = info.join(' · ');
-      el.promptBox.appendChild(span);
-    }
-
-    if (waiting !== mySeat) {
-      var w = document.createElement('span');
-      var wp = state.players[waiting];
-      w.innerHTML = waiting < 0 ? '협상이 끝났습니다.' : (wp ? esc(wp.name) : '') + ' 님이 결정하는 중…';
-      el.promptBox.appendChild(w);
-      return;
-    }
-
-    var title = document.createElement('strong');
-    title.innerHTML = '참가하시겠습니까?';
-    el.promptBox.appendChild(title);
-
-    var join = document.createElement('button');
-    join.className = 'primary';
-    join.innerHTML = '참가';
-    join.addEventListener('click', function () { act('negotiate', { decision: 'join' }); });
-    el.promptBox.appendChild(join);
-
-    if (mySeat === 3) {
-      var sell = document.createElement('button');
-      sell.innerHTML = '광을 판다 (' + (n.gwangCount || 0) + '광)';
-      sell.addEventListener('click', function () { act('negotiate', { decision: 'sell' }); });
-      el.promptBox.appendChild(sell);
-      if (n.mySaleCards && n.mySaleCards.length) {
-        var lab = document.createElement('span');
-        lab.innerHTML = '팔 패:';
-        el.promptBox.appendChild(lab);
-        for (var s = 0; s < n.mySaleCards.length; s++) {
-          el.promptBox.appendChild(makeCardEl(n.mySaleCards[s], 'small'));
-        }
-      }
-    } else {
-      var giveup = document.createElement('button');
-      giveup.innerHTML = '포기';
-      giveup.addEventListener('click', function () { act('negotiate', { decision: 'giveup' }); });
-      el.promptBox.appendChild(giveup);
-    }
-  }
-
-  // ── 선 결정 ─────────────────────────────────────────────────────────────
-
-  function renderSeon(state) {
-    var cands = state.seonCandidates[mySeat] || [];
-    if (!cands.length) {
-      el.tableHint.innerHTML = '선(先)을 정하는 중입니다.';
-      el.promptBox.className = 'prompt';
-      el.promptBox.innerHTML = '<span>이 방은 이미 선을 정하는 중입니다. 다음 판에 참여해 주세요.</span>';
-      return;
-    }
-    if (state.seonPicked[mySeat] !== -1) {
-      el.tableHint.innerHTML = '카드를 골랐습니다. 다른 가족을 기다리는 중…';
-      el.promptBox.className = 'prompt';
-      el.promptBox.innerHTML = '<span>다른 가족들이 카드를 고르는 중입니다…</span>';
-      return;
-    }
-    el.tableHint.innerHTML = '가장 크게(낮) 또는 가장 작게(밤) 나는 카드를 고르세요.';
-    el.promptBox.className = 'prompt';
-    el.promptBox.innerHTML = '';
-    var label = document.createElement('strong');
-    label.innerHTML = '선 결정 카드:';
-    el.promptBox.appendChild(label);
-    for (var i = 0; i < cands.length; i++) {
-      (function (index) {
-        var c = makeCardEl(cands[index], 'pick small');
-        c.setAttribute('data-card-id', cands[index].id);
-        c.addEventListener('click', function () { act('seonPick', { cardIndex: index }); });
-        el.promptBox.appendChild(c);
-      })(i);
-    }
-  }
-
-  // ── 프롬프트 ────────────────────────────────────────────────────────────
-
-  function renderPrompt(state) {
-    var p = state.prompt;
-    if (!p) { el.promptBox.className = 'prompt hidden'; return; }
-    el.promptBox.className = 'prompt';
-    el.promptBox.innerHTML = '';
-
-    if (p.seat !== mySeat) {
-      var who = state.players[p.seat] ? state.players[p.seat].name : '상대';
-      el.promptBox.innerHTML = '<span>' + esc(who) + ' 님이 선택하는 중입니다…</span>';
-      return;
-    }
-
-    if (p.type === 'goStop') {
-      el.promptBox.innerHTML = '<strong>고 / 스톱</strong><em class="prompt-sub">점수를 더 노릴까요, 지금 이길까요?</em>';
-      var go = document.createElement('button');
-      go.className = 'btn-go';
-      go.innerHTML = '🔥 고! (계속)';
-      go.addEventListener('click', function () { act('go'); });
-      var stop = document.createElement('button');
-      stop.className = 'btn-stop';
-      stop.innerHTML = '✋ 스톱! (승리)';
-      stop.addEventListener('click', function () { act('stop'); });
-      el.promptBox.appendChild(go);
-      el.promptBox.appendChild(stop);
-      return;
-    }
-
-    if (p.type === 'floorChoice' || p.type === 'flipChoice') {
-      el.promptBox.innerHTML = '<strong>가져갈 카드를 고르세요</strong>';
-      var opts = p.options || [];
-      for (var i = 0; i < opts.length; i++) {
-        (function (index) {
-          var c = makeCardEl(opts[index], 'pick small');
-          c.setAttribute('data-card-id', opts[index].id);
-          c.addEventListener('click', function () {
-            if (p.type === 'floorChoice') act('floorChoice', { choice: index });
-            else act('flipChoice', { ordinal: index });
-          });
-          el.promptBox.appendChild(c);
-        })(i);
-      }
-      return;
-    }
-
-    if (p.type === 'bonusDraw') {
-      el.promptBox.innerHTML = '<strong>보너스패를 냈습니다 — 보충할 카드를 고르세요</strong>';
-      var bopts = p.options || [];
-      for (var j = 0; j < bopts.length; j++) {
-        (function (opt) {
-          var c = makeCardEl(opt, 'pick small');
-          c.addEventListener('click', function () { act('bonusDraw', { stockIndex: opt.stockIndex }); });
-          el.promptBox.appendChild(c);
-        })(bopts[j]);
-      }
-    }
   }
 
   // ── 정산 화면 ───────────────────────────────────────────────────────────
