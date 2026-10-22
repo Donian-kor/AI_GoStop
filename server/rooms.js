@@ -12,7 +12,7 @@
 const { TurnEngine, EngineError, PHASE, EVENT } = require('../engine/play');
 const { KIND, STANDARD, displayName } = require('../engine/cards');
 const { evaluate } = require('../engine/score');
-const { shuffledDeck } = require('../engine/deck');
+const { shuffledDeck, shuffle } = require('../engine/deck');
 const { pickSeon, deal } = require('../engine/deal');
 const { normalizeSettings, toScoreOptions, DEFAULT_SETTINGS } = require('../engine/settings');
 const { settleGame, applyToBalances } = require('../engine/settlement');
@@ -205,6 +205,7 @@ class Room {
     this.aiTimer = null;
     this.engine = null;
     this.deck = null; // 선 결정까지 보관해 두는 덱
+    this.seonPool = null; // 선 결정 후보를 뽑을 복사본 (딜 덱은 그대로 유지)
     this.seonCandidates = []; // 좌석별 후보 카드 3장
     this.seonPicked = []; // 좌석별 선택한 후보 인덱스(-1 = 미선택)
     this.prompt = null; // 현재 기다리는 선택
@@ -281,8 +282,8 @@ class Room {
     if (!this.hostId) this.hostId = id;
 
     // 선 결정 중에 들어온 사람에게도 후보 카드를 준다 (아니면 선을 고를 수 없어 stuck 된다)
-    if (this.phase === ROOM_PHASE.SEON && this.deck && this.deck.length >= 3) {
-      this.seonCandidates[seat] = [this.deck.pop(), this.deck.pop(), this.deck.pop()];
+    if (this.phase === ROOM_PHASE.SEON && this.seonPool && this.seonPool.length >= 3) {
+      this.seonCandidates[seat] = [this.seonPool.pop(), this.seonPool.pop(), this.seonPool.pop()];
       this.seonPicked[seat] = -1;
     }
 
@@ -416,6 +417,7 @@ class Room {
     }
 
     this.deck = shuffledDeck(this.settings.bonusPack);
+    this.seonPool = null;
 
     // 4인 광팔기 — 먼저 포기/광팔기 협상을 한다
     if (this.settings.playerCount === 4) {
@@ -448,11 +450,15 @@ class Room {
       return;
     }
 
-    // 선 결정용 후보 3장씩 (덱에서 뽑으면 실제 딜 덱에서 빠진다)
+    // 선 결정용 후보 3장씩.
+    // 후보를 딜 덱에서 직접 빼면 3인 기준 9장이 게임에서 사라져 나가리가 급증한다.
+    // 후보는 딜 덱의 복사본에서 뽑고, 딜 덱은 다시 섞어 후보의 위치 정보를 지운다.
     // AI 자리도 후보를 갖는다 — 화면에는 비추지만 동점 판정에는 필요하다.
+    this.seonPool = this.deck.slice();
     this.seonCandidates = this.seats.map((p) =>
-      p ? [this.deck.pop(), this.deck.pop(), this.deck.pop()] : null
+      p ? [this.seonPool.pop(), this.seonPool.pop(), this.seonPool.pop()] : null
     );
+    shuffle(this.deck, Math.random);
     this.seonPicked = this.seats.map(() => -1);
     this.seonRetries = 0;
 
@@ -684,6 +690,7 @@ class Room {
     });
     this.engine.startGame(this.deck, seon);
     this.deck = null;
+    this.seonPool = null;
 
     this.phase = ROOM_PHASE.PLAY;
     this.prompt = null;
@@ -759,6 +766,12 @@ class Room {
 
       case 'settings':
         this.requireHost(player);
+        // 판이 진행 중일 때 바꾸면 정산이 어긋나므로 대기·정산 단계에서만 허용한다
+        // (대기실은 phase 가 아직 undefined 이므로 lobby 로 간주)
+        const settingsPhase = this.phase || ROOM_PHASE.LOBBY;
+        if (settingsPhase !== ROOM_PHASE.LOBBY && settingsPhase !== ROOM_PHASE.SETTLE) {
+          throw new EngineError('판 시작 전에만 설정을 바꿀 수 있습니다.');
+        }
         this.applySettings({ ...this.settings, ...payload });
         return { ok: true, settings: this.settings };
 
@@ -1241,6 +1254,8 @@ class Room {
                 })()
               : [],
             captured: inGame ? countKinds(this.engine.state.players[e].captured) : countKinds(p.hand || []),
+            // 상대가 먹은 패를 그림으로 보여주기 위한 공개 정보 (먹은 패는 원래 공개된다)
+            capturedCards: inGame ? describeCards(this.engine, this.engine.state.players[e].captured) : [],
             sittingOut: Boolean(this.lastSitOutSeat === seat && this.phase === ROOM_PHASE.PLAY),
           };
         })

@@ -62,11 +62,8 @@
   var lastSoundAt = 0;
   var bannerEl = null;
   var bannerTimer = null;
-  var bgm = null;
-  var bgmOn = false;
 
   try { muted = localStorage.getItem('gs_muted') === '1'; } catch (e) { muted = false; }
-  try { bgmOn = localStorage.getItem('gs_bgm') === '1'; } catch (e) { bgmOn = false; }
 
   // iOS/Android 자동재생 정책 대비: 첫 사용자 입력에서 오디오를 한 번 깨운다.
   var audioUnlocked = false;
@@ -109,37 +106,6 @@
   }
 
   function isMuted() { return muted; }
-
-  // ── 배경음악 ────────────────────────────────────────────────────────────
-
-  function bgmElement() {
-    if (!bgm) {
-      try {
-        bgm = new Audio('assets/audio/gugak-bgm-133.mp3');
-        bgm.loop = true;
-        bgm.volume = 0.22;
-        bgm.preload = 'none';
-      } catch (e) { bgm = false; }
-    }
-    return bgm;
-  }
-
-  function toggleBgm() {
-    bgmOn = !bgmOn;
-    try { localStorage.setItem('gs_bgm', bgmOn ? '1' : '0'); } catch (e) {}
-    try {
-      var el = bgmElement();
-      if (el && bgmOn) {
-        var p = el.play();
-        if (p && p.catch) { try { p.catch(function () {}); } catch (e) {} }
-      } else if (el) {
-        el.pause();
-      }
-    } catch (e) {}
-    return bgmOn;
-  }
-
-  function isBgmOn() { return bgmOn; }
 
   // ── 이펙트 배너 ─────────────────────────────────────────────────────────
 
@@ -355,8 +321,6 @@
     playSound: playSound,
     setMuted: setMuted,
     isMuted: isMuted,
-    handleFx: handleFx,
-    toggleBgm: toggleBgm,
-    isBgmOn: isBgmOn
+    handleFx: handleFx
   };
 })();

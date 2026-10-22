@@ -124,11 +124,11 @@ test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', asy
   assert.strictEqual(st.state.phase, 'play', '대국 단계여야 한다');
   assert.strictEqual(st.state.myHand.length, 7, '내 손패는 7장');
   assert.strictEqual(st.state.table.length, 6, '바닥은 6장');
-  // 뒷패: 51장 − 선결정 후보 9장 − 딜 27장 = 15장
-  // (선결정 동점이면 재추첨한 만큼 더 줄어들고, 바닥 보너스패 보충으로 1장 줄어든다)
+  // 뒷패: 50장 − 딜 27장 = 23장.
+  // 바닥에 보너스패가 있으면 선이 가져가고 뒷패에서 1장 보충하므로 21~23장이 된다.
   assert.ok(
-    st.state.deckCount >= 5 && st.state.deckCount <= 15,
-    `뒷패는 5~15장이어야 한다 (실제 ${st.state.deckCount})`
+    st.state.deckCount >= 21 && st.state.deckCount <= 23,
+    `뒷패는 21~23장이어야 한다 (실제 ${st.state.deckCount})`
   );
 
   // ── 4) 손패 은닉 확인 ──

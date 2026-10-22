@@ -49,6 +49,38 @@ test('딜 직후 바닥 총통이면 곧바로 정산으로 넘어간다', () =>
   );
 });
 
+test('선 결정 후보 카드는 딜 덱에서 빠지지 않는다', () => {
+  const room = new Room('TEST03', { mode: 'solo', playerCount: 3, aiDifficulty: 'normal' });
+  room.addPlayer('p0', '나');
+  room.startRound();
+
+  const candidates = room.seonCandidates.reduce(
+    (sum, cards) => sum + (cards ? cards.length : 0),
+    0
+  );
+  assert.strictEqual(candidates, 9, '3인 선 후보는 9장');
+  assert.strictEqual(room.deck.length, 50, '선 후보를 뽑아도 딜 덱은 50장 그대로여야 한다');
+  assert.strictEqual(room.seonPool.length, 41, '후보 9장은 별도 복사본에서만 빠진다');
+
+  // 선을 확정해 실제 딜까지 진행한다.
+  for (let i = 0; i < 12 && room.phase === 'seon'; i++) {
+    if (room.seonPicked[0] === -1) room.pickSeonCard(0, 0);
+  }
+  assert.ok(room.engine, '대국 엔진이 만들어져야 한다');
+  if (room.aiTimer) {
+    clearTimeout(room.aiTimer);
+    room.aiTimer = null;
+  }
+
+  const st = room.engine.state;
+  const total =
+    st.stock.length +
+    st.floor.length +
+    st.players.reduce((sum, p) => sum + p.hand.length + p.captured.length, 0);
+  assert.strictEqual(total, 50, '딜 후에도 50장이 모두 게임에 남아 있어야 한다');
+  assert.strictEqual(room.seonPool, null, '딜이 시작되면 선 후보 복사본은 버린다');
+});
+
 test('총통으로 끝난 판은 스냅샷에서도 settle 로 보인다', () => {
   const room = startWithDeck(chongtongDeck(8));
   const snap = room.snapshot(0);

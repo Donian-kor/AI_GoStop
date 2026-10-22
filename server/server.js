@@ -219,6 +219,9 @@ async function handleApi(req, res, url) {
       mode: body.mode === 'solo' ? 'solo' : 'multi',
       playerCount: [2, 3, 4].includes(Number(body.playerCount)) ? Number(body.playerCount) : 3,
       aiDifficulty: body.aiDifficulty,
+      // 로비 ⚙ 에서 고른 새 방 기본값 (normalizeSettings 가 범위를 검증한다)
+      moneyPerPoint: body.moneyPerPoint,
+      timeLimit: body.timeLimit,
     };
     const room = createRoom(options);
     const id = crypto.randomUUID();
