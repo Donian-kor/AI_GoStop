@@ -167,3 +167,26 @@ test('먹은 패가 없으면 안내를 보이고 글자 보기에서는 종류 
   assert.strictEqual(summary.children[0].innerHTML, '<span>광</span><b>1</b>');
   assert.strictEqual(summary.children[3].innerHTML, '<span>피</span><b>5</b>');
 });
+
+test('내 먹은 패 요약도 상대의 글자 보기와 같은 형식으로 렌더링한다', () => {
+  const { view } = createView('image');
+  const summary = view.capturedSummary({
+    bright: 1,
+    animal: 2,
+    ribbon: 3,
+    junk: 4,
+    doubleJunk: 1,
+    bonus: 1,
+  });
+
+  assert.strictEqual(summary.className, 'captured-sum');
+  assert.deepStrictEqual(
+    summary.children.map((item) => item.innerHTML),
+    [
+      '<span>광</span><b>1</b>',
+      '<span>열</span><b>2</b>',
+      '<span>띠</span><b>3</b>',
+      '<span>피</span><b>6</b>',
+    ],
+  );
+});

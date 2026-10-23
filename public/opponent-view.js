@@ -132,6 +132,6 @@
       }
     }
 
-    return { render: render };
+    return { render: render, capturedSummary: capturedSummary };
   };
 })(window);

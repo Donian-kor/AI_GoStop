@@ -703,7 +703,7 @@
     if (el.meScore) el.meScore.innerHTML = '내 점수 <b>' + (me ? me.score : 0) + '</b>점';
     if (el.meCaptured) {
       el.meCaptured.innerHTML = '';
-      el.meCaptured.appendChild(capturedSummary(me ? me.captured : null));
+      el.meCaptured.appendChild(opponentView.capturedSummary(me ? me.captured : null));
     }
 
     // 설정(⚙) — 방장만 보이고, 판 시작 전(lobby/settle)에만 활성화
