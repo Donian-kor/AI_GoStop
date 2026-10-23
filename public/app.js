@@ -584,12 +584,10 @@
       d.className += ' bonus-card';
       d.setAttribute('data-month-label', '보너스');
       d.setAttribute('data-kind', '');
-    } else if (card.month >= 1 && card.month <= 12) {
+    } else {
       d.className += ' m' + (card.month < 10 ? '0' + card.month : String(card.month));
       d.setAttribute('data-month-label', card.month + '월');
       d.setAttribute('data-kind', KIND_LABEL[card.kind] || '');
-    } else {
-      d.setAttribute('data-kind', '');
     }
     return d;
   }
