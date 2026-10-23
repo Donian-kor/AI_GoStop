@@ -459,6 +459,7 @@ select option {
   background: var(--mc, #6b7f70);
   color: #fff; font-size: var(--band-fs, 9px); font-weight: 800;
   letter-spacing: .5px; text-align: center;
+  z-index: 1;
 }
 .card::after {
   content: attr(data-kind);
