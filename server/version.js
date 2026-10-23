@@ -12,7 +12,7 @@
 // BUILD_VERSION : 빌드/화면/자산을 구분하는 번호.
 //                 파일을 바꾼 뒤에는 이 번호도 올려 폰이 새 화면을 받게 한다.
 
-const GAME_VERSION = 'v0.35';
-const BUILD_VERSION = '2026-10-23-22';
+const GAME_VERSION = 'beta v0.35';
+const BUILD_VERSION = '2026-10-23-23';
 
 module.exports = { GAME_VERSION, BUILD_VERSION };
