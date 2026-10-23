@@ -868,6 +868,50 @@ select option {
 }
 .set-note { margin: 8px 0 4px; font-size: 12px; line-height: 1.45; color: #c8ab7a; word-break: keep-all; }
 
+/* ── 가족 순위표 ─────────────────────────────────────── */
+.leaderboard-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  margin: 6px 0;
+  background: #2a1709;
+  color: #ffe9b8;
+  border: 2px solid #7a5323;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, .08);
+}
+.leaderboard-rank {
+  flex: 0 0 auto;
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.leaderboard-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* 닉네임 최대 12자 기준 고정 너비로 줄맞춤 */
+  width: 140px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffe9b8;
+}
+.leaderboard-money {
+  flex: 0 0 auto;
+  font-size: 17px;
+  font-weight: 800;
+  color: #8fe0a8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.leaderboard-money b { color: #ffd76a; }
+
 /* ── 방 참가 목록 ─────────────────────────────────────── */
 .room-list-inner { max-width: 520px; }
 .room-list-sub { font-size: 15px; line-height: 1.5; }

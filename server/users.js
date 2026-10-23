@@ -64,7 +64,7 @@ function register(name, password) {
     name: name,
     salt: salt,
     hash: hash,
-    money: 30000,
+    money: 300000,
     createdAt: Date.now(),
   };
   const token = crypto.randomUUID();

@@ -222,9 +222,14 @@
       el.leaderboardList.innerHTML = '';
       for (var i = 0; i < list.length; i++) {
         var u = list[i];
+        var rank = i + 1;
+        var rankText = rank + '등';
         var row = document.createElement('div');
-        row.className = 'room-list-item';
-        row.innerHTML = '<span class="room-list-name">' + (i + 1) + '. ' + esc(u.name) + '</span><span class="room-list-meta">' + won(u.money) + '</span>';
+        row.className = 'leaderboard-item';
+        row.innerHTML =
+          '<span class="leaderboard-rank">' + esc(rankText) + '</span>' +
+          '<span class="leaderboard-name">' + esc(u.name) + '</span>' +
+          '<span class="leaderboard-money"><b>' + won(u.money) + '</b></span>';
         el.leaderboardList.appendChild(row);
       }
     });
