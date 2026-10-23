@@ -13,6 +13,6 @@
 //                 파일을 바꾼 뒤에는 이 번호도 올려 폰이 새 화면을 받게 한다.
 
 const GAME_VERSION = 'v0.35';
-const BUILD_VERSION = '2026-10-23-21';
+const BUILD_VERSION = '2026-10-23-22';
 
 module.exports = { GAME_VERSION, BUILD_VERSION };
