@@ -19,7 +19,7 @@ const path = require('path');
 
 const { byAssetId } = require('../engine/cards');
 const { TurnEngine, PHASE, EVENT } = require('../engine/play');
-const { Room } = require('../server/rooms');
+const { Room, ROOM_PHASE } = require('../server/rooms');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 const fx = fs.readFileSync(path.join(PUBLIC, 'fx.js'), 'utf8');
@@ -110,30 +110,13 @@ test('방의 이펙트 로그에도 카드 id 가 담긴다', () => {
   room.addPlayer('p0', '엄마');
   room.addPlayer('p1', '아빠');
   room.addPlayer('p2', '나');
-  room.startRound();
-  // 선 결정 — 동점이면 다시 뽑으므로 확정될 때까지 반복
-  for (let round = 0; round < 12 && room.phase === 'seon'; round++) {
-    for (let s = 0; s < 3 && room.phase === 'seon'; s++) {
-      if (room.seonPicked[s] === -1) room.pickSeonCard(s, 0);
-    }
-  }
-  assert.strictEqual(room.phase, 'play', '대국이 시작되어야 한다');
-
-  for (let i = 0; i < 20; i++) {
-    if (room.fx.some((e) => e.cards && e.cards.length)) break;
-    const player = room.playerAt(room.physicalSeatOf(room.engine.state.current));
-    if (!player) break;
-    try {
-      room.act(player, 'playCard', { handIndex: 0 });
-    } catch (e) {
-      const prompt = room.prompt;
-      if (prompt && prompt.type === 'floorChoice' && prompt.seat === player.seat) {
-        room.act(player, 'floorChoice', { choice: 0 });
-        continue;
-      }
-      break;
-    }
-  }
+  room.engine = makeEngine({
+    floor: ['may_tanzaku'],
+    hands: [['june_kasu_1'], [], []],
+    stock: ['july_kasu_1'],
+  });
+  room.phase = ROOM_PHASE.PLAY;
+  room.act(room.seats[0], 'playCard', { handIndex: 0 });
 
   const withCards = room.fx.filter((e) => e.cards && e.cards.length);
   assert.ok(withCards.length > 0, '이펙트 로그에 카드 id 가 담겨야 한다');

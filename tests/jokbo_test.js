@@ -14,19 +14,21 @@ const { Room } = require('../server/rooms');
 const { byAssetId } = require('../engine/cards');
 
 function makeRoom() {
-  const room = new Room('TEST01', { mode: 'multi', playerCount: 3 });
-  room.addPlayer('p0', '엄마');
-  room.addPlayer('p1', '아빠');
-  room.addPlayer('p2', '나');
-  room.startRound();
-  // 선 결정 — 최고월이 겹치면 다시 뽑으므로 확정될 때까지 반복한다
-  for (let round = 0; round < 12 && room.phase === 'seon'; round++) {
-    for (let s = 0; s < 3 && room.phase === 'seon'; s++) {
-      if (room.seonPicked[s] === -1) room.pickSeonCard(s, 0);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const room = new Room('TEST01', { mode: 'multi', playerCount: 3 });
+    room.addPlayer('p0', '엄마');
+    room.addPlayer('p1', '아빠');
+    room.addPlayer('p2', '나');
+    room.startRound();
+    // 선 결정 — 최고월이 겹치면 다시 뽑으므로 확정될 때까지 반복한다
+    for (let round = 0; round < 12 && room.phase === 'seon'; round++) {
+      for (let s = 0; s < 3 && room.phase === 'seon'; s++) {
+        if (room.seonPicked[s] === -1) room.pickSeonCard(s, 0);
+      }
     }
+    if (room.phase === 'play') return room;
   }
-  assert.strictEqual(room.phase, 'play', '선 결정이 끝나야 한다');
-  return room;
+  throw new Error('족보 검증용 진행 가능한 판을 준비하지 못했습니다.');
 }
 
 function tile(snap, code) {

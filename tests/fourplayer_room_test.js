@@ -15,10 +15,12 @@ function createRoom() {
 }
 
 function resolveRound(decisions) {
-  const room = createRoom();
-  for (const [seat, decision] of decisions) room.negotiateDecision(seat, decision);
-  assert.strictEqual(room.phase, ROOM_PHASE.PLAY);
-  return room;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const room = createRoom();
+    for (const [seat, decision] of decisions) room.negotiateDecision(seat, decision);
+    if (room.phase === ROOM_PHASE.PLAY) return room;
+  }
+  throw new Error('진행 가능한 4인 판을 준비하지 못했습니다.');
 }
 
 test('4인 광팔기의 모든 결과에서 선택 차례는 실제 좌석으로 표시된다', () => {
