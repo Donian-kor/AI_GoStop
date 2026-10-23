@@ -175,7 +175,6 @@
         root.location.reload();
         return;
       }
-      root.setTimeout(watchdog, 2000);
     }
 
     function act(type, payload) {

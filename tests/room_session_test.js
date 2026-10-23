@@ -215,6 +215,20 @@ test('createRoom enters the room, persists the session, and starts the initial p
   assert.strictEqual(h.intervals[0].delay, 2000);
 });
 
+test('watchdog checks on one interval without scheduling additional timers', () => {
+  const h = createSession();
+  h.session.enterRoom('ABC123', 0);
+  h.requests[0].complete(200, JSON.stringify(stateResponse()));
+
+  const scheduledTimeouts = h.timeouts.length;
+  h.intervals[0].callback();
+  h.intervals[0].callback();
+
+  assert.strictEqual(h.intervals.length, 1);
+  assert.strictEqual(h.timeouts.length, scheduledTimeouts);
+  assert.strictEqual(h.getReloadCount(), 0);
+});
+
 test('the first poll updates state and cursor without replaying old effects', () => {
   const h = createSession();
   h.session.enterRoom('ABC123', 1);
