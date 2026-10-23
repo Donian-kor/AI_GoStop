@@ -108,7 +108,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 | `docs/game-rules.md` | 규칙 정본 | 엔진 구현 기준 |
 | `docs/game-feel-audit.md` | 필감 개선 과제 목록 | 공용 이징·이펙트 배너·히트스톱을 처음부터 적용 |
 | `assets/audio/*.ogg` (30종, CC0) | 효과음 | 그대로 사용 (출처 표기 불필요) |
-| `assets/hwatu/svg/*.svg` (105개) | 화투 이미지 | 그대로 사용 (CC BY-SA 4.0 → 출처 표기 필수) |
+| `assets/hwatu/svg/*.svg` (48개+) | 화투 이미지 | **자체 제작** (출처 표기 불필요) |
 
 ### 2-1. `.rec` 인코딩 (원본과 엔진 어댑터 재검증 필요)
 
@@ -604,7 +604,7 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 
 `tools/fetch-assets.js` — GitHub raw에서 1회 다운로드
 
-- `assets/hwatu/svg/*.svg` **105개** — 카드 48장 × 2 체계(`m01-01` 규약 + 에셋명) + 보너스 4 + 뒷장 5
+| `assets/hwatu/svg/*.svg` (48개+) | 화투 이미지 | **자체 제작** (출처 표기 불필요) |
 - `assets/audio/*.ogg` 27개 (Kenney CC0) + `assets/audio/*.wav` **37개** (itsent-lab 판독용 고스톱 효과음, Kenney CC0)
 - `tests/records/*.rec` 6개
 
@@ -612,12 +612,12 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 
 | 자산 | 라이선스 | 처리 |
 |---|---|---|
-| 화투 기본 48장 SVG | **CC BY-SA 4.0** (Marcus Richert, Louie Mantia / Spenĉjo) | `ATTRIBUTION.md`에 저작자·원본 링크 표기 + 동일조건 공유 |
+| 화투 기본 48장 SVG | **자체 제작** (donian) | 출처 표기 불필요 |
 | 화투 보너스 4장 / 뒷장 5장 | 자체 제작 (자유 사용) | 표기 불필요 |
 | 효과음 68종 (OGG 27 + WAV 36 + MP3 5) | **CC0** (Kenney) | 출처 표기 불필요 (예의상 표기) |
 
 `ATTRIBUTION.md` 내용:
-- 화투 이미지: Wikimedia Commons Category:Hwatu, 저작자별 출처 (attribution.tsv 내용 이식)
+- 화투 이미지: 자체 제작 (직접 그린 일러스트)
 - 사운드: Kenney — Casino Audio / Interface Sounds / Impact Sounds
 - 라이선스 전문 링크
 

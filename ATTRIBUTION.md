@@ -7,16 +7,16 @@
 
 ## 1. 화투 카드 SVG (48장 + 뒷장)
 
-- **출처**: Wikimedia Commons — [Category:SVG Hwatu](https://commons.wikimedia.org/wiki/Category:SVG_Hwatu)
-- **저작자**: Spenĉjo (개별 SVG) / 한국 화투 마스터 디자인 Marcus Richert
-- **라이선스**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
-- **사용 위치**: `assets/hwatu/svg/`
+- **출처**: **자체 제작** (직접 그린 일러스트)
+- **저작자**: 프로젝트 소유자 (donian)
+- **라이선스**: 자체 제작물 — 출처 표기 불필요, 자유 사용
+- **사용 위치**: `assets/hwatu/svg/` (48장 + 뒷장·보너스)
 - **파일 규격**:
-  - `m01-01.svg` … `m12-04.svg` — 정규 카드 48장 (itsent-lab/hwatu 의 `hwatuAssetMap.json` 매핑 기준, Wikimedia 원본 SHA-1 검증됨)
-  - `january_hikari.svg` 등 — civilian7/gostop 의 파일명 체계 48장 + 뒷장 5장
-  - `bonus_*.svg` — 보너스패 4장 (itsent-lab 자체 제작, 자유 사용)
-- **필수**: CC BY-SA 4.0 이므로 **저작자 표기**와 **동일 조건 공유**가 필요합니다.
-  이 파일(`ATTRIBUTION.md`)이 그 표기 역할을 합니다.
+  - `january_hikari.svg` … `december_tanzaku.svg` — 정규 카드 48장 (월별 파일명 체계)
+  - `back_red.svg` 등 — 뒷장
+  - `bonus_*.svg` — 보너스패 4장
+- **변경 이력**: 2026-10-23 Wikimedia Commons 출처의 CC BY-SA 4.0 이미지를
+  자체 제작 일러스트로 전량 교체. 더 이상 CC BY-SA 4.0 저작자 표기가 필요하지 않다.
 
 > ※ 이미지 파일명과 실제 화투 구성이 다를 수 있습니다.
 > 규칙 데이터는 `engine/cards.js` 의 정의(11월=오동, 12월=비)를 따릅니다.
