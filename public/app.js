@@ -21,15 +21,26 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
-  // 가상 돈을 한국 돈 단위로 표시 (1만 이상이면 만원, 아니면 원)
+  // 가상 돈을 한국 돈 단위로 표시 (조/억/만/천/원 단위로 줄맞춤)
   function won(n) {
     n = Math.round(n || 0);
-    if (Math.abs(n) >= 10000) {
-      var m = n / 10000;
-      var mStr = (Math.abs(m - Math.round(m)) < 0.001) ? String(Math.round(m)) : m.toFixed(1).replace(/\.0$/, '');
-      return mStr + '만원';
-    }
-    return n.toLocaleString() + '원';
+    if (n === 0) return '0원';
+    var neg = n < 0;
+    n = Math.abs(n);
+    var t = Math.floor(n / 1000000000000); // 조
+    n %= 1000000000000;
+    var e = Math.floor(n / 100000000); // 억
+    n %= 100000000;
+    var m = Math.floor(n / 10000); // 만
+    n %= 10000;
+    var parts = [];
+    if (t > 0) parts.push(t + '조');
+    if (e > 0) parts.push(e + '억');
+    if (m > 0) parts.push(m + '만');
+    if (n > 0) parts.push(n + '원');
+    else if (parts.length > 0) parts.push('원');
+    else parts.push('0원');
+    return neg ? '-' + parts.join('') : parts.join('');
   }
   var CARD_IMG = 'assets/hwatu/png/';
   var buildVersion = '1';
