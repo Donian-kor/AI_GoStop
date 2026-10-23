@@ -110,20 +110,42 @@ test('상대 목록은 내 자리 제외·현재 턴·접속 상태·점수 정�
     currentSeat: 2,
     players: [
       player({ seat: 0, name: '나' }),
-      player({ seat: 1, type: 'ai', goCount: 2 }),
+      player({ seat: 1, name: '컴퓨터 A', type: 'ai', goCount: 2 }),
       player({ seat: 2, connected: false, goCount: 3 }),
     ],
   });
 
-  assert.strictEqual(players.children.length, 2);
+  assert.strictEqual(players.children.length, 1);
   assert.strictEqual(players.children[0].className, 'player ai');
   assert.strictEqual(players.children[0].attributes['data-seat'], '1');
-  assert.strictEqual(findAll(players.children[0], 'pname')[0].children[0].textContent, '상대 🤖');
+  const aiName = findAll(players.children[0], 'pname')[0];
+  assert.strictEqual(aiName.children[0].className, 'ai-badge');
+  assert.strictEqual(aiName.children[1].children[0].textContent, '상대 A');
+  assert.strictEqual(aiName.children[0].children[0].textContent, 'AI');
+  assert.strictEqual(aiName.children[0].attributes['aria-label'], 'AI 상대');
   assert.strictEqual(findAll(players.children[0], 'pmeta')[0].innerHTML, '점수 <b>3</b> · 7장');
   assert.strictEqual(findAll(players.children[0], 'pmoney')[0].innerHTML, '1200원');
   assert.strictEqual(findAll(players.children[0], 'pready')[0].innerHTML, '🔥 2고!');
-  assert.strictEqual(players.children[1].className, 'player active off');
-  assert.strictEqual(findAll(players.children[1], 'pready')[0].innerHTML, '연결 끊김');
+
+  view.render({
+    currentSeat: 2,
+    players: [
+      player({ seat: 0, name: '나' }),
+      player({ seat: 1, name: '컴퓨터 A', type: 'ai', goCount: 2 }),
+      player({ seat: 2, connected: true }),
+    ],
+  });
+  assert.strictEqual(players.children.length, 2, '다시 연결되면 상대를 다시 표시한다');
+});
+
+test('사용자 지정 AI 이름은 기본 컴퓨터 이름 규칙으로 바꾸지 않는다', () => {
+  const { view, players } = createView('image');
+  view.render({
+    currentSeat: 1,
+    players: [player({ seat: 0 }), player({ seat: 1, name: '홍단봇', type: 'ai' })],
+  });
+
+  assert.strictEqual(findAll(players, 'pname-text')[0].children[0].textContent, '홍단봇');
 });
 
 test('그림 보기에서는 먹은 패를 종류별로 분류하고 빈 종류와 족보 색을 표시한다', () => {

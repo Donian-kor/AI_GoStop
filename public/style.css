@@ -276,13 +276,32 @@ select option {
 
 .opp-pill { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .pname {
+  display: inline-flex; align-items: center; gap: 4px;
   padding: 1px 8px; border-radius: 999px;
   background: linear-gradient(180deg, #a8681f, #7d4a12);
   color: #ffe6b5; font-size: 12px; font-weight: 800;
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   box-shadow: inset 0 1px 0 rgba(255, 235, 190, .35);
 }
-.player.ai .pname { background: linear-gradient(180deg, #4a6a58, #2c4638); color: #d9eee0; }
+.player.ai .pname {
+  gap: 0; padding: 0; overflow: hidden;
+  border: 1px solid rgba(157, 231, 199, .38);
+  background: linear-gradient(180deg, #4a6a58, #2c4638); color: #d9eee0;
+}
+.pname-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.player.ai .pname-text { padding: 1px 8px 1px 6px; }
+.ai-badge {
+  flex: 0 0 auto; padding: 1px 4px; border: 1px solid rgba(157, 231, 199, .6);
+  border-radius: 4px; background: linear-gradient(180deg, #315c50, #183d37);
+  color: #b8f3dc; font-size: 9px; font-weight: 900; letter-spacing: .4px;
+  line-height: 1.2; box-shadow: inset 0 1px 0 rgba(218, 255, 238, .22);
+}
+.player.ai .ai-badge {
+  display: flex; align-items: center;
+  padding: 0 7px; border: 0; border-right: 1px solid rgba(157, 231, 199, .38);
+  border-radius: 0; background: rgba(8, 29, 23, .28); box-shadow: none;
+  color: #d2ffe9; font-size: 11px; font-weight: 900; letter-spacing: .6px;
+}
 .pmeta { font-size: 11px; color: #cfe3cf; white-space: nowrap; }
 .pmeta b { color: #ffd76a; }
 .pmoney { font-size: 11px; color: #ffd76a; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -585,6 +604,7 @@ select option {
   color: #3b2100; font-size: 13px; font-weight: 900;
   box-shadow: 0 2px 5px rgba(0, 0, 0, .5);
 }
+.me-go-badge { flex: 0 0 auto; padding: 3px 8px; font-size: 12px; }
 .me-score {
   padding: 2px 9px; border-radius: 8px; white-space: nowrap;
   background: rgba(20, 12, 4, .95); border: 2px solid #e9b23a;
@@ -950,6 +970,7 @@ select option {
   .players { gap: 4px; padding: 4px 4px 0; }
   .player { padding: 4px 5px; gap: 3px; }
   .pname { font-size: 11px; padding: 0 6px; }
+  .player.ai .ai-badge { padding: 0 6px; font-size: 10px; }
   .pmeta, .pmoney { font-size: 10px; }
   .pready { font-size: 10px; padding: 0 5px; }
   .opp-box { padding: 3px; }
@@ -980,6 +1001,7 @@ select option {
 
   .me-head { gap: 4px; padding: 4px 6px 0; }
   .me-badge { font-size: 12px; padding: 1px 8px; }
+  .me-go-badge { padding: 2px 6px; font-size: 11px; }
   .me-score { font-size: 11px; padding: 1px 7px; }
   .me-score b { font-size: 15px; }
   .me-sum .captured-sum i { padding: 1px 4px; }

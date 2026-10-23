@@ -74,12 +74,11 @@
       el.players.innerHTML = '';
       for (var i = 0; i < state.players.length; i++) {
         var player = state.players[i];
-        if (player.seat === deps.mySeat()) continue;
+        if (player.seat === deps.mySeat() || !player.connected) continue;
         var div = root.document.createElement('div');
         var className = 'player';
         if (player.seat === state.currentSeat) className += ' active';
         if (player.type === 'ai') className += ' ai';
-        if (!player.connected) className += ' off';
         div.className = className;
         div.setAttribute('data-seat', String(player.seat));
 
@@ -88,7 +87,20 @@
 
         var name = root.document.createElement('span');
         name.className = 'pname';
-        name.appendChild(root.document.createTextNode(player.name + (player.type === 'ai' ? ' 🤖' : '')));
+        var isAi = player.type === 'ai';
+        var displayName = player.name;
+        if (isAi) displayName = displayName.replace(/^컴퓨터\s+/, '상대 ');
+        if (isAi) {
+          var aiBadge = root.document.createElement('span');
+          aiBadge.className = 'ai-badge';
+          aiBadge.setAttribute('aria-label', 'AI 상대');
+          aiBadge.appendChild(root.document.createTextNode('AI'));
+          name.appendChild(aiBadge);
+        }
+        var nameText = root.document.createElement('span');
+        nameText.className = 'pname-text';
+        nameText.appendChild(root.document.createTextNode(displayName));
+        name.appendChild(nameText);
         pill.appendChild(name);
 
         var meta = root.document.createElement('span');
@@ -101,12 +113,7 @@
         money.innerHTML = deps.formatMoney(player.money);
         pill.appendChild(money);
 
-        if (!player.connected) {
-          var off = root.document.createElement('span');
-          off.className = 'pready off';
-          off.innerHTML = '연결 끊김';
-          pill.appendChild(off);
-        } else if (player.goCount > 0) {
+        if (player.goCount > 0) {
           var go = root.document.createElement('span');
           go.className = 'pready go';
           go.innerHTML = '🔥 ' + player.goCount + '고!';

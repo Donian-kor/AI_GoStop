@@ -69,6 +69,7 @@
     codeChip: $('codeChip'),
     moneyChip: $('moneyChip'),
     stakesChip: $('stakesChip'),
+    meGoBadge: $('meGoBadge'),
     meScore: $('meScore'),
     meCaptured: $('meCaptured'),
     muteBtn: $('muteBtn'),
@@ -515,6 +516,11 @@
     var mySeat = roomSession.getMySeat();
     var me = state.players[mySeat];
     el.moneyChip.innerHTML = won(me ? me.money : 0);
+    if (el.meGoBadge) {
+      var goCount = me && me.goCount ? me.goCount : 0;
+      el.meGoBadge.innerHTML = goCount ? '🔥 ' + goCount + '고!' : '';
+      el.meGoBadge.className = goCount ? 'pready go me-go-badge' : 'pready go me-go-badge hidden';
+    }
 
     // 점당 금액 · 판돈 배수 (나가리 이월)
     if (el.stakesChip && state.settings) {
