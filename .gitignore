@@ -21,6 +21,9 @@ secrets/
 *.pem
 *.key
 *.p12
+# 사용자 데이터 (회원 DB — 서버 런타임에 생성)
+data/
+
 # OS
 .DS_Store
 Thumbs.db

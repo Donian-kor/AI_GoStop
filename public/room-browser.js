@@ -83,6 +83,11 @@
     }
 
     function joinRoomByCode(code, fromList) {
+      if (!window.gostopUser) {
+        el.lobbyError.textContent = '로그인 후 방에 참가할 수 있습니다.';
+        if (window.gostopOpenAuth) window.gostopOpenAuth();
+        return;
+      }
       var name = currentName();
       if (!fromList) el.lobbyError.textContent = '';
       if (fromList) {
@@ -245,6 +250,11 @@
 
     function openRoomList() {
       if (!el.roomListOverlay) return;
+      if (!window.gostopUser) {
+        el.lobbyError.textContent = '로그인 후 방에 참가할 수 있습니다.';
+        if (window.gostopOpenAuth) window.gostopOpenAuth();
+        return;
+      }
       el.lobbyError.textContent = '';
       setJoinBoxVisible(false);
       el.roomListOverlay.className = 'overlay';

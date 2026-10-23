@@ -18,6 +18,7 @@ const { settleGame, applyToBalances } = require('../engine/settlement');
 const { chooseAiMove, chooseAiGoStop, chooseAiFloorMatch } = require('../engine/ai');
 const fourplayer = require('../engine/fourplayer');
 const { snapshot: createSnapshot } = require('./room-snapshot');
+const users = require('./users');
 
 /** 방 코드에 사용할 문자 (혼동되는 I·O·0·1 제외). */
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -152,7 +153,8 @@ class Room {
    * 사람이 앉는다.
    * @returns {{seat:number, player:object}|null} 자리가 없으면 null
    */
-  addPlayer(id, name) {
+  addPlayer(id, name, opts) {
+    opts = opts || {};
     const nameError = playerNameError(name);
     if (nameError) throw new EngineError(nameError);
     if (!this.hasFreeSeat()) return null;
@@ -162,7 +164,8 @@ class Room {
       name: (typeof name === 'string' ? name.trim() : '').slice(0, 12) || `${seat + 1}번`,
       seat,
       type: 'human',
-      money: this.settings.seedMoney,
+      money: (typeof opts.money === 'number') ? opts.money : this.settings.seedMoney,
+      userId: opts.userId || null,
       ready: false,
       connected: true,
       lastSeen: Date.now(),
@@ -353,6 +356,23 @@ class Room {
 
   /** 방장이 판을 시작한다. 선 결정 단계로 들어간다. */
   startRound() {
+    // multi 모드: 연결된 사람이 줄어들었으면 좌석을 compact 하고 인원을 줄인다.
+    // (3명으로 시작했다가 1명이 나간 뒤 남은 2명이 "다음 판"을 누르면 2명으로 진행)
+    if (this.settings.mode === 'multi') {
+      const humans = this.seats.filter((s) => s && s.type === 'human' && s.connected);
+      if (humans.length < 2) {
+        throw new EngineError('2명 이상이어야 시작할 수 있습니다.');
+      }
+      if (humans.length < this.settings.playerCount) {
+        this.seats = new Array(humans.length).fill(null);
+        humans.forEach((h, i) => {
+          h.seat = i;
+          this.seats[i] = h;
+        });
+        this.settings.playerCount = humans.length;
+      }
+    }
+
     const needed = this.settings.mode === 'solo' ? 1 : this.settings.playerCount;
     if (this.humanCount < needed) {
       throw new EngineError(
@@ -780,6 +800,7 @@ class Room {
 
       case 'leave':
         this.markDisconnected(player.id);
+        if (player.userId) users.updateMoney(player.userId, player.money);
         return { ok: true };
 
       default:
@@ -1152,7 +1173,10 @@ class Room {
     const updated = applyToBalances(balances, result.rows);
     for (const u of updated) {
       const p = this.playerAt(u.seat);
-      if (p) p.money = u.money;
+      if (p) {
+        p.money = u.money;
+        if (p.userId) users.updateMoney(p.userId, p.money);
+      }
     }
 
     this.settle = { ...result, at: Date.now() };

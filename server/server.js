@@ -18,6 +18,7 @@ const os = require('os');
 const crypto = require('crypto');
 
 const { Room, ROOM_PHASE, randomCode, playerNameError } = require('./rooms');
+const users = require('./users');
 const { EngineError } = require('../engine/play');
 
 const IDLE_MINUTES = Number(process.env.IDLE_MINUTES || 30); // 0 = 비활성화
@@ -54,12 +55,23 @@ function parseCookies(req) {
   return out;
 }
 
-function sessionCookie(req, id) {
+function sessionCookie(req, id, name, maxAge) {
+  name = name || 'gs_id';
+  maxAge = maxAge || 86400;
   const forwardedProto = req.headers['x-forwarded-proto'];
   const isHttps = req.socket.encrypted ||
     (forwardedProto && forwardedProto.split(',')[0].trim().toLowerCase() === 'https');
   const secure = isHttps ? '; Secure' : '';
-  return `gs_id=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure}`;
+  return `${name}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+
+function clearCookie(req, name) {
+  name = name || 'gs_id';
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const isHttps = req.socket.encrypted ||
+    (forwardedProto && forwardedProto.split(',')[0].trim().toLowerCase() === 'https');
+  const secure = isHttps ? '; Secure' : '';
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
 function readJsonBody(req) {
@@ -267,6 +279,9 @@ function cacheResponse(code, playerId, requestId, response) {
 }
 
 function closeRoom(room) {
+  for (const p of room.seats) {
+    if (p && p.userId) users.updateMoney(p.userId, p.money);
+  }
   rooms.delete(room.code);
   room.close();
   const prefix = `${room.code}:`;
@@ -310,6 +325,58 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { ok: true, path: filePath, size: buf.length });
   }
 
+  // ── 인증 (회원가입/로그인) ────────────────────────────────────────────────
+  const token = cookies.gs_token || null;
+
+  // POST /api/auth/register
+  if (segments.length === 3 && segments[1] === 'auth' && segments[2] === 'register' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return sendJson(res, 400, { ok: false, error: '요청 형식이 올바르지 않습니다.' });
+    }
+    try {
+      const r = users.register(body.name, body.password);
+      const headers = { 'Set-Cookie': sessionCookie(req, r.token, 'gs_token', 2592000) };
+      return sendJson(res, 200, { ok: true, name: r.name, money: r.money }, headers);
+    } catch (e) {
+      return sendJson(res, 400, { ok: false, error: e.message });
+    }
+  }
+
+  // POST /api/auth/login
+  if (segments.length === 3 && segments[1] === 'auth' && segments[2] === 'login' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return sendJson(res, 400, { ok: false, error: '요청 형식이 올바르지 않습니다.' });
+    }
+    try {
+      const r = users.login(body.name, body.password);
+      const headers = { 'Set-Cookie': sessionCookie(req, r.token, 'gs_token', 2592000) };
+      return sendJson(res, 200, { ok: true, name: r.name, money: r.money }, headers);
+    } catch (e) {
+      return sendJson(res, 400, { ok: false, error: e.message });
+    }
+  }
+
+  // POST /api/auth/logout
+  if (segments.length === 3 && segments[1] === 'auth' && segments[2] === 'logout' && req.method === 'POST') {
+    users.logout(token);
+    const headers = { 'Set-Cookie': clearCookie(req, 'gs_token') };
+    return sendJson(res, 200, { ok: true }, headers);
+  }
+
+  // GET /api/auth/me
+  if (segments.length === 3 && segments[1] === 'auth' && segments[2] === 'me' && req.method === 'GET') {
+    const u = users.userByToken(token);
+    if (!u) return sendJson(res, 200, { ok: true, user: null });
+    return sendJson(res, 200, { ok: true, user: u });
+  }
+
+  // GET /api/leaderboard
+  if (segments.length === 2 && segments[1] === 'leaderboard' && req.method === 'GET') {
+    return sendJson(res, 200, { ok: true, list: users.leaderboard(20) });
+  }
+
   // GET /api/rooms — 만들어진 방 목록 (참가 가능한 방 우선, 최신순)
   if (segments.length === 2 && segments[1] === 'rooms' && req.method === 'GET') {
     const list = [];
@@ -340,9 +407,15 @@ async function handleApi(req, res, url) {
       timeLimit: body.timeLimit,
       bonusPack: body.bonusPack,
     };
+    const u = users.userByToken(token);
+    if (!u) return sendJson(res, 401, { ok: false, error: '로그인 후 방을 만들 수 있습니다.' });
+    if (body.name !== undefined) {
+      const ne = playerNameError(body.name);
+      if (ne) return sendJson(res, 400, { ok: false, error: ne });
+    }
     const room = createRoom(options);
     const id = crypto.randomUUID();
-    const joined = room.addPlayer(id, body.name);
+    const joined = room.addPlayer(id, u.name, { userId: u.name, money: u.money });
     const headers = { 'Set-Cookie': sessionCookie(req, id) };
     return sendJson(res, 200, { code: room.code, seat: joined.seat, name: joined.player.name, mode: room.settings.mode }, headers);
   }
@@ -363,8 +436,12 @@ async function handleApi(req, res, url) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return sendJson(res, 400, { ok: false, error: '요청 형식이 올바르지 않습니다.' });
     }
-    const nameError = playerNameError(body.name);
-    if (nameError) return sendJson(res, 400, { ok: false, error: nameError });
+    const u = users.userByToken(token);
+    if (!u) return sendJson(res, 401, { ok: false, error: '로그인 후 방에 참가할 수 있습니다.' });
+    if (body.name !== undefined) {
+      const ne = playerNameError(body.name);
+      if (ne) return sendJson(res, 400, { ok: false, error: ne });
+    }
     let id = playerId;
     let joined = id ? room.findPlayer(id) : null;
 
@@ -373,7 +450,7 @@ async function handleApi(req, res, url) {
         return sendJson(res, 409, { ok: false, error: '방이 가득 찼습니다.' });
       }
       id = crypto.randomUUID();
-      joined = room.addPlayer(id, body.name);
+      joined = room.addPlayer(id, u.name, { userId: u.name, money: u.money });
     }
     room.markSeen(id);
     const headers = id !== playerId

@@ -49,7 +49,9 @@ function makeClient() {
       for (const c of setCookies) {
         setCookie = c;
         const pair = c.split(';')[0];
-        if (pair.startsWith('gs_id=')) cookie = pair;
+        if (pair.startsWith('gs_id=') || pair.startsWith('gs_token=')) {
+          cookie = cookie ? cookie + '; ' + pair : pair;
+        }
       }
       return res.json();
     },
@@ -86,6 +88,7 @@ test.after(() => {
 test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', async () => {
   // ── 1) 방 만들기 + 3명 입장 ──
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   assert.ok(created.code, '방 코드가 있어야 한다');
   assert.strictEqual(created.code.length, 6, '방 코드는 6자리');
@@ -93,6 +96,8 @@ test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', asy
 
   const p2 = makeClient();
   const p3 = makeClient();
+  var _r=await p2.post('/api/auth/register',{name:'아빠',password:'1234'}); if(!_r.ok) await p2.post('/api/auth/login',{name:'아빠',password:'1234'});
+  var _r=await p3.post('/api/auth/register',{name:'나',password:'1234'}); if(!_r.ok) await p3.post('/api/auth/login',{name:'나',password:'1234'});
   const j2 = await p2.post(`/api/room/${created.code}/join`, { name: '아빠' });
   const j3 = await p3.post(`/api/room/${created.code}/join`, { name: '나' });
   assert.strictEqual(j2.seat, 1);
@@ -243,6 +248,7 @@ test('없는 방에 접근하면 404 를 돌려준다', async () => {
 
 test('방에 참가하지 않은 사람은 액션을 보낼 수 없다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const outsider = makeClient();
   const res = await outsider.post(`/api/room/${created.code}/action`, { type: 'ready' });
@@ -251,8 +257,10 @@ test('방에 참가하지 않은 사람은 액션을 보낼 수 없다', async (
 
 test('방 미참가자는 상세 상태를 읽을 수 없다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const outsider = makeClient();
+  var _r=await outsider.post('/api/auth/register',{name:'다른 방 참가자',password:'1234'}); if(!_r.ok) await outsider.post('/api/auth/login',{name:'다른 방 참가자',password:'1234'});
   await outsider.post('/api/room', { name: '다른 방 참가자' });
 
   const res = await outsider.get(`/api/room/${created.code}/state`);
@@ -262,12 +270,15 @@ test('방 미참가자는 상세 상태를 읽을 수 없다', async () => {
 
 test('잘못된 플레이어 이름은 방 생성·입장을 거부한다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const badCreate = await host.post('/api/room', { name: { value: '이름' } });
   assert.strictEqual(badCreate.ok, false);
   assert.strictEqual(badCreate.error, '이름은 문자열이어야 합니다.');
 
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const guest = makeClient();
+  var _r=await guest.post('/api/auth/register', { name: '게스트', password: '1234' }); if(!_r.ok) await guest.post('/api/auth/login', { name: '게스트', password: '1234' });
   const badJoin = await guest.post(`/api/room/${created.code}/join`, { name: '가'.repeat(13) });
   assert.strictEqual(badJoin.ok, false);
   assert.strictEqual(badJoin.error, '이름은 12자 이내로 입력해 주세요.');
@@ -279,12 +290,14 @@ test('잘못된 플레이어 이름은 방 생성·입장을 거부한다', asyn
 
 test('HTTPS 프록시를 통한 방 생성은 Secure 쿠키를 설정한다', async () => {
   const client = makeClient();
+  var _r=await client.post('/api/auth/register',{name:'안전한 방장',password:'1234'}); if(!_r.ok) await client.post('/api/auth/login',{name:'안전한 방장',password:'1234'});
   await client.req('POST', '/api/room', { name: '안전한 방장' }, { 'X-Forwarded-Proto': 'https' });
   assert.match(client.setCookie, /;\s*Secure(?:;|$)/i);
 });
 
 test('중복 액션 요청은 최초 성공 응답을 재사용하고 액션을 반복하지 않는다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const actionUrl = `/api/room/${created.code}/action`;
   const request = { type: 'ready', requestId: 'retry-ready-1' };
@@ -300,6 +313,7 @@ test('중복 액션 요청은 최초 성공 응답을 재사용하고 액션을 
 
 test('중복 액션 요청은 최초 실패 응답을 성공으로 바꾸지 않는다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const actionUrl = `/api/room/${created.code}/action`;
   const request = { type: 'playCard', requestId: 'retry-invalid-action-1' };
@@ -313,6 +327,7 @@ test('중복 액션 요청은 최초 실패 응답을 성공으로 바꾸지 않
 
 test('요청 ID는 문자열이며 최대 128자여야 한다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const actionUrl = `/api/room/${created.code}/action`;
 
@@ -327,16 +342,20 @@ test('요청 ID는 문자열이며 최대 128자여야 한다', async () => {
 
 test('방 목록 API — 참가 가능 여부와 내가 있던 방을 알려준다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const multi = await host.post('/api/room', { name: '엄마', mode: 'multi', playerCount: 3 });
   assert.ok(multi.code);
 
   const fullHost = makeClient();
+  var _r=await fullHost.post('/api/auth/register',{name:'아빠',password:'1234'}); if(!_r.ok) await fullHost.post('/api/auth/login',{name:'아빠',password:'1234'});
   const full = await fullHost.post('/api/room', { name: '아빠', mode: 'multi', playerCount: 2 });
   const guest = makeClient();
+  var _r=await guest.post('/api/auth/register', { name: '나', password: '1234' }); if(!_r.ok) await guest.post('/api/auth/login', { name: '나', password: '1234' });
   const joined = await guest.post(`/api/room/${full.code}/join`, { name: '나' });
   assert.strictEqual(joined.ok, true);
 
   const soloHost = makeClient();
+  var _r=await soloHost.post('/api/auth/register',{name:'할머니',password:'1234'}); if(!_r.ok) await soloHost.post('/api/auth/login',{name:'할머니',password:'1234'});
   const solo = await soloHost.post('/api/room', { name: '할머니', mode: 'solo', playerCount: 3 });
 
   const viewer = makeClient();
@@ -381,6 +400,7 @@ test('방 목록 API — 참가 가능 여부와 내가 있던 방을 알려준�
 
 test('방장이 방을 나가면 방이 바로 사라진다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const guest = makeClient();
   await guest.post(`/api/room/${created.code}/join`, { name: '아빠' });
@@ -408,8 +428,10 @@ test('방장이 방을 나가면 방이 바로 사라진다', async () => {
 
 test('방장이 아닌 사람이 나가면 방은 그대로 남는다', async () => {
   const host = makeClient();
+  var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
   const created = await host.post('/api/room', { name: '엄마' });
   const guest = makeClient();
+  var _r=await guest.post('/api/auth/register', { name: '아빠', password: '1234' }); if(!_r.ok) await guest.post('/api/auth/login', { name: '아빠', password: '1234' });
   await guest.post(`/api/room/${created.code}/join`, { name: '아빠' });
 
   const res = await guest.post(`/api/room/${created.code}/action`, { type: 'leave' });

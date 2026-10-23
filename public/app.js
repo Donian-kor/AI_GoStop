@@ -68,6 +68,26 @@
     roomListCloseBtn: $('roomListCloseBtn'),
     lobbySoundBtn: $('lobbySoundBtn'),
     lobbySettingsBtn: $('lobbySettingsBtn'),
+    authBtn: $('authBtn'),
+    leaderboardBtn: $('leaderboardBtn'),
+    authOverlay: $('authOverlay'),
+    authTitle: $('authTitle'),
+    authSub: $('authSub'),
+    authTabLogin: $('authTabLogin'),
+    authTabRegister: $('authTabRegister'),
+    authName: $('authName'),
+    authPass: $('authPass'),
+    authError: $('authError'),
+    authInfo: $('authInfo'),
+    authUserName: $('authUserName'),
+    authUserMoney: $('authUserMoney'),
+    authSubmitBtn: $('authSubmitBtn'),
+    authLogoutBtn: $('authLogoutBtn'),
+    authCloseBtn: $('authCloseBtn'),
+    leaderboardOverlay: $('leaderboardOverlay'),
+    leaderboardList: $('leaderboardList'),
+    leaderboardRefreshBtn: $('leaderboardRefreshBtn'),
+    leaderboardCloseBtn: $('leaderboardCloseBtn'),
     codeChip: $('codeChip'),
     moneyChip: $('moneyChip'),
     stakesChip: $('stakesChip'),
@@ -100,6 +120,115 @@
     startBtn: $('startBtn'),
     overlay: $('overlay')
   };
+
+  var authMode = 'login';
+  var currentUser = null;
+
+  function authXhr(method, url, body, cb) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(method, url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.withCredentials = true;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      var data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (e) { data = null; }
+      cb(xhr.status, data);
+    };
+    xhr.send(body ? JSON.stringify(body) : null);
+  }
+
+  window.gostopOpenAuth = function () {
+    if (el.authOverlay) el.authOverlay.className = 'overlay';
+    refreshAuthUI();
+  };
+  function refreshAuthUI() {
+    window.gostopUser = currentUser;
+    if (currentUser) {
+      el.authInfo.className = '';
+      el.authUserName.innerHTML = esc(currentUser.name);
+      el.authUserMoney.innerHTML = won(currentUser.money);
+      el.authSubmitBtn.className = 'hidden';
+      el.authLogoutBtn.className = '';
+      el.authName.value = currentUser.name;
+      el.authName.disabled = true;
+      el.authPass.value = '';
+      el.authPass.disabled = true;
+      el.authTitle.innerHTML = '내 계정';
+      el.authSub.innerHTML = '로그인 중입니다.';
+      if (el.nameInput) el.nameInput.value = currentUser.name;
+    } else {
+      el.authInfo.className = 'hidden';
+      el.authSubmitBtn.className = 'primary';
+      el.authLogoutBtn.className = 'hidden';
+      el.authName.disabled = false;
+      el.authPass.disabled = false;
+      el.authTitle.innerHTML = authMode === 'login' ? '로그인' : '회원가입';
+      el.authSub.innerHTML = authMode === 'login' ? '기존 계정으로 로그인합니다.' : '새 가족 계정을 만듭니다.';
+    }
+    el.authError.innerHTML = '';
+  }
+
+  function loadAuth() {
+    authXhr('GET', '/api/auth/me', null, function (status, data) {
+      if (status === 200 && data && data.ok && data.user) {
+        currentUser = data.user;
+      } else {
+        currentUser = null;
+      }
+      refreshAuthUI();
+    });
+  }
+
+  function submitAuth() {
+    var name = el.authName.value;
+    var pass = el.authPass.value;
+    var url = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+    authXhr('POST', url, { name: name, password: pass }, function (status, data) {
+      if (status === 200 && data && data.ok) {
+        currentUser = { name: data.name, money: data.money };
+        refreshAuthUI();
+        el.authOverlay.className = 'overlay hidden';
+      } else {
+        el.authError.innerHTML = esc((data && data.error) || '처리 중 오류가 발생했습니다.');
+      }
+    });
+  }
+
+  function logoutAuth() {
+    authXhr('POST', '/api/auth/logout', {}, function () {
+      currentUser = null;
+      el.authName.value = '';
+      el.authPass.value = '';
+      el.authName.disabled = false;
+      el.authPass.disabled = false;
+      refreshAuthUI();
+    });
+  }
+
+  function openLeaderboard() {
+    el.leaderboardOverlay.className = 'overlay';
+    el.leaderboardList.innerHTML = '<p class="room-list-empty">불러오는 중입니다.</p>';
+    authXhr('GET', '/api/leaderboard', null, function (status, data) {
+      if (status !== 200 || !data || !data.ok) {
+        el.leaderboardList.innerHTML = '<p class="room-list-empty">불러오지 못했습니다.</p>';
+        return;
+      }
+      var list = data.list || [];
+      if (!list.length) {
+        el.leaderboardList.innerHTML = '<p class="room-list-empty">등록된 가족이 없습니다.</p>';
+        return;
+      }
+      el.leaderboardList.innerHTML = '';
+      for (var i = 0; i < list.length; i++) {
+        var u = list[i];
+        var row = document.createElement('div');
+        row.className = 'room-list-item';
+        row.innerHTML = '<span class="room-list-name">' + (i + 1) + '. ' + esc(u.name) + '</span><span class="room-list-meta">' + won(u.money) + '</span>';
+        el.leaderboardList.appendChild(row);
+      }
+    });
+  }
 
   var roomBrowser = null;
   var settingsView = null;
@@ -281,7 +410,13 @@
   toggleDiffSelect();
 
   el.createBtn.addEventListener('click', function () {
-    var name = currentName();
+    if (!currentUser) {
+      el.lobbyError.textContent = '로그인 후 방을 만들 수 있습니다.';
+      if (el.authOverlay) el.authOverlay.className = 'overlay';
+      refreshAuthUI();
+      return;
+    }
+    var name = currentUser.name;
     el.lobbyError.textContent = '';
     var parts = el.modeSelect.value.split('-');
     var mode = parts[0];
@@ -351,6 +486,39 @@
   if (el.rulesCloseBtn) el.rulesCloseBtn.addEventListener('click', function () {
     if (el.rulesOverlay) el.rulesOverlay.className = 'overlay hidden';
   });
+
+  // ── 계정(로그인/회원가입) ───────────────────────────────────────────────
+  if (el.authBtn) el.authBtn.addEventListener('click', function () {
+    if (el.authOverlay) el.authOverlay.className = 'overlay';
+    refreshAuthUI();
+  });
+  if (el.authCloseBtn) el.authCloseBtn.addEventListener('click', function () {
+    if (el.authOverlay) el.authOverlay.className = 'overlay hidden';
+  });
+  if (el.authTabLogin) el.authTabLogin.addEventListener('click', function () {
+    authMode = 'login';
+    el.authTabLogin.className = 'auth-tab on';
+    el.authTabRegister.className = 'auth-tab';
+    refreshAuthUI();
+  });
+  if (el.authTabRegister) el.authTabRegister.addEventListener('click', function () {
+    authMode = 'register';
+    el.authTabRegister.className = 'auth-tab on';
+    el.authTabLogin.className = 'auth-tab';
+    refreshAuthUI();
+  });
+  if (el.authSubmitBtn) el.authSubmitBtn.addEventListener('click', submitAuth);
+  if (el.authLogoutBtn) el.authLogoutBtn.addEventListener('click', logoutAuth);
+
+  // ── 순위표 ───────────────────────────────────────────────────────────────
+  if (el.leaderboardBtn) el.leaderboardBtn.addEventListener('click', function () {
+    if (el.leaderboardOverlay) el.leaderboardOverlay.className = 'overlay';
+    openLeaderboard();
+  });
+  if (el.leaderboardCloseBtn) el.leaderboardCloseBtn.addEventListener('click', function () {
+    if (el.leaderboardOverlay) el.leaderboardOverlay.className = 'overlay hidden';
+  });
+  if (el.leaderboardRefreshBtn) el.leaderboardRefreshBtn.addEventListener('click', openLeaderboard);
 
   // ── 나가기 ──────────────────────────────────────────────────────────────
 
@@ -688,6 +856,7 @@
 
   var remembered = savedName();
   if (remembered) el.nameInput.value = remembered;
+  loadAuth();
 
   if (Fx) {
     updateMuteButtons();

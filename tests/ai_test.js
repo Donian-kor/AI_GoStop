@@ -38,7 +38,9 @@ function makeClient() {
       const setCookie = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
       for (const c of setCookie) {
         const pair = c.split(';')[0];
-        if (pair.startsWith('gs_id=')) cookie = pair;
+        if (pair.startsWith('gs_id=') || pair.startsWith('gs_token=')) {
+          cookie = cookie ? cookie + '; ' + pair : pair;
+        }
       }
       return res.json();
     },
@@ -75,6 +77,7 @@ test.after(() => {
 
 test('혼자 AI 와 2인 방이 만들어지고 AI 가 자리를 차지한다', async () => {
   const c = makeClient();
+  var _r=await c.post('/api/auth/register', { name: '나', password: '1234' }); if(!_r.ok) await c.post('/api/auth/login', { name: '나', password: '1234' });
   const res = await c.post('/api/room', { name: '나', mode: 'solo', playerCount: 2, aiDifficulty: 'normal' });
   assert.ok(res.code);
   assert.strictEqual(res.mode, 'solo');
@@ -89,6 +92,8 @@ test('혼자 AI 와 2인 방이 만들어지고 AI 가 자리를 차지한다', 
 
 test('AI 가 실제로 수를 두고 판이 끝까지 진행된다', async () => {
   const c = makeClient();
+  await c.post('/api/auth/register', { name: '나', password: '1234' }).catch(function(){});
+  await c.post('/api/auth/login', { name: '나', password: '1234' });
   // 3인(혼자 + AI 2명) — 승리 기준이 3점이라 판이 빨리 끝난다
   const res = await c.post('/api/room', { name: '나', mode: 'solo', playerCount: 3, aiDifficulty: 'normal' });
   const code = res.code;
@@ -168,6 +173,7 @@ test('AI 가 실제로 수를 두고 판이 끝까지 진행된다', async () =>
 
 test('AI 는 사람이 둔 뒤에 반응해서 카드를 낸다', async () => {
   const c = makeClient();
+  await c.post('/api/auth/login', { name: '나', password: '1234' });
   const res = await c.post('/api/room', { name: '나', mode: 'solo', playerCount: 3, aiDifficulty: 'easy' });
   const code = res.code;
   await c.post(`/api/room/${code}/action`, { type: 'start' });
