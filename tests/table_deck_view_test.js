@@ -65,14 +65,24 @@ function createView() {
 
 test('바닥 패를 순서대로 렌더링하고 카드 식별자와 장수를 표시한다', () => {
   const { view, table, tableHint } = createView();
-  const cards = [{ id: 'floor-a' }, { id: 'floor-b' }];
+  const cards = [
+    { id: 'floor-a', month: 3 },
+    { id: 'floor-b', month: 1 },
+    { id: 'floor-c', month: 3 },
+  ];
   view.render({ table: cards, deckCount: 0 });
 
   assert.strictEqual(table.children.length, 2);
-  assert.strictEqual(table.children[0].card, cards[0]);
-  assert.strictEqual(table.children[0].className, 'card small');
-  assert.strictEqual(table.children[0].attributes['data-card-id'], 'floor-a');
-  assert.strictEqual(tableHint.innerHTML, '바닥 2장');
+  assert.strictEqual(table.children[0].className, 'floor-month-group');
+  assert.strictEqual(table.children[0].attributes['data-month'], '1');
+  assert.strictEqual(table.children[0].children.length, 1);
+  assert.strictEqual(table.children[0].children[0].card, cards[1]);
+  assert.strictEqual(table.children[1].attributes['data-month'], '3');
+  assert.strictEqual(table.children[1].children.length, 2);
+  assert.strictEqual(table.children[1].children[0].className, 'card small');
+  assert.strictEqual(table.children[1].children[0].attributes['data-card-id'], 'floor-a');
+  assert.strictEqual(table.children[1].children[1].attributes['data-card-id'], 'floor-c');
+  assert.strictEqual(tableHint.innerHTML, '바닥 3장');
 });
 
 test('뒷패 더미는 최대 다섯 장을 그리되 실제 남은 장수를 표시한다', () => {

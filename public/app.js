@@ -415,7 +415,8 @@
       return;
     }
     var wrap = el.table.parentNode;
-    var count = el.table.children ? el.table.children.length : 0;
+    var groups = el.table.children || [];
+    var count = groups.length;
     if (!wrap || !count) return;
     var deckH = el.deckStack ? el.deckStack.offsetHeight : 0;
     var hintH = el.tableHint ? el.tableHint.offsetHeight : 0;
@@ -424,9 +425,17 @@
     var size = 40;
     for (var s = 126; s >= 40; s -= 2) {
       var ch = Math.round(s * 1.63);
-      var perRow = Math.floor((availW + 4) / (s + 4));
-      if (perRow < 1) perRow = 1;
-      var rows = Math.ceil(count / perRow);
+      var rows = 1;
+      var rowW = 0;
+      for (var g = 0; g < count; g++) {
+        var groupCount = groups[g].children ? groups[g].children.length : 1;
+        var groupW = s * (1 + Math.max(0, groupCount - 1) * 0.66 + 0.16);
+        if (rowW && rowW + groupW > availW) {
+          rows++;
+          rowW = 0;
+        }
+        rowW += groupW + 4;
+      }
       if (rows * ch + (rows - 1) * 4 <= availH) { size = s; break; }
     }
     el.table.style.setProperty('--floor-w', size + 'px');

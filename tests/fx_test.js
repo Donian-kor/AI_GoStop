@@ -66,6 +66,22 @@ test('카드가 떨어지며 나타나는 키프레임과 섞기 스타일이 �
   assert.ok(/@keyframes\s+cardEnter/.test(css), 'cardEnter 키프레임');
   assert.ok(/\.shuffle-overlay/.test(css), '섞기 오버레이 스타일');
   assert.ok(/\.shuffle-card/.test(css), '섞는 카드 스타일');
+  assert.ok(/\.shuffle-overlay\.gather \.shuffle-card/.test(css), '중앙 수렴 카드 스타일');
+  assert.ok(/prefers-reduced-motion:\s*reduce/.test(css), '모션 감소 설정 지원');
+  assert.ok(/translate\(-50%, -50%\).*translateY/.test(fx), '카드가 중앙의 덱 형태로 모인다');
+  assert.ok(/prefers-reduced-motion:\s*reduce/.test(fx), '모션 감소 시 빠른 정적 덱으로 전환');
+  assert.ok(/GATHER_DURATION\s*=\s*580/.test(fx), '카드 수렴 시간을 정의한다');
+  assert.ok(/GATHER_DURATION\s*\+\s*260/.test(fx), '수렴 후 덱을 잠시 유지한다');
+});
+
+test('셔플 연출이 끝나면 셔플 효과음을 중단한다', () => {
+  assert.ok(/function\s+stopSound/.test(fx), '재생 중인 효과음을 중단하는 함수');
+  assert.ok(/function\s+stopShuffleSounds/.test(fx), '셔플 효과음을 모두 중단하는 함수');
+  assert.equal((fx.match(/stopShuffleSounds\(\)/g) || []).length, 3,
+    '일반 연출과 모션 감소 연출 종료 시 셔플 소리를 중단한다');
+  ['card_deal.ogg', 'card_flip.ogg', 'card_place.ogg'].forEach((file) => {
+    assert.ok(fx.includes(`stopSound('${file}')`), `${file} 중단`);
+  });
 });
 
 test('화면이 카드 이동을 실제로 적용한다', () => {

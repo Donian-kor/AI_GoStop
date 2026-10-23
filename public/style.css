@@ -381,6 +381,11 @@ select option {
 }
 /* ID 선택자로 지정 — Tailwind CDN 의 .table{display:table} 유틸리티와 충돌 방지 */
 #table { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; max-width: 96vw; }
+.floor-month-group {
+  display: flex; align-items: center; flex: 0 0 auto;
+  padding-right: 9px;
+}
+.floor-month-group .card + .card { margin-left: -18px; }
 .hint { margin: 0; min-height: 1.15em; font-size: 13px; color: #cfe3cf; }
 
 /* 뒷패 더미 — 붉은 패산 */
@@ -470,12 +475,31 @@ select option {
   position: absolute; width: 36px; height: 58px; border-radius: 4px;
   background: repeating-linear-gradient(45deg, #dc1c27 0 5px, #9e1018 5px 10px);
   border: 2px solid #f0daa7;
-  box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
-  transition: left 0.07s linear, top 0.07s linear, transform 0.07s linear;
+  box-shadow: 0 2px 0 #780d12, 0 4px 0 #4e090c, 0 7px 12px rgba(0, 0, 0, .55);
+  transform-origin: center;
+  transition: left 0.07s linear, top 0.07s linear, transform 0.07s linear, box-shadow 0.5s ease;
 }
-/* 마지막에 가운데로 모을 때만 살짝 천천히 */
+/* 흩어진 카드가 가운데로 모여 한 덱으로 겹친다 */
 .shuffle-overlay.gather .shuffle-card {
-  transition: left 0.16s ease-out, top 0.16s ease-out, transform 0.16s ease-out;
+  transition:
+    left 0.58s cubic-bezier(.18,.72,.24,1),
+    top 0.58s cubic-bezier(.18,.72,.24,1),
+    transform 0.58s cubic-bezier(.18,.72,.24,1),
+    box-shadow 0.58s ease;
+  box-shadow: 0 1px 0 #780d12, 0 2px 0 #4e090c, 0 8px 16px rgba(0, 0, 0, .62);
+}
+.shuffle-overlay.gather .shuffle-tip {
+  transition: opacity 0.2s ease;
+}
+.shuffle-overlay.gather.out .shuffle-tip {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shuffle-overlay.gather .shuffle-card,
+  .shuffle-overlay.gather .shuffle-tip,
+  .shuffle-overlay.out {
+    transition: none;
+  }
 }
 
 /* 12개월 전통 색 */
@@ -891,6 +915,9 @@ select option {
     --band-fs: calc(var(--floor-w, 54px) * 0.2);
     --kind-fs: calc(var(--floor-w, 54px) * 0.2);
   }
+  #table .floor-month-group .card + .card {
+    margin-left: calc(var(--floor-w, 54px) * -0.34);
+  }
   /* 선 결정·보너스·같은 패 고르기 창의 카드도 크게 */
   .prompt .card.small {
     width: var(--prompt-w, 96px);
@@ -1111,6 +1138,7 @@ select option {
 
   /* flex gap 미지원 — margin 으로 간격 */
   #table .card, .prompt > * { margin: 2px; }
+  #table .floor-month-group .card + .card { margin-left: -16px; }
   .hand .card { margin-right: 3px; }
   .players .player { margin-right: 5px; }
   .tb-side > *, .tb-mid > *, .me-head > * { margin-right: 4px; }

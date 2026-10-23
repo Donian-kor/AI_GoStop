@@ -99,6 +99,17 @@
     } catch (e) {}
   }
 
+  function stopSound(file) {
+    var audio = soundCache[file];
+    if (audio) audio.pause();
+  }
+
+  function stopShuffleSounds() {
+    stopSound('card_deal.ogg');
+    stopSound('card_flip.ogg');
+    stopSound('card_place.ogg');
+  }
+
   function setMuted(v) {
     muted = !!v;
     try { localStorage.setItem('gs_muted', muted ? '1' : '0'); } catch (e) {}
@@ -355,12 +366,14 @@
 
   /**
    * 패를 섞는 연출 — 이 프로젝트에서 직접 만든 버전.
-   * 뒷장 카드가 촘촘한 무더기로 모여, 여러 번 짧게 뒤섞인 뒤 가운데로 모인다.
+   * 뒷장 카드가 판 위에 넓게 퍼져 뒤섞인 다음 가운데로 모여 한 덱이 된다.
    * (bipark/gostop-ts 의 연출을 그대로 베끼지 않았다)
    * @param {number} [deckCount] 실제 덱 장수 (기본 50장)
    * @param {function} [onDone] 연출이 끝난 뒤 호출
    */
   function playShuffle(deckCount, onDone) {
+    var GATHER_DURATION = 580;
+
     // playShuffle(onDone) 형태도 쓸 수 있게 한다
     if (typeof deckCount === 'function') {
       onDone = deckCount;
@@ -385,7 +398,7 @@
     tip.textContent = '패를 섞는 중입니다';
     ov.appendChild(tip);
 
-    // 실제 덱 장수만큼 (48 / 50 / 51) 촘촘한 무더기를 만든다
+    // 실제 덱 장수만큼 (48 / 50 / 51) 뒷장 카드를 만든다
     var COUNT = deckCount >= 20 ? Math.min(deckCount, 60) : 50;
     var cards = [];
     for (var i = 0; i < COUNT; i++) {
@@ -396,28 +409,28 @@
     }
     felt.appendChild(ov);
 
-    // 처음 — 가운데에 촘촘한 무더기로 흩뿌린다
+    // 처음 — 카드를 판 위에 넓게 펼쳐 놓는다
     var scatter = function () {
       for (var i = 0; i < cards.length; i++) {
         var c = cards[i];
-        c.style.left = (20 + Math.random() * 56) + '%';
-        c.style.top = (22 + Math.random() * 48) + '%';
+        c.style.left = (8 + Math.random() * 80) + '%';
+        c.style.top = (14 + Math.random() * 64) + '%';
         c.style.transform = 'rotate(' + ((Math.random() - 0.5) * 80) + 'deg)';
       }
     };
 
-    // 섞는 중 — 무더기 속 카드가 자꾸 자리를 바꾼다 (리플 셔플)
+    // 섞는 중 — 카드가 자리를 넓게 바꾼다 (리플 셔플)
     var churn = function () {
       for (var i = 0; i < cards.length; i++) {
         var c = cards[i];
         var x = parseFloat(c.style.left) || 50;
         var y = parseFloat(c.style.top) || 50;
-        x += Math.random() * 13 - 6.5;
-        y += Math.random() * 15 - 7.5;
-        if (x < 14) x = 14 + Math.random() * 6;
-        if (x > 84) x = 84 - Math.random() * 6;
-        if (y < 18) y = 18 + Math.random() * 6;
-        if (y > 76) y = 76 - Math.random() * 6;
+        x += Math.random() * 24 - 12;
+        y += Math.random() * 22 - 11;
+        if (x < 6) x = 6 + Math.random() * 8;
+        if (x > 92) x = 92 - Math.random() * 8;
+        if (y < 10) y = 10 + Math.random() * 8;
+        if (y > 82) y = 82 - Math.random() * 8;
         c.style.left = x + '%';
         c.style.top = y + '%';
         c.style.transform = 'rotate(' + ((Math.random() - 0.5) * 80) + 'deg)';
@@ -428,14 +441,29 @@
     var gather = function () {
       for (var i = 0; i < cards.length; i++) {
         var c = cards[i];
-        c.style.left = (46 + Math.random() * 8) + '%';
-        c.style.top = (40 + Math.random() * 14) + '%';
-        c.style.transform = 'rotate(' + ((Math.random() - 0.5) * 22) + 'deg)';
+        var layer = i % 8;
+        c.style.left = '50%';
+        c.style.top = '50%';
+        c.style.zIndex = String(i + 1);
+        c.style.transform = 'translate(-50%, -50%) translateY(' + (layer * 0.65) +
+          'px) rotate(' + ((i % 3 - 1) * 0.7) + 'deg)';
       }
     };
 
-    scatter();
     playSound('card_deal.ogg', 0.5);
+    var reducedMotion = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) {
+      ov.className = 'shuffle-overlay gather';
+      gather();
+      setTimeout(function () {
+        stopShuffleSounds();
+        if (ov.parentNode) ov.parentNode.removeChild(ov);
+        if (onDone) onDone();
+      }, 120);
+      return;
+    }
+    scatter();
 
     var n = 0;
     var timer = setInterval(function () {
@@ -447,15 +475,17 @@
       clearInterval(timer);
       // 마지막에 모으는 동작
       ov.className = 'shuffle-overlay gather';
+      tip.textContent = '패를 한 덱으로 모읍니다';
       gather();
       playSound('card_deal.ogg', 0.45);
       setTimeout(function () {
         ov.className = 'shuffle-overlay gather out';
         setTimeout(function () {
+          stopShuffleSounds();
           if (ov.parentNode) ov.parentNode.removeChild(ov);
           if (onDone) onDone();
-        }, 170);
-      }, 150);
+        }, 220);
+      }, GATHER_DURATION + 260);
     }, 72);
   }
 
