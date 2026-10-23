@@ -722,9 +722,10 @@
     el.installGuide.className = 'text-[#e7c992] text-xs mt-2 text-center';
   }
 
-  // 설치 버튼을 항상 보여준다 (브라우저가 beforeinstallprompt를 안 보내도 수동 안내 가능)
-  if (el.installBtn && !isInStandaloneMode()) {
-    el.installBtn.className = 'w-full mt-3 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all';
+  // 폰에서만 설치 버튼을 보여준다 (PC에서는 불필요)
+  var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  if (isMobile && el.installBtn && !isInStandaloneMode()) {
+    el.installBtn.className = 'w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2';
   }
 
   window.addEventListener('beforeinstallprompt', function (e) {
@@ -748,7 +749,7 @@
             }
           }
           deferredInstallPrompt = null;
-          if (el.installBtn) el.installBtn.className = 'hidden w-full mt-3 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all';
+          if (el.installBtn) el.installBtn.className = 'hidden w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2';
         });
       } else if (isIOS()) {
         if (el.installGuide) {
@@ -766,7 +767,7 @@
 
   window.addEventListener('appinstalled', function () {
     deferredInstallPrompt = null;
-    if (el.installBtn) el.installBtn.className = 'hidden w-full mt-3 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all';
+    if (el.installBtn) el.installBtn.className = 'hidden w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2';
     if (el.installGuide) {
       el.installGuide.textContent = '앱으로 설치되었습니다!';
       el.installGuide.className = 'text-[#8fe0a8] text-xs mt-2 text-center';
