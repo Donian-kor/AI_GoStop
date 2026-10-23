@@ -13,6 +13,7 @@ function createSession(options) {
   const rendered = [];
   const handledFx = [];
   const opponentMoves = [];
+  const opponentMoveStates = [];
   const banners = [];
   const leftMessages = [];
   let reloadCount = 0;
@@ -101,7 +102,10 @@ function createSession(options) {
     onEnter: () => { enterCount++; },
     onLeave: (message) => leftMessages.push(message),
     getSavedName: () => (options && options.savedName) || '저장된 이름',
-    playOpponentMoves: (events) => opponentMoves.push(events),
+    playOpponentMoves: (events, state) => {
+      opponentMoves.push(events);
+      opponentMoveStates.push(state);
+    },
   });
 
   function runNextTimeout(delay) {
@@ -121,6 +125,7 @@ function createSession(options) {
     rendered,
     handledFx,
     opponentMoves,
+    opponentMoveStates,
     banners,
     leftMessages,
     elements,
@@ -242,6 +247,7 @@ test('the first poll updates state and cursor without replaying old effects', ()
   assert.strictEqual(h.handledFx.length, 0);
   assert.strictEqual(h.opponentMoves.length, 1);
   assert.strictEqual(h.opponentMoves[0].length, 0);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(h.opponentMoveStates[0])), { phase: 'play' });
   h.runNextTimeout(50);
   assert.strictEqual(h.requests[1].url, '/api/room/ABC123/state?since=4&v=9');
 });
@@ -255,6 +261,7 @@ test('later polls handle effects before rendering and play opponent moves afterw
   h.handledFx.length = 0;
   h.rendered.length = 0;
   h.opponentMoves.length = 0;
+  h.opponentMoveStates.length = 0;
 
   h.runNextTimeout(50);
   const event = { seq: 1, type: 'capture' };
@@ -268,6 +275,7 @@ test('later polls handle effects before rendering and play opponent moves afterw
   assert.strictEqual(h.handledFx[0][1].seatEl(1).seat, 1);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(h.rendered)), [{ phase: 'play', turn: 2 }]);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(h.opponentMoves)), [[event]]);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(h.opponentMoveStates)), [{ phase: 'play', turn: 2 }]);
 });
 
 test('createRoom reports server and response errors without entering a room', () => {

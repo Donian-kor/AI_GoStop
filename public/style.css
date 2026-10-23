@@ -478,6 +478,10 @@ select option {
 .card.small { --card-w: 54px; --band-h: 15px; --band-fs: 11px; --kind-fs: 11px; }
 .card.tiny { width: 34px; height: 55px; --band-h: 10px; --band-fs: 8px; --kind-fs: 8px; }
 .card.pick { cursor: pointer; }
+.card.playing { animation: cardPlay 0.16s ease-out both; }
+@keyframes cardPlay {
+  to { transform: translateY(-18px) scale(1.06); filter: brightness(1.15); }
+}
 .prompt .card.pick:active { transform: scale(.95); }
 
 /* 카드 뒷장 — 붉은 대각선 무늬 */
@@ -804,6 +808,22 @@ select option {
 .flying-card.pic {
   background-size: cover; background-position: center;
   border: 2px solid #8e1818; background-color: #fffcf5;
+}
+.flip-flight {
+  border: 2px solid #f0daa7; border-radius: 6px;
+  background: transparent; box-shadow: 0 8px 22px rgba(0, 0, 0, .6);
+  transform-style: preserve-3d;
+}
+.flip-flight-face {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 4px;
+  backface-visibility: hidden;
+}
+.flip-flight-back {
+  background: repeating-linear-gradient(45deg, #dc1c27 0 5px, #9e1018 5px 10px);
+}
+.flip-flight-front {
+  transform: rotateY(180deg);
+  background-color: #fffcf5; background-size: cover; background-position: center;
 }
 
 /* ── 정산 · 규칙 오버레이 ──────────────────────────────── */

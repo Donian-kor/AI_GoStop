@@ -547,6 +547,59 @@
     }
   }
 
+  function animateCardFlipMove(fromRect, toRect, imageUrl, duration, rotate, onArrive) {
+    var reducedMotion = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!fromRect || !toRect || !imageUrl || !canAnimate(document.body) || reducedMotion) {
+      if (onArrive) onArrive();
+      return;
+    }
+
+    var clone = document.createElement('div');
+    clone.className = 'flying-card flip-flight';
+    clone.style.left = fromRect.left + 'px';
+    clone.style.top = fromRect.top + 'px';
+    clone.style.width = fromRect.width + 'px';
+    clone.style.height = fromRect.height + 'px';
+
+    var back = document.createElement('div');
+    back.className = 'flip-flight-face flip-flight-back';
+    var front = document.createElement('div');
+    front.className = 'flip-flight-face flip-flight-front';
+    front.style.backgroundImage = 'url(' + imageUrl + ')';
+    clone.appendChild(back);
+    clone.appendChild(front);
+    document.body.appendChild(clone);
+
+    var dx = toRect.left + toRect.width / 2 - fromRect.left - fromRect.width / 2;
+    var dy = toRect.top + toRect.height / 2 - fromRect.top - fromRect.height / 2;
+    var finalScale = toRect.width / fromRect.width;
+    var rot = rotate === undefined ? 8 : rotate;
+    var dur = duration || 420;
+    var done = function () {
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
+      if (onArrive) onArrive();
+    };
+
+    try {
+      var animation = clone.animate(
+        [
+          { transform: 'perspective(700px) translate3d(0,0,0) rotate(0deg) rotateY(0deg) scale(.94)' },
+          { transform: 'perspective(700px) translate3d(' + (dx * 0.45) + 'px,' + (dy * 0.35 - 34) + 'px,0) rotate(' + rot + 'deg) rotateY(90deg) scale(1.08)', offset: 0.5 },
+          { transform: 'perspective(700px) translate3d(' + dx + 'px,' + dy + 'px,0) rotate(' + (-rot / 2) + 'deg) rotateY(180deg) scale(' + finalScale + ')' }
+        ],
+        { duration: dur, easing: EASE.out, fill: 'forwards' }
+      );
+      if (animation && animation.finished && animation.finished.then) {
+        animation.finished.then(done, done);
+      } else {
+        setTimeout(done, dur);
+      }
+    } catch (e) {
+      done();
+    }
+  }
+
   // ── 서버 이벤트 → 이펙트 ───────────────────────────────────────────────
 
   function handleFx(fx, ctx) {
@@ -595,6 +648,7 @@
     flipCards: flipCards,
     playShuffle: playShuffle,
     animateCardMove: animateCardMove,
+    animateCardFlipMove: animateCardFlipMove,
     showBanner: showBanner,
     cutIn: cutIn,
     vibrate: vibrate,

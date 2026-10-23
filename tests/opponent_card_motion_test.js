@@ -13,6 +13,7 @@ class Element {
     this.cards = {};
     this.parentNode = null;
     this.rack = null;
+    this.backCard = null;
   }
 
   appendChild(child) {
@@ -27,6 +28,7 @@ class Element {
 
   querySelector(selector) {
     if (selector === '.opp-box') return this.rack;
+    if (selector === '.card.back') return this.backCard;
     const match = selector.match(/^\[data-card-id="([^"]+)"\]$/);
     return match ? this.cards[match[1]] || null : null;
   }
@@ -34,10 +36,13 @@ class Element {
 
 function createMotion(options) {
   options = options || {};
-  const table = new Element();
+  const table = new Element({ left: 250, top: 350, width: 120, height: 90 });
+  const deckStack = new Element({ left: 400, top: 480, width: 70, height: 90 });
+  deckStack.backCard = new Element({ left: 410, top: 490, width: 44, height: 72 });
   const meCaptured = new Element({ left: 100, top: 200, width: 80, height: 40 });
   const players = {};
   const calls = [];
+  const flipCalls = [];
   const flyingCards = {};
   let previousRects = options.previousRects || {};
 
@@ -52,13 +57,17 @@ function createMotion(options) {
   const context = { window, setTimeout, clearTimeout };
   vm.runInNewContext(fs.readFileSync('public/opponent-card-motion.js', 'utf8'), context);
   const motion = window.GostopOpponentCardMotion({
-    el: { table, meCaptured },
+    el: { table, meCaptured, deckStack },
     fx: {
       animateCardMove: (...args) => calls.push(args),
+      animateCardFlipMove: (...args) => flipCalls.push(args),
     },
     mySeat: () => options.mySeat === undefined ? 0 : options.mySeat,
     seatEl: (seat) => players[seat] || null,
     getPreviousCardRects: () => previousRects,
+    getPreviousMoveContext: () => options.previousContext || {
+      handIds: {}, floorIds: {}, floorCards: [],
+    },
     getFlyingCards: () => flyingCards,
     cardImg: ({ id }) => 'assets/' + id + '.png',
   });
@@ -66,8 +75,10 @@ function createMotion(options) {
   return {
     motion,
     table,
+    deckStack,
     meCaptured,
     calls,
+    flipCalls,
     flyingCards,
     setPreviousRects: (value) => { previousRects = value; },
   };
@@ -159,4 +170,93 @@ test('capture는 이전 위치가 없으면 자리 중앙에서 출발하고 본
   motion.play([]);
   motion.play([null, { kind: 'capture', seat: -1, cards: ['ignored'] }]);
   assert.strictEqual(calls.length, 1);
+});
+
+test('본인이 먹을 때 손패가 월 묶음에 먼저 놓이고 뒷패가 뒤집힌 뒤 먹은 패가 이동한다', () => {
+  const handRect = { left: 40, top: 500, width: 50, height: 82 };
+  const floorRect = { left: 280, top: 300, width: 50, height: 82 };
+  const { motion, calls, flipCalls, deckStack, meCaptured } = createMotion({
+    mySeat: 0,
+    previousRects: { played: handRect, floor: floorRect },
+    previousContext: {
+      handIds: { played: true },
+      floorIds: { floor: true },
+      floorCards: [{ id: 'floor', month: 7 }],
+    },
+  });
+  const captured = [
+    { id: 'played', month: 7 },
+    { id: 'floor', month: 7 },
+    { id: 'drawn', month: 7 },
+  ];
+  motion.play([{
+    kind: 'capture',
+    seat: 0,
+    month: 7,
+    cards: ['played', 'floor', 'drawn'],
+  }], {
+    table: [],
+    players: [{ capturedCards: captured }],
+  });
+
+  assert.strictEqual(calls.length, 1, '처음에는 손에서 바닥으로 낸 패만 움직인다');
+  assert.strictEqual(calls[0][0], handRect);
+  assert.strictEqual(calls[0][1], floorRect);
+  assert.strictEqual(calls[0][3], 300);
+  calls[0][5]();
+
+  assert.strictEqual(flipCalls.length, 1, '다음에는 뒷패를 뒤집어 월 묶음 위에 놓는다');
+  assert.strictEqual(flipCalls[0][0], deckStack.backCard.rect);
+  assert.strictEqual(flipCalls[0][1], floorRect);
+  flipCalls[0][5]();
+
+  assert.strictEqual(calls.length, 4, '두 패 연출이 끝난 뒤 먹은 패가 각자 이동한다');
+  assert.strictEqual(calls[1][0], floorRect);
+  assert.strictEqual(calls[1][1], meCaptured.rect);
+  assert.strictEqual(calls[2][0], floorRect);
+  assert.strictEqual(calls[3][0], floorRect);
+});
+
+test('먹지 못한 경우에도 손패가 놓인 뒤 뒷패가 뒤집혀 바닥에 놓인다', () => {
+  const handRect = { left: 40, top: 500, width: 50, height: 82 };
+  const playedFloorRect = { left: 220, top: 310, width: 50, height: 82 };
+  const drawnFloorRect = { left: 330, top: 310, width: 50, height: 82 };
+  const playedNode = new Element(playedFloorRect);
+  const drawnNode = new Element(drawnFloorRect);
+  const { motion, table, calls, flipCalls, deckStack } = createMotion({
+    mySeat: 0,
+    tableCards: [
+      { id: 'played', element: playedNode },
+      { id: 'drawn', element: drawnNode },
+    ],
+    previousRects: { played: handRect },
+    previousContext: {
+      handIds: { played: true },
+      floorIds: {},
+      floorCards: [],
+    },
+  });
+  motion.play([{
+    kind: 'place',
+    seat: 0,
+    month: 3,
+    cards: ['played', 'drawn'],
+  }], {
+    table: [
+      { id: 'played', month: 3 },
+      { id: 'drawn', month: 8 },
+    ],
+  });
+
+  assert.strictEqual(calls.length, 1);
+  assert.strictEqual(calls[0][0], handRect);
+  assert.strictEqual(calls[0][1], playedFloorRect);
+  calls[0][5]();
+  assert.strictEqual(flipCalls.length, 1);
+  assert.strictEqual(flipCalls[0][0], deckStack.backCard.rect);
+  assert.strictEqual(flipCalls[0][1], drawnFloorRect);
+  flipCalls[0][5]();
+  assert.strictEqual(calls.length, 1, '바닥에 남은 패는 먹은 패 이동을 시작하지 않는다');
+  assert.strictEqual(playedNode.style.opacity, '');
+  assert.strictEqual(drawnNode.style.opacity, '');
 });

@@ -157,7 +157,7 @@
             root.console.error('[render]', e);
           }
           try {
-            deps.playOpponentMoves(moveFx);
+            deps.playOpponentMoves(moveFx, res.state);
           } catch (e) { /* 연출 오류가 게임을 멈추지 않게 */ }
         },
         function (xhr) {

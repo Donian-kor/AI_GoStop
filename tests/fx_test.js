@@ -55,10 +55,12 @@ test('효과음 모듈이 카드 이동(FLIP)과 섞기 연출을 공개한다',
   assert.ok(/function\s+flipCards/.test(fx), 'flipCards 구현');
   assert.ok(/function\s+playShuffle/.test(fx), 'playShuffle 구현');
   assert.ok(/function\s+animateCardMove/.test(fx), 'animateCardMove 구현');
+  assert.ok(/function\s+animateCardFlipMove/.test(fx), '뒤집으며 이동하는 카드 연출');
   assert.ok(/captureRects\s*:\s*captureRects/.test(fx), 'captureRects 공개');
   assert.ok(/flipCards\s*:\s*flipCards/.test(fx), 'flipCards 공개');
   assert.ok(/playShuffle\s*:\s*playShuffle/.test(fx), 'playShuffle 공개');
   assert.ok(/animateCardMove\s*:\s*animateCardMove/.test(fx), 'animateCardMove 공개');
+  assert.ok(/animateCardFlipMove\s*:\s*animateCardFlipMove/.test(fx), '뒤집기 연출 공개');
 });
 
 test('카드가 떨어지며 나타나는 키프레임과 섞기 스타일이 있다', () => {
@@ -68,6 +70,7 @@ test('카드가 떨어지며 나타나는 키프레임과 섞기 스타일이 �
   assert.ok(/\.shuffle-card/.test(css), '섞는 카드 스타일');
   assert.ok(/\.shuffle-overlay\.gather \.shuffle-card/.test(css), '중앙 수렴 카드 스타일');
   assert.ok(/#table\.capture-impact/.test(css), '먹기 순간 바닥 충격 애니메이션');
+  assert.ok(/\.flip-flight-back/.test(css), '뒤집기 카드 뒷면 스타일');
   assert.ok(/@keyframes\s+captureShockwave/.test(css), '먹기 충격파 키프레임');
   assert.ok(/captureImpact\(\)/.test(opponentCardMotion), '먹기 이벤트가 바닥 충격을 발생시킨다');
   assert.ok(/prefers-reduced-motion:\s*reduce/.test(css), '모션 감소 설정 지원');
@@ -91,7 +94,7 @@ test('화면이 카드 이동을 실제로 적용한다', () => {
   assert.ok(/Fx\.captureRects\(/.test(app), '그리기 전 자리 기억');
   assert.ok(/Fx\.flipCards\(/.test(app), '그린 뒤 자리 맞춤');
   assert.ok(/Fx\.playShuffle\(/.test(app), '선 결정에서 섞기 연출');
-  assert.ok(/opponentCardMotion\.play\(moveFx\)/.test(app), '상대 패 연출 모듈 호출');
+  assert.ok(/opponentCardMotion\.play\(moveFx, state\)/.test(app), '상대 패 연출 모듈 호출');
   assert.ok(/deps\.fx\.animateCardMove\(/.test(opponentCardMotion), '상대 패가 날아가는 연출');
 });
 

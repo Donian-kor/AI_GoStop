@@ -107,10 +107,15 @@
     render: render,
     seatEl: seatEl,
     closeRoomBrowser: function () { if (roomBrowser) roomBrowser.close(); },
-    onEnter: function () { prevPhase = ''; },
+    onEnter: function () {
+      prevPhase = '';
+      prevCardRects = {};
+      renderedMoveContext = { handIds: {}, floorIds: {}, floorCards: [] };
+      motionPreviousContext = renderedMoveContext;
+    },
     onLeave: resetRoomView,
     getSavedName: savedName,
-    playOpponentMoves: function (moveFx) { opponentCardMotion.play(moveFx); }
+    playOpponentMoves: function (moveFx, state) { opponentCardMotion.play(moveFx, state); }
   });
   var getJson = roomSession.getJson;
   var postJson = roomSession.postJson;
@@ -487,6 +492,8 @@
   var CARD_ANIM_SELECTOR = '#hand .card, #table .card, #promptBox .card';
   // 직전 화면의 카드 자리 — 상대가 먹은 패가 어디서 날아왔는지 알 때 쓴다
   var prevCardRects = {};
+  var renderedMoveContext = { handIds: {}, floorIds: {}, floorCards: [] };
+  var motionPreviousContext = renderedMoveContext;
   // 상대가 내는 중인 카드 — 바닥에 먼저 도착하지 않게 잠시 가려둔다
   var flyingCards = {};
   opponentCardMotion = window.GostopOpponentCardMotion({
@@ -495,14 +502,26 @@
     mySeat: function () { return roomSession.getMySeat(); },
     seatEl: seatEl,
     getPreviousCardRects: function () { return prevCardRects; },
+    getPreviousMoveContext: function () { return motionPreviousContext; },
     getFlyingCards: function () { return flyingCards; },
     cardImg: cardImg
   });
 
   function render(state) {
     prevCardRects = Fx.captureRects(CARD_ANIM_SELECTOR);
+    motionPreviousContext = renderedMoveContext;
     renderState(state);
     Fx.flipCards(prevCardRects, CARD_ANIM_SELECTOR);
+    renderedMoveContext = { handIds: {}, floorIds: {}, floorCards: [] };
+    var h;
+    for (h = 0; h < (state.myHand || []).length; h++) {
+      renderedMoveContext.handIds[state.myHand[h].id] = true;
+    }
+    for (var f = 0; f < (state.table || []).length; f++) {
+      var floorCard = state.table[f];
+      renderedMoveContext.floorIds[floorCard.id] = true;
+      renderedMoveContext.floorCards.push({ id: floorCard.id, month: floorCard.month });
+    }
     // 날아가는 중인 카드는 화면이 갱신돼도 계속 가려둔다
     for (var id in flyingCards) {
       var flown = el.table.querySelector('[data-card-id="' + id + '"]');
@@ -620,16 +639,10 @@
     var mySeat = roomSession.getMySeat();
     if (!lastState || lastState.currentSeat !== mySeat || lastState.prompt) return;
     var cardId = cardEl.getAttribute('data-card-id');
-    Fx.animateCardFlight(cardEl, el.table, -6, 260);
-    // 날아가는 동안 바닥에는 카드가 아직 없는 것처럼 보여 준다
-    if (cardId) {
-      flyingCards[cardId] = 1;
-      setTimeout(function () {
-        delete flyingCards[cardId];
-        var node = el.table.querySelector('[data-card-id="' + cardId + '"]');
-        if (node) node.style.opacity = '';
-      }, 320);
-    }
+    cardEl.className += ' playing';
+    setTimeout(function () {
+      cardEl.className = cardEl.className.replace(/\splaying\b/, '');
+    }, 240);
     setTimeout(function () { roomSession.act('playCard', { handIndex: index }); }, 120);
   }
 
