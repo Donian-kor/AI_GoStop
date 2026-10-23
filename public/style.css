@@ -481,6 +481,8 @@ select option {
 /* 보너스패(조커) — 상단에 '보너스' 표시, 하단 종류 배지 없음, 전용 색상 */
 .card.bonus-card { --mc: #c084fc; }
 .card.bonus-card::before { background: #c084fc; color: #3b1c00; font-weight: 900; }
+/* 고수 모드: 카드 상단 월 밴드 숨김 */
+.card.hide-month::before { display: none; }
 .card.pick { cursor: pointer; }
 .card.playing { animation: cardPlay 0.16s ease-out both; }
 @keyframes cardPlay {

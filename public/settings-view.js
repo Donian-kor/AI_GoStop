@@ -14,7 +14,7 @@
     var settingsMode = 'room';
 
     function getLobbySettings() {
-      var settings = { moneyPerPoint: 100, timeKey: 'off', bonusPack: 50 };
+      var settings = { moneyPerPoint: 100, timeKey: 'off', bonusPack: 50, showMonth: true };
       try {
         var raw = root.localStorage.getItem(lobbySettingsKey);
         if (!raw) return settings;
@@ -29,6 +29,7 @@
         if (saved && timePresets[saved.timeKey]) settings.timeKey = saved.timeKey;
         var bp = Number(saved && saved.bonusPack);
         if (bp === 48 || bp === 50 || bp === 51) settings.bonusPack = bp;
+        if (saved && saved.hasOwnProperty('showMonth')) settings.showMonth = Boolean(saved.showMonth);
       } catch (e) {}
       return settings;
     }
@@ -43,16 +44,18 @@
           base: preset.base,
           increment: preset.increment
         },
-        bonusPack: settings.bonusPack
+        bonusPack: settings.bonusPack,
+        showMonth: settings.showMonth
       };
     }
 
-    function saveLobbySettings(moneyPerPoint, timeKey, bonusPack) {
+    function saveLobbySettings(moneyPerPoint, timeKey, bonusPack, showMonth) {
       try {
         root.localStorage.setItem(lobbySettingsKey, JSON.stringify({
           moneyPerPoint: moneyPerPoint,
           timeKey: timeKey,
-          bonusPack: bonusPack
+          bonusPack: bonusPack,
+          showMonth: showMonth
         }));
       } catch (e) {}
     }
@@ -115,6 +118,8 @@
         el.bonusPackSelect.value = String(bp);
       }
 
+      if (el.showMonthSelect) el.showMonthSelect.value = state.settings.showMonth === false ? 'off' : 'on';
+
       if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
     }
 
@@ -125,6 +130,7 @@
       el.pointSelect.value = String(settings.moneyPerPoint);
       el.timeSelect.value = settings.timeKey;
       if (el.bonusPackSelect) el.bonusPackSelect.value = String(settings.bonusPack);
+      if (el.showMonthSelect) el.showMonthSelect.value = settings.showMonth === false ? 'off' : 'on';
       if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
     }
 
@@ -135,10 +141,11 @@
       var preset = timePresets[el.timeSelect.value] || timePresets.off;
       var money = Number(el.pointSelect.value);
       var bonusPack = el.bonusPackSelect ? Number(el.bonusPackSelect.value) : 50;
+      var showMonth = el.showMonthSelect ? el.showMonthSelect.value !== 'off' : true;
       if (bonusPack !== 48 && bonusPack !== 50 && bonusPack !== 51) bonusPack = 50;
       close();
       if (settingsMode === 'lobby') {
-        saveLobbySettings(money, el.timeSelect.value, bonusPack);
+        saveLobbySettings(money, el.timeSelect.value, bonusPack, showMonth);
         if (deps.fx) deps.fx.showBanner('새 방 설정을 저장했습니다', 'plain', 1100);
         return;
       }
