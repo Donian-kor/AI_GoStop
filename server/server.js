@@ -320,6 +320,7 @@ async function handleApi(req, res, url) {
       // 로비 ⚙ 에서 고른 새 방 기본값 (normalizeSettings 가 범위를 검증한다)
       moneyPerPoint: body.moneyPerPoint,
       timeLimit: body.timeLimit,
+      bonusPack: body.bonusPack,
     };
     const room = createRoom(options);
     const id = crypto.randomUUID();

@@ -84,6 +84,7 @@
     settingsCloseBtn: $('settingsCloseBtn'),
     pointSelect: $('pointSelect'),
     timeSelect: $('timeSelect'),
+    bonusPackSelect: $('bonusPackSelect'),
     deckStack: $('deckStack'),
     scorePanel: $('scorePanel'),
     players: $('players'),
@@ -294,7 +295,8 @@
       playerCount: count,
       aiDifficulty: diff,
       moneyPerPoint: lobbySet.moneyPerPoint,
-      timeLimit: lobbySet.timeLimit
+      timeLimit: lobbySet.timeLimit,
+      bonusPack: lobbySet.bonusPack
     }, function (message) { el.lobbyError.textContent = message; });
   });
 

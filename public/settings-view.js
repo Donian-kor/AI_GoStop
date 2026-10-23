@@ -14,7 +14,7 @@
     var settingsMode = 'room';
 
     function getLobbySettings() {
-      var settings = { moneyPerPoint: 100, timeKey: 'off' };
+      var settings = { moneyPerPoint: 100, timeKey: 'off', bonusPack: 50 };
       try {
         var raw = root.localStorage.getItem(lobbySettingsKey);
         if (!raw) return settings;
@@ -27,6 +27,8 @@
           }
         }
         if (saved && timePresets[saved.timeKey]) settings.timeKey = saved.timeKey;
+        var bp = Number(saved && saved.bonusPack);
+        if (bp === 48 || bp === 50 || bp === 51) settings.bonusPack = bp;
       } catch (e) {}
       return settings;
     }
@@ -40,15 +42,17 @@
           enabled: preset.enabled,
           base: preset.base,
           increment: preset.increment
-        }
+        },
+        bonusPack: settings.bonusPack
       };
     }
 
-    function saveLobbySettings(moneyPerPoint, timeKey) {
+    function saveLobbySettings(moneyPerPoint, timeKey, bonusPack) {
       try {
         root.localStorage.setItem(lobbySettingsKey, JSON.stringify({
           moneyPerPoint: moneyPerPoint,
-          timeKey: timeKey
+          timeKey: timeKey,
+          bonusPack: bonusPack
         }));
       } catch (e) {}
     }
@@ -105,6 +109,12 @@
       if (timeKey !== 'off' && timeKey !== '30' && timeKey !== '45' && timeKey !== '60') timeKey = 'off';
       el.timeSelect.value = timeKey;
 
+      if (el.bonusPackSelect) {
+        var bp = state.settings.bonusPack;
+        if (bp !== 48 && bp !== 50 && bp !== 51) bp = 50;
+        el.bonusPackSelect.value = String(bp);
+      }
+
       if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
     }
 
@@ -114,6 +124,7 @@
       ensurePointOption(String(settings.moneyPerPoint));
       el.pointSelect.value = String(settings.moneyPerPoint);
       el.timeSelect.value = settings.timeKey;
+      if (el.bonusPackSelect) el.bonusPackSelect.value = String(settings.bonusPack);
       if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
     }
 
@@ -123,15 +134,18 @@
     if (el.settingsSaveBtn) el.settingsSaveBtn.addEventListener('click', function () {
       var preset = timePresets[el.timeSelect.value] || timePresets.off;
       var money = Number(el.pointSelect.value);
+      var bonusPack = el.bonusPackSelect ? Number(el.bonusPackSelect.value) : 50;
+      if (bonusPack !== 48 && bonusPack !== 50 && bonusPack !== 51) bonusPack = 50;
       close();
       if (settingsMode === 'lobby') {
-        saveLobbySettings(money, el.timeSelect.value);
+        saveLobbySettings(money, el.timeSelect.value, bonusPack);
         if (deps.fx) deps.fx.showBanner('새 방 설정을 저장했습니다', 'plain', 1100);
         return;
       }
       deps.act('settings', {
         moneyPerPoint: money,
-        timeLimit: { enabled: preset.enabled, base: preset.base, increment: preset.increment }
+        timeLimit: { enabled: preset.enabled, base: preset.base, increment: preset.increment },
+        bonusPack: bonusPack
       });
       if (deps.fx) deps.fx.showBanner('설정을 저장했습니다', 'plain', 1100);
     });

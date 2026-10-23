@@ -87,6 +87,7 @@ test('저장된 로비 기본값을 허용 목록으로 복원하고 잘못된 �
   assert.deepStrictEqual(JSON.parse(JSON.stringify(defaults.settingsView.getRoomDefaults())), {
     moneyPerPoint: 100,
     timeLimit: { enabled: false, base: 0, increment: 0 },
+    bonusPack: 50,
   });
 
   const saved = createSettings({
@@ -95,6 +96,7 @@ test('저장된 로비 기본값을 허용 목록으로 복원하고 잘못된 �
   assert.deepStrictEqual(JSON.parse(JSON.stringify(saved.settingsView.getRoomDefaults())), {
     moneyPerPoint: 5000,
     timeLimit: { enabled: true, base: 45, increment: 5 },
+    bonusPack: 50,
   });
 
   const invalid = createSettings({
@@ -103,6 +105,7 @@ test('저장된 로비 기본값을 허용 목록으로 복원하고 잘못된 �
   assert.deepStrictEqual(JSON.parse(JSON.stringify(invalid.settingsView.getRoomDefaults())), {
     moneyPerPoint: 100,
     timeLimit: { enabled: false, base: 0, increment: 0 },
+    bonusPack: 50,
   });
 });
 
@@ -121,11 +124,12 @@ test('로비 설정 창은 저장값을 표시하고 저장 시 새 방 기본�
   elements.timeSelect.value = '60';
   elements.settingsSaveBtn.click();
   assert.strictEqual(elements.settingsOverlay.className, 'overlay hidden');
-  assert.deepStrictEqual(JSON.parse(storage.gs_lobby_settings), { moneyPerPoint: 1000, timeKey: '60' });
+  assert.deepStrictEqual(JSON.parse(storage.gs_lobby_settings), { moneyPerPoint: 1000, timeKey: '60', bonusPack: 50 });
   assert.deepStrictEqual(banners, [['새 방 설정을 저장했습니다', 'plain', 1100]]);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(settingsView.getRoomDefaults())), {
     moneyPerPoint: 1000,
     timeLimit: { enabled: true, base: 60, increment: 10 },
+    bonusPack: 50,
   });
 });
 
@@ -153,6 +157,7 @@ test('게임 설정은 방장·대기 또는 정산 단계에서만 열고 기�
     payload: {
       moneyPerPoint: 5000,
       timeLimit: { enabled: true, base: 30, increment: 5 },
+      bonusPack: 50,
     },
   }]);
   assert.deepStrictEqual(banners, [['설정을 저장했습니다', 'plain', 1100]]);

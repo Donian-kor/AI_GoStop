@@ -265,7 +265,15 @@
           <option value="60">60초 + 10초</option>
         </select>
       </label>
-      <p class="set-note">시간 제한이 있으면 정해진 시간이 지날 때 자동으로 카드를 냅니다.</p>
+      <label class="set-row">
+        <span class="set-label">보너스패</span>
+        <select id="bonusPackSelect" class="set-select">
+          <option value="48">48장 (보너스 없음)</option>
+          <option value="50">50장 (쌍피 1 + 조커 1)</option>
+          <option value="51">51장 (쌍피 2 + 3피 1)</option>
+        </select>
+      </label>
+      <p class="set-note">시간 제한이 있으면 정해진 시간이 지날 때 자동으로 카드를 냅니다. 보너스패는 판 시작 전에만 바꿀 수 있습니다.</p>
       <div class="row">
         <button id="settingsSaveBtn" class="primary" type="button">저장</button>
         <button id="settingsCloseBtn" type="button">닫기</button>
