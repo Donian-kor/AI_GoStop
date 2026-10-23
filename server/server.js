@@ -68,7 +68,7 @@ function readJsonBody(req) {
     let size = 0;
     req.on('data', (c) => {
       size += c.length;
-      if (size > 64 * 1024) {
+      if (size > 2 * 1024 * 1024) {
         req.destroy();
         return;
       }
@@ -143,7 +143,7 @@ function serveStatic(req, res, urlPath) {
     const ext = path.extname(filePath).toLowerCase();
     const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
     // 코드는 자주 고치므로 캐시하지 않는다. 이미지·사운드만 캐시한다.
-    const noCache = ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json';
+    const noCache = ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json' || ext === '.png' || ext === '.svg' || ext === '.jpg' || ext === '.webp';
     headers['Cache-Control'] = noCache ? 'no-store' : 'public, max-age=86400';
 
     // HTML에는 버전 표시를 끼워 넣는다(화면과 서버 버전이 어긋나지 않게)
@@ -303,7 +303,6 @@ async function handleApi(req, res, url) {
     });
     return sendJson(res, 200, { ok: true, rooms: list });
   }
-
   // POST /api/room — 방 만들기
   if (segments[1] === 'room' && segments.length === 2 && req.method === 'POST') {
     const body = await readJsonBody(req);
@@ -371,7 +370,6 @@ async function handleApi(req, res, url) {
       headers
     );
   }
-
   // GET /api/room/:code/state — 상태 조회(긴 폴링)
   if (segments.length === 4 && segments[3] === 'state' && req.method === 'GET') {
     if (!playerId) {
