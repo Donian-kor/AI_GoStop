@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#34683f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="명지네고스톱">
 <title>명지네고스톱</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="style.css?v=25">
 <!-- Tailwind CSS CDN (로비 디자인 의존) -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -115,6 +122,14 @@
         </button>
       </div>
 
+      <!-- 앱 설치 (PWA) — 지원 브라우저에서만 표시 -->
+      <button id="installBtn" class="hidden w-full mt-3 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all" type="button">
+        <div class="relative py-2.5 sm:py-3 px-1 rounded-[10px] border border-[#48a178]/30 flex items-center justify-center">
+          <span class="text-[#d8f0e3] font-bold text-sm sm:text-base tracking-tighter whitespace-nowrap">📲 앱으로 설치하기</span>
+        </div>
+      </button>
+      <p id="installGuide" class="hidden text-[#e7c992] text-xs mt-2 text-center"></p>
+      
       <!-- 방 코드 입력(기본 숨김) -->
       <div id="joinBox" class="hidden w-full mt-3 px-1">
         <div class="relative w-full rounded bg-[#432312] p-[3px] shadow-md">

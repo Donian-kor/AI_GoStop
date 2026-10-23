@@ -57,6 +57,8 @@
     codeInput: $('codeInput'),
     joinGoBtn: $('joinGoBtn'),
     lobbyError: $('lobbyError'),
+    installBtn: $('installBtn'),
+    installGuide: $('installGuide'),
     roomListOverlay: $('roomListOverlay'),
     roomList: $('roomList'),
     roomListError: $('roomListError'),
@@ -692,4 +694,80 @@
     if (el.muteBtn) el.muteBtn.style.display = 'none';
     if (el.lobbySoundBtn) el.lobbySoundBtn.style.display = 'none';
   }
+
+  // ── PWA : 서비스 워커 등록 (지원하지 않는 환경에서는 조용히 건너뛴다) ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
+  // ── PWA : 앱으로 설치하기 ────────────────────────────────────────────────
+  // 안드로이드 Chrome은 beforeinstallprompt 이벤트로 설치 팝업을 띄울 수 있다.
+  // iOS Safari는 이 이벤트가 없으므로, 수동 안내를 보여준다.
+  var deferredInstallPrompt = null;
+
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  function isInStandaloneMode() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || (window.navigator.standalone === true);
+  }
+
+  // iOS는 beforeinstallprompt를 지원하지 않으므로 수동 안내를 보여준다
+  if (isIOS() && !isInStandaloneMode() && el.installGuide) {
+    el.installGuide.textContent = 'iOS: Safari 공유 버튼(□↑) → "홈 화면에 추가"';
+    el.installGuide.className = 'text-[#e7c992] text-xs mt-2 text-center';
+  }
+
+  // 설치 버튼을 항상 보여준다 (브라우저가 beforeinstallprompt를 안 보내도 수동 안내 가능)
+  if (el.installBtn && !isInStandaloneMode()) {
+    el.installBtn.className = 'w-full mt-3 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all';
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (el.installGuide) {
+      el.installGuide.textContent = '버튼을 눌러 앱으로 설치하세요';
+      el.installGuide.className = 'text-[#8fe0a8] text-xs mt-2 text-center';
+    }
+  });
+
+  if (el.installBtn) {
+    el.installBtn.addEventListener('click', function () {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        deferredInstallPrompt.userChoice.then(function (choice) {
+          if (choice.outcome === 'accepted') {
+            if (el.installGuide) {
+              el.installGuide.textContent = '설치가 완료되었습니다!';
+              el.installGuide.className = 'text-[#8fe0a8] text-xs mt-2 text-center';
+            }
+          }
+          deferredInstallPrompt = null;
+          if (el.installBtn) el.installBtn.className = 'hidden w-full mt-3 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all';
+        });
+      } else if (isIOS()) {
+        if (el.installGuide) {
+          el.installGuide.textContent = 'Safari 공유 버튼(□↑) → "홈 화면에 추가" 를 탭하세요';
+          el.installGuide.className = 'text-[#e7c992] text-xs mt-2 text-center';
+        }
+      } else {
+        if (el.installGuide) {
+          el.installGuide.textContent = '브라우저 메뉴(⋮) → "홈 화면에 추가" 또는 "앱 설치" 를 탭하세요';
+          el.installGuide.className = 'text-[#e7c992] text-xs mt-2 text-center';
+        }
+      }
+    });
+  }
+
+  window.addEventListener('appinstalled', function () {
+    deferredInstallPrompt = null;
+    if (el.installBtn) el.installBtn.className = 'hidden w-full mt-3 relative btn-jade-ornate rounded-xl border-[2px] border-[#0f2d1e] p-[1px] group transition-all';
+    if (el.installGuide) {
+      el.installGuide.textContent = '앱으로 설치되었습니다!';
+      el.installGuide.className = 'text-[#8fe0a8] text-xs mt-2 text-center';
+    }
+  });
 })();

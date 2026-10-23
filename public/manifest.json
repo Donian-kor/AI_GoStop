@@ -1,0 +1,17 @@
+{
+  "name": "명지네고스톱",
+  "short_name": "명지네고스톱",
+  "description": "가족이 함께 즐기는 고스톱 — 2인 맞고 · 3인 삼파전 · 4인 광팔기 · 혼자 AI 대국",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#34683f",
+  "background_color": "#0c0703",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
