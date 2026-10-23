@@ -1,6 +1,6 @@
 # 명지네고스톱 (gostop-game) — 구현 계획서
 
-> 상태: **구현 완료 (1차)** — 엔진·서버·AI·화면 전부 동작, 테스트 134개 통과. 남은 일: 실제 폰 3대 실전 점검(새로고침·연결 끊김), 구형 안드로이드 4.4.4 확인
+> 상태: **구현 완료 (1차)** — 엔진·서버·AI·화면 전부 동작, 테스트 148개 구현. 남은 일: 실제 폰 3대 실전 점검(새로고침·연결 끊김), 구형 안드로이드 4.4.4 확인
 > 작성일: 2026-10-21
 > 대상 폴더: `<프로젝트 루트>/gostop-game/`
 > 벤치마킹 정리: [`BENCHMARK.md`](./BENCHMARK.md) · 자산 라이선스: [`ATTRIBUTION.md`](./ATTRIBUTION.md)
@@ -18,8 +18,8 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 | 항목 | 결정 |
 |---|---|
 | 인원 | **3인 삼파전**(주요) + **2인 맞고** + **4인 광팔기**(구현 완료) |
-| 보너스패 | 방 설정에서 48 / **50(기본)** / 51 선택. 50장 구성 세부 카드는 구현 전 확정 필요 |
-| 돈 | **가상 포인트만**. 시작 30,000P, 점당 금액 방에서 설정, 잔액 부족 시 음수(빚) 허용 |
+| 보너스패 | 방 설정에서 48 / **50(기본)** / 51 선택. 50장은 쌍피 1 + 조커 1, 51장은 쌍피 2 + 3피 1 |
+| 돈 | **가상 포인트만**. 시작 30만원(300,000원), 점당 금액 방에서 설정, 잔액 부족 시 음수(빚) 허용 |
 | 시간제한 | 기본 꺼짐. 방에서 선택 (꺼짐 / 30+5 / 45+5 / 60+10) |
 | 화면 | 부모님 기준 **단순하게** |
 | 서버 | 아빠 PC에서 로컬 실행 → 이후 클라우드 배포 |
@@ -28,29 +28,29 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 | 사운드 | Kenney CC0 효과음 30종 |
 | 시작 순서 | **엔진부터** (서버·UI는 검증된 엔진 위에 올림) |
 
-### 현재 상태 기준선 (2026-10-23 · 6차 갱신)
+### 현재 상태 기준선 (2026-10-23 · 7차 갱신)
 
-- `engine/` 9개 모듈 + `tests/` 19개 파일이 구현되어 있다. **테스트 134개 전부 통과.**
+- `engine/` 9개 모듈 + `tests/` 19개 파일이 구현되어 있다. **테스트 148개가 구현되어 있다.**
   - `node tests/engine_test.js` → 45개 (규칙 단위, 정본 소스에서 직접 도출)
   - `node tests/contract_test.js` → 10개 (itsent-lab 규약과의 교차 검증: 카드 매핑·점수 라인·정산 단계·지급면제)
   - `node tests/replay_test.js` → 3개 (참조 레코드 6개 스모크 + 정산 불변식)
-  - `node tests/server_test.js` → 12개 (실제 HTTP 인증·중복 요청·입력 검증, 3인 실전 대국)
+  - `node tests/server_test.js` → 13개 (실제 HTTP 인증·중복 요청·입력 검증, 3인 실전 대국)
   - `node --test tests/fourplayer_room_test.js` → 5개 (4인 광팔기 좌석 변환·정산·비공개 정보)
   - `node tests/ai_test.js` → 3개 (혼자 AI 와 대국)
   - `node tests/disconnect_test.js` → 4개 (연결 끊김 자동 진행)
   - `node tests/jokbo_test.js` → 4개 (족보 그림 타일)
-  - `node tests/deal_finish_test.js` → 3개 (딜 직후 총통·선 후보 덱 보존)
-  - `node tests/fx_test.js` → 7개 (카드 연출 연결 · 이벤트 카드 id)
-  - `node --test tests/room_session_test.js` → 13개 (HTTP 요청·방 세션·폴링·액션)
+  - `node tests/deal_finish_test.js` → 5개 (딜 직후 총통·선 후보 덱 보존)
+  - `node tests/fx_test.js` → 8개 (카드 연출 연결 · 이벤트 카드 id)
+  - `node --test tests/room_session_test.js` → 15개 (HTTP 요청·방 세션·폴링·액션)
   - `node tests/score_panel_test.js` → 2개 (족보·획득 카드 점수판)
-  - `node tests/result_view_test.js` → 2개 (정산 결과 화면)
+  - `node tests/result_view_test.js` → 3개 (정산 결과 화면)
   - `node --test tests/phase_views_test.js` → 3개 (협상·선 결정·턴 프롬프트)
-  - `node --test tests/opponent_view_test.js` → 4개 (상대 정보·먹은 패)
-  - `node --test tests/hand_view_test.js` → 3개 (내 손패 렌더링·선택)
-  - `node --test tests/table_deck_view_test.js` → 3개 (바닥·뒷패 더미 렌더링)
-  - `node --test tests/settings_view_test.js` → 4개 (로비·게임 설정 저장 및 권한)
-  - `node --test tests/opponent_card_motion_test.js` → 4개 (상대 카드 이동 연출)
-  - `npm test` = 위 19개 연속 실행, **전부 통과**
+  - `node --test tests/opponent_view_test.js` → 5개 (상대 정보·먹은 패)
+  - `node --test tests/hand_view_test.js` → 5개 (내 손패 렌더링·선택)
+  - `node --test tests/table_deck_view_test.js` → 5개 (바닥·뒷패 더미 렌더링)
+  - `node --test tests/settings_view_test.js` → 4개 (로비·게임·개인 설정 저장 및 권한)
+  - `node --test tests/opponent_card_motion_test.js` → 6개 (상대 카드 이동 연출)
+  - `npm test` = 위 19개 연속 실행
 - `server/` 서버·방·API와 `public/` 화면·스타일·로직 모듈이 1차 구현되었다.
   - 서버: 방 만들기(6자리 코드) · 3인 입장 · **폴링 상태 조회** · 손패 은닉 · 재접속 · 시간제한 · 타임아웃
   - AI: `engine/ai.js` — itsent-lab 평가기 이식. 방 모드 `multi`(전원 사람) / `solo`(나 + AI)
@@ -66,6 +66,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 - **초기 총통 결과 안내 (v0.30)**: 딜 직후 바닥 총통으로 판이 끝나면 결과 창에 총통 사유를 표시하고, 방장은 창에서 바로 다음 판을 시작할 수 있다. 기존 총통 규칙은 유지한다.
 - **AI 이름표 복원 (v0.31)**: AI 대전 이름표를 `상대 A`, `상대 B`가 아닌 `컴퓨터 A`, `컴퓨터 B`로 표시한다.
 - **AI 맞고 총통 확률 조정 (v0.32)**: AI와 하는 2인 맞고에서 초기 총통이 나오면 절반의 경우 다시 섞어 딜해 기본 50장 덱 기준 발생률을 약 2.6%에서 약 1.3%로 낮춘다. 사람끼리 하는 맞고와 3인 대국은 바꾸지 않는다.
+- **개인 월 표시 (v0.36)**: 카드 상단 월 표시를 방 설정이 아닌 개인 화면 설정으로 바꿨다. 각 참가자는 게임 중 **⚙ → 내 화면 설정**에서 자기 화면만 `보이기`/`감추기`로 바꿀 수 있고, 설정은 브라우저에 저장된다. 방장이 방을 만들 때 고른 값은 새 참가자의 기본값으로만 쓰인다.
 - **방장 퇴장 처리 (v0.25)**: 방장이 "나가기" 를 누르면 그 방을 서버가 즉시 지운다(대기실 목록에서도 곧바로 사라짐). 같이 있던 사람들은 상태 조회가 404 를 받아 "방이 닫혔습니다" 안내와 함께 대기실로 돌아간다. 방장이 아닌 사람이 나가는 경우에는 방이 그대로 남는다.
 - **게임 이름 변경 (v0.26)**: 화면에 보이는 이름을 "고스톱" → "명지네고스톱" 으로 바꿨다. 로비 큰 제목(글자 크기는 6자맞게 44px 로 조정) · 브라우저 탭 제목 · 규칙 창 · 대기실 소제목에 반영했다.
 - **나가리 과다 수정 (v0.23)**: 선 결정 후보 카드 3장×인원수를 딜 덱에서 직접 빼던 것을 별도 복사본에서 뽑도록 바꿨다. 3인 기준 9장이 사라져 50장 덱이 41장으로 줄던 문제를 고쳤고, 시뮬레이션 나가리율이 3인 66%대 → 3%대로 줄었다.
@@ -74,8 +75,8 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 - 자산 확보 완료: 화투 SVG 105개(카드 48×2 체계 + 뒷장 5 + 보너스 4), 효과음 68종(OGG 27 + WAV 36 + MP3 5).
 - `README.md` 작성 완료(가족용 실행 안내·모드 선택·규칙 요약).
 - `public/` 에 이펙트 모듈(`fx.js`) 추가 — 카드 비행(Web Animations API)·이펙트 배너·사운드.
-- 방 설정 UI(방장 전용): 시간제한 · 점당 금액.
-- 브라우저 실전 확인 완료: 혼자 AI 3인 대국 · 이펙트 배너 · 카드 비행 · 정산 화면 · 방 설정 반영.
+- 방 설정 UI(방장 전용): 시간제한 · 점당 금액 · 보너스패. 개인 화면 설정: 카드 상단 월 표시(모든 참가자).
+- 브라우저 실전 확인 완료: 혼자 AI 3인 대국 · 이펙트 배너 · 카드 비행 · 정산 화면 · 방 설정·개인 월 표시 반영.
 - `.rec` 완전 재현은 **불가능**으로 판명했다(§2-2). 재플레이 테스트는 스모크 테스트로 확정.
 
 ### 결정 필요 항목
@@ -518,7 +519,7 @@ gostop-game/
 
 ```
 ┌─────────────────────────────┐
-│ 방 HJS7K2    나  30,000P     │  상단바: 방코드(누르면 복사) + 내 잔액
+│ 방 HJS7K2    나  30만원      │  상단바: 방코드(누르면 복사) + 내 잔액
 ├─────────────────────────────┤
 │  엄마(7)  아빠(5)  나(3)    │  플레이어 스트립: 이름/남은 카드/점수/연결 상태
 ├─────────────────────────────┤
@@ -613,7 +614,7 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 | 자산 | 라이선스 | 처리 |
 |---|---|---|
 | 화투 기본 48장 SVG | **자체 제작** (donian) | 출처 표기 불필요 |
-| 화투 보너스 4장 / 뒷장 5장 | 자체 제작 (자유 사용) | 표기 불필요 |
+| 화투 보너스 4장 | 자체 제작 (자유 사용) | 표기 불필요 |
 | 효과음 68종 (OGG 27 + WAV 36 + MP3 5) | **CC0** (Kenney) | 출처 표기 불필요 (예의상 표기) |
 
 `ATTRIBUTION.md` 내용:
@@ -634,25 +635,26 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 
 ### 10-0. 현재 검증 기준선
 
-- `node tests/engine_test.js` → **45개 통과** (규칙 단위. 정본 소스에서 직접 도출한 기대값)
-- `node tests/contract_test.js` → **10개 통과** (itsent-lab 규약 교차 검증: 카드 매핑·점수 라인·정산 단계·지급면제)
-- `node tests/replay_test.js` → **3개 통과** (레코드 6개 스모크 + 정산 불변식)
-- `node tests/server_test.js` → **12개 통과** (인증·중복 요청·입력 검증, 3인 실전 대국)
-- `node --test tests/fourplayer_room_test.js` → **5개 통과** (4인 좌석 변환·정산·비공개 정보)
-- `node tests/ai_test.js` → **3개 통과** (혼자 AI 와 대국)
-- `node tests/disconnect_test.js` → **4개 통과** (연결 끊김 자동 진행)
-- `node tests/jokbo_test.js` → **4개 통과** (족보 그림 타일)
-- `node tests/deal_finish_test.js` → **3개 통과** (딜 직후 총통·선 후보 덱 보존)
-- `node tests/fx_test.js` → **7개 통과** (카드 연출 연결·이벤트 카드 id)
-- `node tests/score_panel_test.js` → **2개 통과** (족보·획득 카드 점수판)
-- `node tests/result_view_test.js` → **2개 통과** (정산 결과 화면)
-- `node --test tests/phase_views_test.js` → **3개 통과** (협상·선 결정·턴 프롬프트)
-- `node --test tests/opponent_view_test.js` → **4개 통과** (상대 정보·먹은 패)
-- `node --test tests/hand_view_test.js` → **3개 통과** (내 손패 렌더링·선택)
-- `node --test tests/table_deck_view_test.js` → **3개 통과** (바닥·뒷패 더미 렌더링)
-- `node --test tests/settings_view_test.js` → **4개 통과** (로비·게임 설정 저장 및 권한)
-- `node --test tests/opponent_card_motion_test.js` → **4개 통과** (상대 카드 이동 연출)
-- `npm test` → 위 19개 연속 실행, **전부 통과해야 성공** (총 134개)
+- `node tests/engine_test.js` → **45개** (규칙 단위. 정본 소스에서 직접 도출한 기대값)
+- `node tests/contract_test.js` → **10개** (itsent-lab 규약 교차 검증: 카드 매핑·점수 라인·정산 단계·지급면제)
+- `node tests/replay_test.js` → **3개** (레코드 6개 스모크 + 정산 불변식)
+- `node tests/server_test.js` → **13개** (인증·중복 요청·입력 검증, 3인 실전 대국)
+- `node --test tests/fourplayer_room_test.js` → **5개** (4인 좌석 변환·정산·비공개 정보)
+- `node tests/ai_test.js` → **3개** (혼자 AI 와 대국)
+- `node tests/disconnect_test.js` → **4개** (연결 끊김 자동 진행)
+- `node tests/jokbo_test.js` → **4개** (족보 그림 타일)
+- `node tests/deal_finish_test.js` → **5개** (딜 직후 총통·선 후보 덱 보존)
+- `node tests/fx_test.js` → **8개** (카드 연출 연결·이벤트 카드 id)
+- `node tests/score_panel_test.js` → **2개** (족보·획득 카드 점수판)
+- `node tests/result_view_test.js` → **3개** (정산 결과 화면)
+- `node --test tests/phase_views_test.js` → **3개** (협상·선 결정·턴 프롬프트)
+- `node --test tests/opponent_view_test.js` → **5개** (상대 정보·먹은 패)
+- `node --test tests/hand_view_test.js` → **5개** (내 손패 렌더링·선택)
+- `node --test tests/table_deck_view_test.js` → **5개** (바닥·뒷패 더미 렌더링)
+- `node --test tests/settings_view_test.js` → **4개** (로비·게임·개인 설정 저장 및 권한)
+- `node --test tests/opponent_card_motion_test.js` → **6개** (상대 카드 이동 연출)
+- `node --test tests/room_session_test.js` → **15개** (HTTP 요청·방 세션·폴링·액션)
+- `npm test` → 위 19개 연속 실행, **전부 통과해야 성공** (총 148개)
 - `npm run check:es5` → `public/` 의 ES6+ 문법이 없음을 확인 (구형 안드로이드 4.4.4 호환)
 - `.rec` 완전 재현은 형식상 불가능(§2-2). 따라서 리플레이는 "예외 없이 진행 + 정산 불변식"까지만 검증하고, 규칙 정합성은 앞의 두 테스트가 담당한다.
 - 스냅샷은 일반 테스트 중 자동 생성하지 않는다. `update-snapshots` 같은 별도 명령으로만 생성하고 기준 파일을 저장소에 보관한다.

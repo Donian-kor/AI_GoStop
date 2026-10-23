@@ -60,6 +60,58 @@
       } catch (e) {}
     }
 
+    // 저장된 개인 월 표시 설정. 저장한 적이 없으면 null 을 돌려준다.
+    function readPersonalShowMonth() {
+      try {
+        var raw = root.localStorage.getItem(lobbySettingsKey);
+        if (!raw) return null;
+        var saved = JSON.parse(raw);
+        if (saved && typeof saved.showMonth === 'boolean') return saved.showMonth;
+      } catch (e) {}
+      return null;
+    }
+
+    // 내 화면에 적용할 월 표시 (개인 설정 > 방 설정 > 기본 보이기)
+    function effectiveShowMonth(state) {
+      var personal = readPersonalShowMonth();
+      if (personal !== null) return personal;
+      if (state && state.settings && typeof state.settings.showMonth === 'boolean') {
+        return state.settings.showMonth;
+      }
+      return true;
+    }
+
+    // 현재 화면에 그려진 카드에 월 표시를 즉시 반영한다.
+    function applyShowMonthToCards(showMonth) {
+      try {
+        var allCards = (root.document && root.document.querySelectorAll)
+          ? root.document.querySelectorAll('.card:not(.bonus-card)')
+          : [];
+        for (var i = 0; i < allCards.length; i++) {
+          if (!showMonth) {
+            if (allCards[i].className.indexOf('hide-month') === -1) {
+              allCards[i].className += ' hide-month';
+            }
+            if (allCards[i].removeAttribute) allCards[i].removeAttribute('data-month-label');
+          } else {
+            allCards[i].className = allCards[i].className.replace(/\s*hide-month\b/g, '');
+            var monthMatch = allCards[i].className.match(/\bm(\d{2})\b/);
+            if (monthMatch && allCards[i].setAttribute) {
+              allCards[i].setAttribute('data-month-label', Number(monthMatch[1]) + '월');
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    function byId(id) {
+      try {
+        return (root.document && root.document.getElementById) ? root.document.getElementById(id) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
     function canEditSettings(state) {
       return !!(state && state.isHost && (state.phase === 'lobby' || state.phase === 'settle'));
     }
@@ -70,14 +122,24 @@
 
     function setPanel(mode) {
       settingsMode = mode;
+      var isLobby = mode === 'lobby';
+      var isPersonal = mode === 'personal';
       if (el.settingsTitle) {
-        el.settingsTitle.innerHTML = mode === 'lobby' ? '새 방 설정' : '게임 설정';
+        el.settingsTitle.innerHTML = isLobby ? '새 방 설정' : (isPersonal ? '내 화면 설정' : '게임 설정');
       }
       if (el.settingsSub) {
-        el.settingsSub.innerHTML = mode === 'lobby'
-          ? '방을 만들 때 적용됩니다.<br>게임 중에는 바꿀 수 없습니다.'
-          : '방장만 바꿀 수 있습니다.<br>판을 시작하기 전에만 변경됩니다.';
+        if (isLobby) {
+          el.settingsSub.innerHTML = '방을 만들 때 적용됩니다.<br>월 표시는 내 화면에도 적용됩니다.';
+        } else if (isPersonal) {
+          el.settingsSub.innerHTML = '카드 상단 월 표시는 내 화면에만 적용됩니다.';
+        } else {
+          el.settingsSub.innerHTML = '방장만 바꿀 수 있습니다.<br>판을 시작하기 전에만 변경됩니다.<br>월 표시는 내 화면에만 적용됩니다.';
+        }
       }
+      var roomOnly = byId('roomOnlySettings');
+      if (roomOnly) roomOnly.className = isPersonal ? 'hidden' : '';
+      var note = byId('settingsNote');
+      if (note) note.className = isPersonal ? 'hidden' : 'set-note';
     }
 
     function ensurePointOption(pointValue) {
@@ -93,12 +155,15 @@
     function openRoomSettings() {
       var state = deps.getState();
       if (!state || !state.settings) return;
-      if (!state.isHost) {
-        if (deps.fx) deps.fx.showBanner('방장만 바꿀 수 있습니다', 'plain', 1200);
-        return;
-      }
+
+      // 방 규칙을 바꿀 수 없는 경우(게스트, 또는 판 진행 중)에는
+      // 개인 화면 설정만 연다.
       if (!canEditSettings(state)) {
-        if (deps.fx) deps.fx.showBanner('판 시작 전에만 바꿀 수 있습니다', 'plain', 1500);
+        setPanel('personal');
+        if (el.showMonthSelect) {
+          el.showMonthSelect.value = effectiveShowMonth(state) ? 'on' : 'off';
+        }
+        if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
         return;
       }
 
@@ -119,10 +184,7 @@
       }
 
       if (el.showMonthSelect) {
-        var currentMonthSetting = (state.settings && typeof state.settings.showMonth === 'boolean')
-          ? state.settings.showMonth
-          : getLobbySettings().showMonth;
-        el.showMonthSelect.value = currentMonthSetting === false ? 'off' : 'on';
+        el.showMonthSelect.value = effectiveShowMonth(state) ? 'on' : 'off';
       }
 
       if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
@@ -143,25 +205,13 @@
     if (el.lobbySettingsBtn) el.lobbySettingsBtn.addEventListener('click', openLobbySettings);
     if (el.settingsCloseBtn) el.settingsCloseBtn.addEventListener('click', close);
     if (el.showMonthSelect) el.showMonthSelect.addEventListener('change', function () {
-      var isHide = el.showMonthSelect.value === 'off';
-      try {
-        var allCards = (root.document && root.document.querySelectorAll) ? root.document.querySelectorAll('.card:not(.bonus-card)') : [];
-        for (var i = 0; i < allCards.length; i++) {
-          if (isHide) {
-            if (allCards[i].className.indexOf('hide-month') === -1) allCards[i].className += ' hide-month';
-            allCards[i].removeAttribute('data-month-label');
-          } else {
-            allCards[i].className = allCards[i].className.replace(/\s*hide-month\b/g, '');
-            // data-month-label 복원: m01~m12 클래스에서 월 번호를 읽어온다
-            var monthMatch = allCards[i].className.match(/\bm(\d{2})\b/);
-            if (monthMatch) allCards[i].setAttribute('data-month-label', Number(monthMatch[1]) + '월');
-          }
-        }
-      } catch (e1) {}
+      // 월 표시는 개인 설정이므로 바꾸는 즉시 저장하고 현재 카드에 반영한다.
+      var showMonth = el.showMonthSelect.value !== 'off';
+      applyShowMonthToCards(showMonth);
       try {
         var current = getLobbySettings();
-        saveLobbySettings(current.moneyPerPoint, current.timeKey, current.bonusPack, !isHide);
-      } catch (e2) {}
+        saveLobbySettings(current.moneyPerPoint, current.timeKey, current.bonusPack, showMonth);
+      } catch (e) {}
     });
     if (el.settingsSaveBtn) el.settingsSaveBtn.addEventListener('click', function () {
       var preset = timePresets[el.timeSelect.value] || timePresets.off;
@@ -170,33 +220,29 @@
       var showMonth = el.showMonthSelect ? el.showMonthSelect.value !== 'off' : true;
       if (bonusPack !== 48 && bonusPack !== 50 && bonusPack !== 51) bonusPack = 50;
       close();
-      try {
-        var allCards = root.document.querySelectorAll ? root.document.querySelectorAll('.card:not(.bonus-card)') : [];
-        for (var c = 0; c < allCards.length; c++) {
-          if (!showMonth) {
-            if (allCards[c].className.indexOf('hide-month') === -1) {
-              allCards[c].className += ' hide-month';
-              allCards[c].removeAttribute('data-month-label');
-            }
-          } else {
-            allCards[c].className = allCards[c].className.replace(/\s*hide-month\b/g, '');
-            var monthMatch2 = allCards[c].className.match(/\bm(\d{2})\b/);
-            if (monthMatch2) allCards[c].setAttribute('data-month-label', Number(monthMatch2[1]) + '월');
-          }
-        }
-      } catch (e) {}
+      applyShowMonthToCards(showMonth);
+
+      if (settingsMode === 'personal') {
+        var personal = getLobbySettings();
+        saveLobbySettings(personal.moneyPerPoint, personal.timeKey, personal.bonusPack, showMonth);
+        if (deps.fx) deps.fx.showBanner('내 화면 설정을 저장했습니다', 'plain', 1100);
+        return;
+      }
+
       if (settingsMode === 'lobby') {
         saveLobbySettings(money, el.timeSelect.value, bonusPack, showMonth);
         if (deps.fx) deps.fx.showBanner('새 방 설정을 저장했습니다', 'plain', 1100);
         return;
       }
+
+      // 게임 설정(방장) — 월 표시는 개인 설정으로만 저장하고
+      // 서버 방 설정에는 보내지 않는다. (방 기본값은 방 만들 때 정해진다)
       var lobbyCurrent = getLobbySettings();
       saveLobbySettings(lobbyCurrent.moneyPerPoint, lobbyCurrent.timeKey, lobbyCurrent.bonusPack, showMonth);
       deps.act('settings', {
         moneyPerPoint: money,
         timeLimit: { enabled: preset.enabled, base: preset.base, increment: preset.increment },
-        bonusPack: bonusPack,
-        showMonth: showMonth
+        bonusPack: bonusPack
       });
       if (deps.fx) deps.fx.showBanner('설정을 저장했습니다', 'plain', 1100);
     });
@@ -207,8 +253,11 @@
       renderAccess: function (state) {
         if (!el.settingsBtn) return;
         var canSet = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
-        el.settingsBtn.className = 'chip icon' + (state.isHost ? '' : ' hidden') + (canSet ? '' : ' off');
-        el.settingsBtn.title = canSet ? '게임 설정 (점당·시간 제한)' : '판 시작 전에만 설정을 바꿀 수 있습니다';
+        // 월 표시는 개인 설정이라 누구나, 언제든 바꿀 수 있다.
+        el.settingsBtn.className = 'chip icon';
+        el.settingsBtn.title = canSet
+          ? '게임 설정 (점당·시간 제한 / 월 표시는 내 화면)'
+          : '내 화면 설정 (카드 월 표시)';
       }
     };
   };

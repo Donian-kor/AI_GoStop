@@ -117,6 +117,7 @@
     pointSelect: $('pointSelect'),
     timeSelect: $('timeSelect'),
     bonusPackSelect: $('bonusPackSelect'),
+    showMonthSelect: $('showMonthSelect'),
     deckStack: $('deckStack'),
     scorePanel: $('scorePanel'),
     players: $('players'),
@@ -575,16 +576,18 @@
     return CARD_IMG + card.id + '.png?v=' + buildVersion;
   }
 
-  // showMonth 설정값을 결정한다 (우선순위: 명시된 인자 > 방 서버 설정 > localStorage)
-  function resolveShowMonth(showMonth) {
-    if (typeof showMonth === 'boolean') return showMonth;
-    try {
-      var last = roomSession && roomSession.getLastState ? roomSession.getLastState() : null;
-      if (last && last.settings && typeof last.settings.showMonth === 'boolean') return last.settings.showMonth;
-    } catch (e1) {}
+  // showMonth 설정값을 결정한다.
+  // 개인 설정(localStorage)이 있으면 방 설정보다 항상 우선한다.
+  // (우선순위: 개인 설정 > 방 서버 설정 > 기본 보이기)
+  function resolveShowMonth(roomShowMonth) {
     try {
       var raw = window.localStorage.getItem('gs_lobby_settings');
       if (raw) { var ls = JSON.parse(raw); if (ls && typeof ls.showMonth === 'boolean') return ls.showMonth; }
+    } catch (e1) {}
+    if (typeof roomShowMonth === 'boolean') return roomShowMonth;
+    try {
+      var last = roomSession && roomSession.getLastState ? roomSession.getLastState() : null;
+      if (last && last.settings && typeof last.settings.showMonth === 'boolean') return last.settings.showMonth;
     } catch (e2) {}
     return true;
   }

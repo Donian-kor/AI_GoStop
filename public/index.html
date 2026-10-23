@@ -246,34 +246,36 @@
     <div class="overlay-inner settings-inner">
       <h2 id="settingsTitle">게임 설정</h2>
       <p id="settingsSub" class="overlay-sub">방장만 바꿀 수 있습니다.<br>판을 시작하기 전에만 변경됩니다.</p>
-      <label class="set-row">
-        <span class="set-label">점당 금액</span>
-        <select id="pointSelect" class="set-select">
-          <option value="10">10원</option>
-          <option value="100">100원</option>
-          <option value="500">500원</option>
-          <option value="1000">1,000원</option>
-          <option value="5000">5,000원</option>
-          <option value="10000">10,000원</option>
-        </select>
-      </label>
-      <label class="set-row">
-        <span class="set-label">시간 제한</span>
-        <select id="timeSelect" class="set-select">
-          <option value="off">제한 없음</option>
-          <option value="30">30초 + 5초</option>
-          <option value="45">45초 + 5초</option>
-          <option value="60">60초 + 10초</option>
-        </select>
-      </label>
-      <label class="set-row">
-        <span class="set-label">보너스패</span>
-        <select id="bonusPackSelect" class="set-select">
-          <option value="48">48장 (보너스 없음)</option>
-          <option value="50">50장 (쌍피 1 + 조커 1)</option>
-          <option value="51">51장 (쌍피 2 + 3피 1)</option>
-        </select>
-      </label>
+      <div id="roomOnlySettings">
+        <label class="set-row">
+          <span class="set-label">점당 금액</span>
+          <select id="pointSelect" class="set-select">
+            <option value="10">10원</option>
+            <option value="100">100원</option>
+            <option value="500">500원</option>
+            <option value="1000">1,000원</option>
+            <option value="5000">5,000원</option>
+            <option value="10000">10,000원</option>
+          </select>
+        </label>
+        <label class="set-row">
+          <span class="set-label">시간 제한</span>
+          <select id="timeSelect" class="set-select">
+            <option value="off">제한 없음</option>
+            <option value="30">30초 + 5초</option>
+            <option value="45">45초 + 5초</option>
+            <option value="60">60초 + 10초</option>
+          </select>
+        </label>
+        <label class="set-row">
+          <span class="set-label">보너스패</span>
+          <select id="bonusPackSelect" class="set-select">
+            <option value="48">48장 (보너스 없음)</option>
+            <option value="50">50장 (쌍피 1 + 조커 1)</option>
+            <option value="51">51장 (쌍피 2 + 3피 1)</option>
+          </select>
+        </label>
+      </div>
       <label class="set-row">
         <span class="set-label">카드 상단 월 표시</span>
         <select id="showMonthSelect" class="set-select">
@@ -281,7 +283,7 @@
           <option value="off">감추기 (고수 모드)</option>
         </select>
       </label>
-      <p class="set-note">시간 제한이 있으면 정해진 시간이 지날 때 자동으로 카드를 냅니다. 보너스패는 판 시작 전에만 바꿀 수 있습니다.</p>
+      <p id="settingsNote" class="set-note">시간 제한이 있으면 정해진 시간이 지날 때 자동으로 카드를 냅니다. 보너스패는 판 시작 전에만 바꿀 수 있습니다.</p>
       <div class="row">
         <button id="settingsSaveBtn" class="primary" type="button">저장</button>
         <button id="settingsCloseBtn" type="button">닫기</button>
@@ -361,8 +363,8 @@
 <script src="opponent-view.js?v=5"></script>
 <script src="hand-view.js?v=3"></script>
 <script src="table-deck-view.js?v=4"></script>
-<script src="settings-view.js?v=3"></script>
+<script src="settings-view.js?v=4"></script>
 <script src="opponent-card-motion.js?v=4"></script>
-<script src="app.js?v=43"></script>
+<script src="app.js?v=45"></script>
 </body>
 </html>

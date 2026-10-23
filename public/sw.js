@@ -9,7 +9,7 @@
  * - 오프라인에서는 캐시된 화면을 보여준다
  */
 
-var CACHE_NAME = 'gostop-v11';
+var CACHE_NAME = 'gostop-v13';
 var STATIC_ASSETS = [
   '/',
   '/index.html',
