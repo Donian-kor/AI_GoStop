@@ -291,6 +291,25 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { ok: true, version: BUILD_VERSION, gameVersion: GAME_VERSION });
   }
 
+  // POST /api/save-png — SVG→PNG 변환용 (임시 도구, 개발 전용)
+  if (segments.length === 2 && segments[1] === 'save-png' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    if (!body.filename || !body.data) {
+      return sendJson(res, 400, { ok: false, error: 'filename과 data가 필요합니다.' });
+    }
+    const name = path.basename(body.filename);
+    if (!name.endsWith('.png')) {
+      return sendJson(res, 400, { ok: false, error: '.png 파일만 저장 가능합니다.' });
+    }
+    const dir = path.join(__dirname, '..', 'assets', 'hwatu', 'png');
+    fs.mkdirSync(dir, { recursive: true });
+    const filePath = path.join(dir, name);
+    var base64 = body.data.replace(/^data:image\/png;base64,/, '');
+    var buf = Buffer.from(base64, 'base64');
+    fs.writeFileSync(filePath, buf);
+    return sendJson(res, 200, { ok: true, path: filePath, size: buf.length });
+  }
+
   // GET /api/rooms — 만들어진 방 목록 (참가 가능한 방 우선, 최신순)
   if (segments.length === 2 && segments[1] === 'rooms' && req.method === 'GET') {
     const list = [];
