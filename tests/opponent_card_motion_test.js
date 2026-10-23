@@ -49,7 +49,7 @@ function createMotion(options) {
   });
 
   const window = {};
-  const context = { window };
+  const context = { window, setTimeout, clearTimeout };
   vm.runInNewContext(fs.readFileSync('public/opponent-card-motion.js', 'utf8'), context);
   const motion = window.GostopOpponentCardMotion({
     el: { table, meCaptured },
@@ -126,12 +126,13 @@ test('capture는 이전 카드 위치를 사용하고 상대의 먹은 패 영�
   const seat = new Element({ left: 10, top: 20, width: 120, height: 80 });
   seat.rack = new Element({ left: 500, top: 600, width: 180, height: 70 });
   const oldRect = { left: 70, top: 90, width: 45, height: 74 };
-  const { motion, calls } = createMotion({
+  const { motion, table, calls } = createMotion({
     players: { 1: seat },
     previousRects: { captured: oldRect },
   });
   motion.play([{ kind: 'capture', seat: 1, cards: ['captured'] }]);
 
+  assert.ok(/\bcapture-impact\b/.test(table.className));
   assert.strictEqual(calls.length, 1);
   assert.strictEqual(calls[0][0], oldRect);
   assert.strictEqual(calls[0][1], seat.rack.rect);
@@ -141,9 +142,10 @@ test('capture는 이전 카드 위치를 사용하고 상대의 먹은 패 영�
 });
 
 test('capture는 이전 위치가 없으면 자리 중앙에서 출발하고 본인 캡처 위치로 향한다', () => {
-  const { motion, calls, meCaptured } = createMotion();
+  const { motion, table, calls, meCaptured } = createMotion();
   motion.play([{ kind: 'capture', seat: 0, cards: ['fallback'] }]);
 
+  assert.ok(/\bcapture-impact\b/.test(table.className));
   assert.strictEqual(calls.length, 1);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(calls[0][0])), {
     left: 113,

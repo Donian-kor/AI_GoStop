@@ -2,6 +2,8 @@
 
 (function (root) {
   root.GostopOpponentCardMotion = function (deps) {
+    var impactTimer = null;
+
     function cardBox(centerRect, width, height) {
       return {
         left: centerRect.left + centerRect.width / 2 - width / 2,
@@ -9,6 +11,30 @@
         width: width,
         height: height
       };
+    }
+
+    function captureImpact() {
+      var table = deps.el.table;
+      var classes = (table.className || '').split(/\s+/);
+      var nextClasses = [];
+      for (var i = 0; i < classes.length; i++) {
+        if (classes[i] && classes[i] !== 'capture-impact') nextClasses.push(classes[i]);
+      }
+      table.className = nextClasses.join(' ');
+      table.offsetWidth;
+      nextClasses.push('capture-impact');
+      table.className = nextClasses.join(' ');
+
+      if (impactTimer) clearTimeout(impactTimer);
+      impactTimer = setTimeout(function () {
+        var current = (table.className || '').split(/\s+/);
+        var remaining = [];
+        for (var j = 0; j < current.length; j++) {
+          if (current[j] && current[j] !== 'capture-impact') remaining.push(current[j]);
+        }
+        table.className = remaining.join(' ');
+        impactTimer = null;
+      }, 360);
     }
 
     function play(events) {
@@ -43,6 +69,7 @@
             })(id, target));
           }
         } else if (event.kind === 'capture') {
+          captureImpact();
           var rack = isMe ? deps.el.meCaptured : (seat.querySelector('.opp-box') || seat);
           var rackRect = rack.getBoundingClientRect();
           for (var k = 0; k < event.cards.length; k++) {

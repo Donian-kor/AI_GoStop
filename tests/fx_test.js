@@ -67,6 +67,9 @@ test('카드가 떨어지며 나타나는 키프레임과 섞기 스타일이 �
   assert.ok(/\.shuffle-overlay/.test(css), '섞기 오버레이 스타일');
   assert.ok(/\.shuffle-card/.test(css), '섞는 카드 스타일');
   assert.ok(/\.shuffle-overlay\.gather \.shuffle-card/.test(css), '중앙 수렴 카드 스타일');
+  assert.ok(/#table\.capture-impact/.test(css), '먹기 순간 바닥 충격 애니메이션');
+  assert.ok(/@keyframes\s+captureShockwave/.test(css), '먹기 충격파 키프레임');
+  assert.ok(/captureImpact\(\)/.test(opponentCardMotion), '먹기 이벤트가 바닥 충격을 발생시킨다');
   assert.ok(/prefers-reduced-motion:\s*reduce/.test(css), '모션 감소 설정 지원');
   assert.ok(/translate\(-50%, -50%\).*translateY/.test(fx), '카드가 중앙의 덱 형태로 모인다');
   assert.ok(/prefers-reduced-motion:\s*reduce/.test(fx), '모션 감소 시 빠른 정적 덱으로 전환');
