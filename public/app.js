@@ -306,15 +306,14 @@
     var count = parts[1] ? parseInt(parts[1], 10) : 3;
     var diff = el.diffSelect.value;
     // 로비 ⚙ 에서 저장한 새 방 기본값 (점당 금액 · 시간 제한)
-    var lobbySet = getLobbySettings();
-    var preset = TIME_PRESETS[lobbySet.timeKey] || TIME_PRESETS.off;
+    var lobbySet = settingsView.getRoomDefaults();
     postJson('/api/room', {
       name: name,
       mode: mode,
       playerCount: count,
       aiDifficulty: diff,
       moneyPerPoint: lobbySet.moneyPerPoint,
-      timeLimit: { enabled: preset.enabled, base: preset.base, increment: preset.increment }
+      timeLimit: lobbySet.timeLimit
     },
       function (res) {
         if (!res || !res.code) {
@@ -356,124 +355,11 @@
   if (el.lobbySoundBtn) el.lobbySoundBtn.addEventListener('click', toggleMute);
 
   // ── 게임 설정 (방장 · 판 시작 전에만) ────────────────────────────────────
-  var POINT_OPTIONS = [10, 100, 500, 1000, 5000, 10000];
-  var TIME_PRESETS = {
-    off: { enabled: false, base: 0, increment: 0 },
-    '30': { enabled: true, base: 30, increment: 5 },
-    '45': { enabled: true, base: 45, increment: 5 },
-    '60': { enabled: true, base: 60, increment: 10 }
-  };
-  var LOBBY_SETTINGS_KEY = 'gs_lobby_settings';
-  // 설정 창을 연 곳: 'room' = 방장 설정 / 'lobby' = 새 방 기본값
-  var settingsMode = 'room';
-
-  // 로비에서 저장한 새 방 기본값을 읽는다 (없거나 잘못된 값이면 기본값)
-  function getLobbySettings() {
-    var out = { moneyPerPoint: 100, timeKey: 'off' };
-    try {
-      var raw = localStorage.getItem(LOBBY_SETTINGS_KEY);
-      if (!raw) return out;
-      var saved = JSON.parse(raw);
-      var pv = Number(saved && saved.moneyPerPoint);
-      for (var i = 0; i < POINT_OPTIONS.length; i++) {
-        if (POINT_OPTIONS[i] === pv) { out.moneyPerPoint = pv; break; }
-      }
-      if (saved && TIME_PRESETS[saved.timeKey]) out.timeKey = saved.timeKey;
-    } catch (e) {}
-    return out;
-  }
-
-  function saveLobbySettings(moneyPerPoint, timeKey) {
-    try {
-      localStorage.setItem(LOBBY_SETTINGS_KEY, JSON.stringify({
-        moneyPerPoint: moneyPerPoint,
-        timeKey: timeKey
-      }));
-    } catch (e) {}
-  }
-
-  function canEditSettings(state) {
-    return !!(state && state.isHost && (state.phase === 'lobby' || state.phase === 'settle'));
-  }
-
-  function closeSettings() {
-    if (el.settingsOverlay) el.settingsOverlay.className = 'overlay hidden';
-  }
-
-  // 창의 제목·설명을 여는 곳(로비/게임)에 맞춘다
-  function setSettingsPanel(mode) {
-    settingsMode = mode;
-    if (el.settingsTitle) {
-      el.settingsTitle.innerHTML = mode === 'lobby' ? '새 방 설정' : '게임 설정';
-    }
-    if (el.settingsSub) {
-      el.settingsSub.innerHTML = mode === 'lobby'
-        ? '방을 만들 때 적용됩니다.<br>게임 중에는 바꿀 수 없습니다.'
-        : '방장만 바꿀 수 있습니다.<br>판을 시작하기 전에만 변경됩니다.';
-    }
-  }
-
-  // 목록에 없는 점당 금액이면 선택지를 하나 추가한다
-  function ensurePointOption(pv) {
-    for (var i = 0; i < POINT_OPTIONS.length; i++) {
-      if (String(POINT_OPTIONS[i]) === pv) return;
-    }
-    var opt = document.createElement('option');
-    opt.value = pv;
-    opt.text = Number(pv).toLocaleString() + '원';
-    el.pointSelect.appendChild(opt);
-  }
-
-  function openSettings() {
-    var st = lastState;
-    if (!st || !st.settings) return;
-    if (!st.isHost) { if (Fx) Fx.showBanner('방장만 바꿀 수 있습니다', 'plain', 1200); return; }
-    if (!canEditSettings(st)) {
-      if (Fx) Fx.showBanner('판 시작 전에만 바꿀 수 있습니다', 'plain', 1500);
-      return;
-    }
-
-    setSettingsPanel('room');
-    // 현재 점당 금액을 목록에 표시 (목록에 없는 값이면 하나 추가)
-    var pv = String(st.settings.moneyPerPoint);
-    ensurePointOption(pv);
-    el.pointSelect.value = pv;
-
-    var tl = st.settings.timeLimit || {};
-    var tkey = !tl.enabled ? 'off' : String(tl.base);
-    if (tkey !== 'off' && tkey !== '30' && tkey !== '45' && tkey !== '60') tkey = 'off';
-    el.timeSelect.value = tkey;
-
-    if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
-  }
-
-  // 로비 ⚙ — 방을 만들기 전에 새 방 기본값을 정한다 (방장 제한 없음)
-  function openLobbySettings() {
-    setSettingsPanel('lobby');
-    var ls = getLobbySettings();
-    ensurePointOption(String(ls.moneyPerPoint));
-    el.pointSelect.value = String(ls.moneyPerPoint);
-    el.timeSelect.value = ls.timeKey;
-    if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
-  }
-
-  if (el.settingsBtn) el.settingsBtn.addEventListener('click', openSettings);
-  if (el.lobbySettingsBtn) el.lobbySettingsBtn.addEventListener('click', openLobbySettings);
-  if (el.settingsCloseBtn) el.settingsCloseBtn.addEventListener('click', closeSettings);
-  if (el.settingsSaveBtn) el.settingsSaveBtn.addEventListener('click', function () {
-    var preset = TIME_PRESETS[el.timeSelect.value] || TIME_PRESETS.off;
-    var money = Number(el.pointSelect.value);
-    closeSettings();
-    if (settingsMode === 'lobby') {
-      saveLobbySettings(money, el.timeSelect.value);
-      if (Fx) Fx.showBanner('새 방 설정을 저장했습니다', 'plain', 1100);
-      return;
-    }
-    act('settings', {
-      moneyPerPoint: money,
-      timeLimit: { enabled: preset.enabled, base: preset.base, increment: preset.increment }
-    });
-    if (Fx) Fx.showBanner('설정을 저장했습니다', 'plain', 1100);
+  var settingsView = window.GostopSettingsView({
+    el: el,
+    getState: function () { return lastState; },
+    act: act,
+    fx: Fx
   });
 
   el.startBtn.addEventListener('click', function () { act('start'); });
@@ -519,7 +405,7 @@
     if (el.stakesChip) el.stakesChip.innerHTML = '점당 —';
     if (el.meScore) el.meScore.innerHTML = '내 점수 <b>0</b>점';
     if (el.meCaptured) el.meCaptured.innerHTML = '';
-    closeSettings();
+    settingsView.close();
     roomBrowser.close();
     el.turnInfo.innerHTML = '';
     el.timer.innerHTML = '';
@@ -874,11 +760,7 @@
     }
 
     // 설정(⚙) — 방장만 보이고, 판 시작 전(lobby/settle)에만 활성화
-    if (el.settingsBtn) {
-      var canSet = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
-      el.settingsBtn.className = 'chip icon' + (state.isHost ? '' : ' hidden') + (canSet ? '' : ' off');
-      el.settingsBtn.title = canSet ? '게임 설정 (점당·시간 제한)' : '판 시작 전에만 설정을 바꿀 수 있습니다';
-    }
+    settingsView.renderAccess(state);
 
     // 플레이어 — 나는 아래(손패·족보·머니칩)에 이미 나오므로 상단에는 상대만 보여준다
     opponentView.render(state);
