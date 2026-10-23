@@ -25,6 +25,7 @@ const PUBLIC = path.join(__dirname, '..', 'public');
 const fx = fs.readFileSync(path.join(PUBLIC, 'fx.js'), 'utf8');
 const css = fs.readFileSync(path.join(PUBLIC, 'style.css'), 'utf8');
 const app = fs.readFileSync(path.join(PUBLIC, 'app.js'), 'utf8');
+const opponentCardMotion = fs.readFileSync(path.join(PUBLIC, 'opponent-card-motion.js'), 'utf8');
 
 let uidSeq = 0;
 function card(id) {
@@ -71,7 +72,8 @@ test('화면이 카드 이동을 실제로 적용한다', () => {
   assert.ok(/Fx\.captureRects\(/.test(app), '그리기 전 자리 기억');
   assert.ok(/Fx\.flipCards\(/.test(app), '그린 뒤 자리 맞춤');
   assert.ok(/Fx\.playShuffle\(/.test(app), '선 결정에서 섞기 연출');
-  assert.ok(/Fx\.animateCardMove\(/.test(app), '상대 패가 날아가는 연출');
+  assert.ok(/opponentCardMotion\.play\(moveFx\)/.test(app), '상대 패 연출 모듈 호출');
+  assert.ok(/deps\.fx\.animateCardMove\(/.test(opponentCardMotion), '상대 패가 날아가는 연출');
 });
 
 test('바닥에 놓은 패 이벤트가 카드 id 를 담아 준다', () => {

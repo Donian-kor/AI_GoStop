@@ -511,7 +511,7 @@
         }
         // 화면을 그린 뒤 — 상대가 낸 패·먹은 패가 날아가는 연출
         try {
-          playOpponentMoves(moveFx);
+          opponentCardMotion.play(moveFx);
         } catch (e) { /* 연출 오류가 게임을 멈추지 않게 */ }
       },
       function (xhr) {
@@ -666,6 +666,15 @@
   var prevCardRects = {};
   // 상대가 내는 중인 카드 — 바닥에 먼저 도착하지 않게 잠시 가려둔다
   var flyingCards = {};
+  var opponentCardMotion = window.GostopOpponentCardMotion({
+    el: el,
+    fx: Fx,
+    mySeat: function () { return mySeat; },
+    seatEl: seatEl,
+    getPreviousCardRects: function () { return prevCardRects; },
+    getFlyingCards: function () { return flyingCards; },
+    cardImg: cardImg
+  });
 
   function render(state) {
     prevCardRects = Fx.captureRects(CARD_ANIM_SELECTOR);
@@ -676,68 +685,6 @@
       var flown = el.table.querySelector('[data-card-id="' + id + '"]');
       if (flown) flown.style.opacity = '0';
     }
-  }
-
-  /**
-   * 상대가 낸 패 · 먹은 패 연출
-   *   - 낸 카드  : 상대의 자리 → 바닥으로 날아온다
-   *   - 먹은 패  : 바닥 → 상대의 먹은 패 자리로 날아간다
-   */
-  function playOpponentMoves(fxs) {
-    if (!fxs || !fxs.length) return;
-    for (var i = 0; i < fxs.length; i++) {
-      var fx = fxs[i];
-      if (!fx || !fx.cards || !fx.cards.length) continue;
-      if (fx.seat < 0) continue;
-      var isMe = fx.seat === mySeat;
-      var seat = isMe ? null : seatEl(fx.seat);
-      if (!isMe && !seat) continue;
-      var seatRect = isMe ? el.meCaptured.getBoundingClientRect() : seat.getBoundingClientRect();
-
-      if (fx.kind === 'place' || fx.kind === 'bbeok') {
-        // 상대가 낸 카드가 자리에서 바닥으로 날아온다 (내가 낸 카드는 playCard 가 맡는다)
-        if (isMe) continue;
-        for (var c = 0; c < fx.cards.length; c++) {
-          var id = fx.cards[c];
-          var target = el.table.querySelector('[data-card-id="' + id + '"]');
-          if (!target) continue; // 곧바로 먹힌 카드는 먹은 패 연출로 이어진다
-          var toRect = target.getBoundingClientRect();
-          // 출발은 상대의 자리 가운데, 크기는 바닥 카드와 똑같이
-          var fromBox = cardBox(seatRect, toRect.width, toRect.height);
-          target.style.opacity = '0';
-          flyingCards[id] = 1;
-          Fx.animateCardMove(fromBox, toRect, cardImg({ id: id }), 340, -8, (function (cardId, node) {
-            return function () {
-              delete flyingCards[cardId];
-              var again = node && node.parentNode
-                ? node
-                : el.table.querySelector('[data-card-id="' + cardId + '"]');
-              if (again) again.style.opacity = '';
-            };
-          })(id, target));
-        }
-      } else if (fx.kind === 'capture') {
-        // 먹은 패가 바닥에서 먹은 패 자리로 날아간다
-        var rack = isMe ? el.meCaptured : (seat.querySelector('.opp-box') || seat);
-        var rackRect = rack.getBoundingClientRect();
-        for (var k = 0; k < fx.cards.length; k++) {
-          var cid = fx.cards[k];
-          var old = prevCardRects[cid];
-          var from = old || cardBox(seatRect, 54, 88);
-          Fx.animateCardMove(from, rackRect, cardImg({ id: cid }), 380, 10);
-        }
-      }
-    }
-  }
-
-  /** 자리 가운데에 카드 크기의 상자를 만든다. */
-  function cardBox(centerRect, w, h) {
-    return {
-      left: centerRect.left + centerRect.width / 2 - w / 2,
-      top: centerRect.top + centerRect.height / 2 - h / 2,
-      width: w,
-      height: h
-    };
   }
 
   function renderState(state) {
