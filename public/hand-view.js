@@ -15,7 +15,11 @@
         (function (index) {
           var cardData = state.myHand[index];
           var canMatch = myTurn && floorMonths[cardData.month];
-          var card = deps.makeCardEl(cardData, (myTurn ? 'pick ' : '') + (canMatch ? 'match' : ''));
+          var card = deps.makeCardEl(
+            cardData,
+            (myTurn ? 'pick ' : '') + (canMatch ? 'match' : ''),
+            state.settings && state.settings.showMonth
+          );
           card.setAttribute('data-card-id', cardData.id);
           if (myTurn) {
             if (canMatch) {

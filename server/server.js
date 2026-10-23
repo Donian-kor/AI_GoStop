@@ -406,6 +406,7 @@ async function handleApi(req, res, url) {
       moneyPerPoint: body.moneyPerPoint,
       timeLimit: body.timeLimit,
       bonusPack: body.bonusPack,
+      showMonth: body.showMonth,
     };
     const u = users.userByToken(token);
     if (!u) return sendJson(res, 401, { ok: false, error: '로그인 후 방을 만들 수 있습니다.' });

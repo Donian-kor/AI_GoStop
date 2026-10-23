@@ -447,7 +447,8 @@
       aiDifficulty: diff,
       moneyPerPoint: lobbySet.moneyPerPoint,
       timeLimit: lobbySet.timeLimit,
-      bonusPack: lobbySet.bonusPack
+      bonusPack: lobbySet.bonusPack,
+      showMonth: lobbySet.showMonth
     }, function (message) { el.lobbyError.textContent = message; });
   });
 
@@ -571,7 +572,7 @@
     return CARD_IMG + card.id + '.png?v=' + buildVersion;
   }
 
-  function makeCardEl(card, extraClass) {
+  function makeCardEl(card, extraClass, showMonth) {
     var d = document.createElement('div');
     d.className = 'card ' + (extraClass || '');
     var img = document.createElement('img');
@@ -586,8 +587,7 @@
       d.setAttribute('data-kind', '');
     } else {
       d.className += ' m' + (card.month < 10 ? '0' + card.month : String(card.month));
-      var defaults = settingsView ? settingsView.getRoomDefaults() : { showMonth: true };
-      if (defaults.showMonth === false) d.className += ' hide-month';
+      if (showMonth === false) d.className += ' hide-month';
       d.setAttribute('data-month-label', card.month + '월');
       d.setAttribute('data-kind', KIND_LABEL[card.kind] || '');
     }
@@ -760,13 +760,13 @@
     if (state.phase === 'negotiate') {
       el.table.innerHTML = '';
       for (var t = 0; t < state.table.length; t++) {
-        var nc = makeCardEl(state.table[t], 'small');
+        var nc = makeCardEl(state.table[t], 'small', state.settings.showMonth);
         nc.setAttribute('data-card-id', state.table[t].id);
         el.table.appendChild(nc);
       }
       el.tableHint.innerHTML = '바닥 1장만 공개됩니다 (협상 중)';
       el.hand.innerHTML = '';
-      for (var h = 0; h < state.myHand.length; h++) el.hand.appendChild(makeCardEl(state.myHand[h], ''));
+      for (var h = 0; h < state.myHand.length; h++) el.hand.appendChild(makeCardEl(state.myHand[h], '', state.settings.showMonth));
       el.turnInfo.innerHTML = '4인 광팔기 — 참가 여부 협상 중';
       el.timer.innerHTML = '';
       el.startBtn.className = 'primary hidden';

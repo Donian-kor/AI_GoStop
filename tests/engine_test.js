@@ -664,6 +664,8 @@ test('설정 정규화 — 허용 범위를 벗어난 값은 기본값으로 돌
   assert.strictEqual(s.moneyPerPoint, 100);
   assert.strictEqual(s.timeLimit.base, 30);
   assert.strictEqual(s.timeLimit.enabled, true);
+  assert.strictEqual(s.showMonth, true);
+  assert.strictEqual(normalizeSettings({ showMonth: false }).showMonth, false);
 });
 
 test('박 on/off 설정이 점수 계산기에 반영된다', () => {

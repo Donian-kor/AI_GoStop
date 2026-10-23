@@ -52,9 +52,9 @@ function createView() {
 
   const view = window.GostopTableDeckView({
     el: { table, tableHint, deckStack },
-    makeCardEl: (card, className) => {
+    makeCardEl: (card, className, showMonth) => {
       const element = new Element('div');
-      element.className = 'card ' + className;
+      element.className = 'card ' + className + (showMonth === false ? ' hide-month' : '');
       element.card = card;
       return element;
     },
@@ -70,7 +70,7 @@ test('바닥 패를 순서대로 렌더링하고 카드 식별자와 장수를 �
     { id: 'floor-b', month: 1 },
     { id: 'floor-c', month: 3 },
   ];
-  view.render({ table: cards, deckCount: 0 });
+  view.render({ settings: { showMonth: true }, table: cards, deckCount: 0 });
 
   assert.strictEqual(table.children.length, 2);
   assert.strictEqual(table.children[0].className, 'floor-month-group');
@@ -94,6 +94,17 @@ test('뒷패 더미는 최대 다섯 장을 그리되 실제 남은 장수를 �
   assert.strictEqual(findAll(deckStack, 'back').length, 5);
   assert.strictEqual(deckStack.children[1].className, 'deck-count');
   assert.strictEqual(deckStack.children[1].innerHTML, '뒷패 8장');
+});
+
+test('방 설정에서 월 표시를 끄면 바닥패의 월 밴드를 숨긴다', () => {
+  const { view, table } = createView();
+  view.render({
+    settings: { showMonth: false },
+    table: [{ id: 'hidden-month-floor', month: 3 }],
+    deckCount: 0,
+  });
+
+  assert.strictEqual(table.children[0].children[0].className, 'card small hide-month');
 });
 
 test('바닥과 뒷패가 비면 이전 내용을 모두 지운다', () => {

@@ -54,9 +54,9 @@ function createHandView(mySeat) {
     el: { hand },
     mySeat: () => mySeat,
     fitHandCards: (count) => fitCalls.push(count),
-    makeCardEl: (card, className) => {
+    makeCardEl: (card, className, showMonth) => {
       const element = new Element('div');
-      element.className = 'card ' + className;
+      element.className = 'card ' + className + (showMonth === false ? ' hide-month' : '');
       element.card = card;
       return element;
     },
@@ -76,6 +76,7 @@ test('내 차례의 손패는 바닥과 같은 월을 강조하고 클릭 시 �
     currentSeat: 0,
     phase: 'play',
     prompt: null,
+    settings: { showMonth: true },
     table: [{ id: 'floor', month: 2 }],
     myHand: cards,
   });
@@ -119,6 +120,20 @@ test('상대 차례나 선택 프롬프트 중에는 손패를 누를 수 없고
   hand.children[0].click();
   assert.strictEqual(playCalls.length, 0);
   assert.deepStrictEqual(fitCalls, [1, 1]);
+});
+
+test('방 설정에서 월 표시를 끄면 내 손패의 월 밴드를 숨긴다', () => {
+  const { view, hand } = createHandView(0);
+  view.render({
+    currentSeat: 0,
+    phase: 'play',
+    prompt: null,
+    settings: { showMonth: false },
+    table: [],
+    myHand: [{ id: 'hand-hidden-month', month: 2 }],
+  });
+
+  assert.strictEqual(hand.children[0].className, 'card pick  hide-month');
 });
 
 test('빈 손패도 크기 조정 후 손패 영역을 비운다', () => {

@@ -89,7 +89,7 @@ test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', asy
   // ── 1) 방 만들기 + 3명 입장 ──
   const host = makeClient();
   var _r=await host.post('/api/auth/register',{name:'엄마',password:'1234'}); if(!_r.ok) await host.post('/api/auth/login',{name:'엄마',password:'1234'});
-  const created = await host.post('/api/room', { name: '엄마' });
+    const created = await host.post('/api/room', { name: '엄마' });
   assert.ok(created.code, '방 코드가 있어야 한다');
   assert.strictEqual(created.code.length, 6, '방 코드는 6자리');
   assert.match(host.setCookie, /;\s*HttpOnly(?:;|$)/i, '세션 쿠키는 HttpOnly여야 한다');
@@ -237,6 +237,32 @@ test('3명이 접속해서 한 판을 끝까지 치고 정산까지 된다', asy
   assert.strictEqual(again.state.code, created.code, '같은 방으로 복귀');
   assert.strictEqual(again.state.mySeat, 0, '같은 좌석으로 복귀');
   assert.strictEqual(again.state.phase, 'settle');
+});
+
+test('방 생성과 게임 설정에서 카드 상단 월 표시를 반영한다', async () => {
+  const host = makeClient();
+  const name = '월표시' + Date.now().toString(36).slice(-8);
+  const registered = await host.post('/api/auth/register', { name, password: '1234' });
+  if (!registered.ok) await host.post('/api/auth/login', { name, password: '1234' });
+
+  const created = await host.post('/api/room', { name, showMonth: false });
+  assert.ok(created.code);
+  try {
+    let state = await host.get(`/api/room/${created.code}/state`);
+    assert.strictEqual(state.state.settings.showMonth, false, '방 생성 시 감추기 설정을 반영한다');
+
+    for (const showMonth of [true, false]) {
+      const result = await host.post(`/api/room/${created.code}/action`, {
+        type: 'settings',
+        payload: { showMonth },
+      });
+      assert.strictEqual(result.ok, true);
+      state = await host.get(`/api/room/${created.code}/state`);
+      assert.strictEqual(state.state.settings.showMonth, showMonth);
+    }
+  } finally {
+    await host.post(`/api/room/${created.code}/action`, { type: 'leave' });
+  }
 });
 
 test('없는 방에 접근하면 404 를 돌려준다', async () => {

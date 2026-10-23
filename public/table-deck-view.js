@@ -42,7 +42,7 @@
           monthGroup.setAttribute('data-month', groups[j].month);
         }
         for (var c = 0; c < groups[j].cards.length; c++) {
-          var card = deps.makeCardEl(groups[j].cards[c], 'small');
+          var card = deps.makeCardEl(groups[j].cards[c], 'small', state.settings && state.settings.showMonth);
           card.setAttribute('data-card-id', groups[j].cards[c].id);
           monthGroup.appendChild(card);
         }

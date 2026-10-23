@@ -52,6 +52,8 @@ function createSettings(initialStorage, initialState) {
     settingsCloseBtn: new Element('button'),
     pointSelect: new Element('select'),
     timeSelect: new Element('select'),
+    bonusPackSelect: new Element('select'),
+    showMonthSelect: new Element('select'),
   };
   const actions = [];
   const banners = [];
@@ -88,15 +90,17 @@ test('저장된 로비 기본값을 허용 목록으로 복원하고 잘못된 �
     moneyPerPoint: 100,
     timeLimit: { enabled: false, base: 0, increment: 0 },
     bonusPack: 50,
+    showMonth: true,
   });
 
   const saved = createSettings({
-    gs_lobby_settings: JSON.stringify({ moneyPerPoint: 5000, timeKey: '45' }),
+    gs_lobby_settings: JSON.stringify({ moneyPerPoint: 5000, timeKey: '45', showMonth: false }),
   }, null);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(saved.settingsView.getRoomDefaults())), {
     moneyPerPoint: 5000,
     timeLimit: { enabled: true, base: 45, increment: 5 },
     bonusPack: 50,
+    showMonth: false,
   });
 
   const invalid = createSettings({
@@ -106,6 +110,7 @@ test('저장된 로비 기본값을 허용 목록으로 복원하고 잘못된 �
     moneyPerPoint: 100,
     timeLimit: { enabled: false, base: 0, increment: 0 },
     bonusPack: 50,
+    showMonth: true,
   });
 });
 
@@ -119,17 +124,20 @@ test('로비 설정 창은 저장값을 표시하고 저장 시 새 방 기본�
   assert.strictEqual(elements.settingsOverlay.className, 'overlay');
   assert.strictEqual(elements.pointSelect.value, '500');
   assert.strictEqual(elements.timeSelect.value, '30');
+  assert.strictEqual(elements.showMonthSelect.value, 'on');
 
   elements.pointSelect.value = '1000';
   elements.timeSelect.value = '60';
+  elements.showMonthSelect.value = 'off';
   elements.settingsSaveBtn.click();
   assert.strictEqual(elements.settingsOverlay.className, 'overlay hidden');
-  assert.deepStrictEqual(JSON.parse(storage.gs_lobby_settings), { moneyPerPoint: 1000, timeKey: '60', bonusPack: 50 });
+  assert.deepStrictEqual(JSON.parse(storage.gs_lobby_settings), { moneyPerPoint: 1000, timeKey: '60', bonusPack: 50, showMonth: false });
   assert.deepStrictEqual(banners, [['새 방 설정을 저장했습니다', 'plain', 1100]]);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(settingsView.getRoomDefaults())), {
     moneyPerPoint: 1000,
     timeLimit: { enabled: true, base: 60, increment: 10 },
     bonusPack: 50,
+    showMonth: false,
   });
 });
 
@@ -137,7 +145,7 @@ test('게임 설정은 방장·대기 또는 정산 단계에서만 열고 기�
   const { elements, settingsView, actions, banners, setState } = createSettings({}, {
     isHost: true,
     phase: 'lobby',
-    settings: { moneyPerPoint: 300, timeLimit: { enabled: true, base: 45 } },
+    settings: { moneyPerPoint: 300, timeLimit: { enabled: true, base: 45 }, showMonth: true },
   });
   settingsView.renderAccess({ isHost: true, phase: 'lobby' });
   assert.strictEqual(elements.settingsBtn.className, 'chip icon');
@@ -149,8 +157,10 @@ test('게임 설정은 방장·대기 또는 정산 단계에서만 열고 기�
   assert.strictEqual(elements.pointSelect.value, '300');
   assert.strictEqual(elements.pointSelect.children[0].value, '300');
   assert.strictEqual(elements.timeSelect.value, '45');
+  assert.strictEqual(elements.showMonthSelect.value, 'on');
   elements.pointSelect.value = '5000';
   elements.timeSelect.value = '30';
+  elements.showMonthSelect.value = 'off';
   elements.settingsSaveBtn.click();
   assert.deepStrictEqual(JSON.parse(JSON.stringify(actions)), [{
     type: 'settings',
@@ -158,9 +168,15 @@ test('게임 설정은 방장·대기 또는 정산 단계에서만 열고 기�
       moneyPerPoint: 5000,
       timeLimit: { enabled: true, base: 30, increment: 5 },
       bonusPack: 50,
+      showMonth: false,
     },
   }]);
   assert.deepStrictEqual(banners, [['설정을 저장했습니다', 'plain', 1100]]);
+
+  setState({ isHost: true, phase: 'lobby', settings: { moneyPerPoint: 5000, showMonth: false } });
+  elements.settingsBtn.click();
+  assert.strictEqual(elements.showMonthSelect.value, 'off');
+  elements.settingsCloseBtn.click();
 
   setState({ isHost: false, phase: 'play', settings: { moneyPerPoint: 100 } });
   elements.settingsBtn.click();

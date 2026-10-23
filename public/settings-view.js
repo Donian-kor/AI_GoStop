@@ -152,7 +152,8 @@
       deps.act('settings', {
         moneyPerPoint: money,
         timeLimit: { enabled: preset.enabled, base: preset.base, increment: preset.increment },
-        bonusPack: bonusPack
+        bonusPack: bonusPack,
+        showMonth: showMonth
       });
       if (deps.fx) deps.fx.showBanner('설정을 저장했습니다', 'plain', 1100);
     });
