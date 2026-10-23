@@ -477,6 +477,9 @@ select option {
 }
 .card.small { --card-w: 54px; --band-h: 15px; --band-fs: 11px; --kind-fs: 11px; }
 .card.tiny { width: 34px; height: 55px; --band-h: 10px; --band-fs: 8px; --kind-fs: 8px; }
+/* 보너스패(조커) — 상단에 '보너스' 표시, 하단 종류 배지 없음, 전용 색상 */
+.card.bonus-card { --mc: #c084fc; }
+.card.bonus-card::before { background: #c084fc; color: #3b1c00; font-weight: 900; }
 .card.pick { cursor: pointer; }
 .card.playing { animation: cardPlay 0.16s ease-out both; }
 @keyframes cardPlay {
