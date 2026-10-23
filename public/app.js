@@ -345,7 +345,7 @@
 
   function resetRoomView(message) {
     el.room.className = 'screen hidden';
-    el.lobby.className = 'screen';
+    el.lobby.className = 'screen relative z-10 w-full min-h-[100dvh] sm:max-h-[920px] overflow-hidden flex flex-col items-center justify-center shadow-2xl select-none';
     el.overlay.className = 'overlay hidden';
     el.promptBox.className = 'prompt hidden';
     el.scorePanel.innerHTML = '';
