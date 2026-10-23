@@ -870,10 +870,10 @@ select option {
 
 /* ── 가족 순위표 ─────────────────────────────────────── */
 .leaderboard-item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   gap: 10px;
+  align-items: center;
   padding: 9px 12px;
   border-radius: 10px;
   margin: 6px 0;
@@ -883,18 +883,16 @@ select option {
   box-shadow: inset 0 1px 0 rgba(255, 220, 160, .08);
 }
 .leaderboard-rank {
-  flex: 0 0 auto;
+  justify-self: start;
   font-size: 17px;
   font-weight: 900;
   color: var(--gold);
   white-space: nowrap;
 }
 .leaderboard-name {
-  flex: 1 1 auto;
+  justify-self: center;
+  text-align: center;
   min-width: 0;
-  /* 닉네임 최대 12자 기준 고정 너비로 줄맞춤 */
-  width: 140px;
-  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -903,7 +901,7 @@ select option {
   color: #ffe9b8;
 }
 .leaderboard-money {
-  flex: 0 0 auto;
+  justify-self: end;
   font-size: 17px;
   font-weight: 800;
   color: #8fe0a8;
@@ -911,6 +909,20 @@ select option {
   font-variant-numeric: tabular-nums;
 }
 .leaderboard-money b { color: #ffd76a; }
+
+/* 구형 브라우저 fallback — Grid 미지원 환경에서 flex 로 대체 */
+@supports not (--card-w: 0px) {
+  .leaderboard-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .leaderboard-name {
+    width: 140px;
+    max-width: 140px;
+  }
+}
 
 /* ── 방 참가 목록 ─────────────────────────────────────── */
 .room-list-inner { max-width: 520px; }
