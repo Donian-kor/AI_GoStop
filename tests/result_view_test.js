@@ -55,7 +55,7 @@ function findTag(element, tagName) {
   return found;
 }
 
-function createView(mySeat) {
+function createView(mySeat, startNextRound) {
   const overlay = new Element('div');
   const sounds = [];
   const window = {
@@ -74,6 +74,7 @@ function createView(mySeat) {
       .replace(/'/g, '&#39;'),
     formatMoney: (value) => value + '원',
     mySeat: () => mySeat,
+    startNextRound: startNextRound,
   });
   return { view, overlay, sounds };
 }
@@ -136,4 +137,29 @@ test('나가리는 승패 문구를 바꾸고 패배 효과음과 점수 상세�
   assert.strictEqual(findAll(overlay, 'overlay-sub')[0].innerHTML, '이번 판은 승패가 없습니다. 다음 판은 2배입니다.');
   assert.strictEqual(findAll(overlay, 'steps').length, 0);
   assert.deepStrictEqual(sounds, ['sfx_money_lose.ogg', 'sfx_bak.ogg']);
+});
+
+test('총통 사유와 방장용 다음 판 시작 버튼을 표시한다', () => {
+  let startCount = 0;
+  const { view, overlay } = createView(0, () => { startCount += 1; });
+  view.render({
+    isHost: true,
+    players: [{ name: '컴퓨터 A' }, { name: '나' }],
+    result: {
+      winnerSeat: 0,
+      nagari: false,
+      finishReason: '바닥에 12월 4장 총통! 컴퓨터 A(선) 즉시 승리',
+      rows: [
+        { seat: 0, name: '컴퓨터 A', amount: 100, reasons: [], steps: [] },
+        { seat: 1, name: '나', amount: -100, reasons: [], steps: [] },
+      ],
+    },
+  });
+
+  const subtitles = findAll(overlay, 'overlay-sub');
+  assert.strictEqual(subtitles[1].innerHTML, '바닥에 12월 4장 총통! 컴퓨터 A(선) 즉시 승리');
+  assert.strictEqual(findTag(overlay, 'button')[0].innerHTML, '다음 판 시작');
+  findTag(overlay, 'button')[0].click();
+  assert.strictEqual(startCount, 1);
+  assert.strictEqual(overlay.className, 'overlay hidden');
 });

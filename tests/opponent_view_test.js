@@ -120,7 +120,7 @@ test('상대 목록은 내 자리 제외·현재 턴·접속 상태·점수 정�
   assert.strictEqual(players.children[0].attributes['data-seat'], '1');
   const aiName = findAll(players.children[0], 'pname')[0];
   assert.strictEqual(aiName.children[0].className, 'ai-badge');
-  assert.strictEqual(aiName.children[1].children[0].textContent, '상대 A');
+  assert.strictEqual(aiName.children[1].children[0].textContent, '컴퓨터 A');
   assert.strictEqual(aiName.children[0].children[0].textContent, 'AI');
   assert.strictEqual(aiName.children[0].attributes['aria-label'], 'AI 상대');
   assert.strictEqual(findAll(players.children[0], 'pmeta')[0].innerHTML, '점수 <b>3</b> · 7장');

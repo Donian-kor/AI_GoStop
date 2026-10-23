@@ -167,7 +167,8 @@
     el: el,
     escapeHtml: esc,
     formatMoney: won,
-    mySeat: function () { return roomSession.getMySeat(); }
+    mySeat: function () { return roomSession.getMySeat(); },
+    startNextRound: function () { roomSession.act('start'); }
   });
 
   var phaseViews = window.GostopPhaseViews({

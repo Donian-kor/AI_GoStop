@@ -40,6 +40,13 @@
       subtitle.innerHTML = result.nagari ? '이번 판은 승패가 없습니다. 다음 판은 2배입니다.' : '정산 결과';
       box.appendChild(subtitle);
 
+      if (result.finishReason) {
+        var finishReason = root.document.createElement('p');
+        finishReason.className = 'overlay-sub';
+        finishReason.innerHTML = deps.escapeHtml(result.finishReason);
+        box.appendChild(finishReason);
+      }
+
       var rows = root.document.createElement('div');
       rows.className = 'rows';
       for (var rowIndex = 0; rowIndex < result.rows.length; rowIndex++) {
@@ -83,6 +90,17 @@
         total.innerHTML = '<span>최종 점수</span><b>' + finalStep.value + '점</b>';
         wrap.appendChild(total);
         box.appendChild(wrap);
+      }
+
+      if (state.isHost && deps.startNextRound) {
+        var nextRound = root.document.createElement('button');
+        nextRound.className = 'primary';
+        nextRound.innerHTML = '다음 판 시작';
+        nextRound.addEventListener('click', function () {
+          el.overlay.className = 'overlay hidden';
+          deps.startNextRound();
+        });
+        box.appendChild(nextRound);
       }
 
       var close = root.document.createElement('button');

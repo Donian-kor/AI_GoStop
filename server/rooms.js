@@ -631,12 +631,23 @@ class Room {
   /** 딜을 하고 대국을 시작한다. */
   beginPlay(seon) {
     const names = this.seats.map((p, i) => (p ? p.name : `${i + 1}번`));
-    this.engine = new TurnEngine({
-      playerCount: this.playerCount,
-      names,
-      options: toScoreOptions(this.settings),
-    });
-    this.engine.startGame(this.deck, seon);
+    const reduceSoloGoChongtong = this.settings.mode === 'solo' && this.playerCount === 2;
+    let deck = this.deck;
+    while (true) {
+      this.engine = new TurnEngine({
+        playerCount: this.playerCount,
+        names,
+        options: toScoreOptions(this.settings),
+      });
+      this.engine.startGame(deck, seon);
+
+      const hasOpeningChongtong = this.engine.state.events.some((event) => event.kind === EVENT.CHONGTONG);
+      // AI 맞고에서는 초기 총통의 절반만 인정해 기본 덱 기준 약 1.3%로 낮춘다.
+      if (!reduceSoloGoChongtong || !hasOpeningChongtong || Math.random() < 0.5) break;
+
+      this.logEvent('초기 총통 확률 조정으로 패를 다시 섞습니다.');
+      deck = shuffledDeck(this.settings.bonusPack);
+    }
     this.deck = null;
     this.seonPool = null;
 
@@ -1127,10 +1138,14 @@ class Room {
       moneyPerPoint: this.settings.moneyPerPoint,
       stakeMultiplier: this.settings.stakeMultiplier,
     });
+    const engineEvents = this.engine.state.events || [];
+    const chongtongEvent = engineEvents.slice().reverse()
+      .find((event) => event.kind === EVENT.CHONGTONG);
     const result = {
       ...engineResult,
       winnerSeat: engineResult.winnerSeat < 0 ? -1 : this.physicalSeatOf(engineResult.winnerSeat),
       rows: engineResult.rows.map((row) => ({ ...row, seat: this.physicalSeatOf(row.seat) })),
+      finishReason: chongtongEvent ? chongtongEvent.text : null,
     };
 
     const balances = this.seats.map((p, seat) => ({ seat, money: p ? p.money : 0 }));
@@ -1144,6 +1159,7 @@ class Room {
     this.result = {
       winnerSeat: result.winnerSeat,
       nagari: result.nagari,
+      finishReason: result.finishReason,
       rows: result.rows.map((r) => ({ ...r, money: this.playerAt(r.seat)?.money ?? 0 })),
     };
     this.phase = ROOM_PHASE.SETTLE;

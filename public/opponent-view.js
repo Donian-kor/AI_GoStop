@@ -89,7 +89,6 @@
         name.className = 'pname';
         var isAi = player.type === 'ai';
         var displayName = player.name;
-        if (isAi) displayName = displayName.replace(/^컴퓨터\s+/, '상대 ');
         if (isAi) {
           var aiBadge = root.document.createElement('span');
           aiBadge.className = 'ai-badge';

@@ -22,15 +22,21 @@ function chongtongDeck(month) {
   return rest.concat(same);
 }
 
-function startWithDeck(deck) {
+function startWithDeck(deck, random = () => 0) {
   const room = new Room('TEST01', { mode: 'solo', playerCount: 2, aiDifficulty: 'expert' });
   room.addPlayer('p0', '나');
   room.startRound();
   // 후보 카드를 뽑은 뒤 덱을 바꿔 끼운다 (실제 딜에 쓰이는 덱)
   room.deck = deck;
   // 사람이 고르면 선이 확정되고 딜이 시작된다 (같은 월이면 다시 뽑는다)
-  for (let i = 0; i < 12 && room.phase === 'seon'; i++) {
-    if (room.seonPicked[0] === -1) room.pickSeonCard(0, 0);
+  const originalRandom = Math.random;
+  Math.random = random;
+  try {
+    for (let i = 0; i < 12 && room.phase === 'seon'; i++) {
+      if (room.seonPicked[0] === -1) room.pickSeonCard(0, 0);
+    }
+  } finally {
+    Math.random = originalRandom;
   }
   return room;
 }
@@ -47,6 +53,7 @@ test('딜 직후 바닥 총통이면 곧바로 정산으로 넘어간다', () =>
     room.fx.some((e) => e.kind === 'chongtong'),
     '총통 이펙트가 기록되어야 한다'
   );
+  assert.match(room.result.finishReason, /월 4장 총통/);
 });
 
 test('선 결정 후보 카드는 딜 덱에서 빠지지 않는다', () => {
@@ -88,5 +95,28 @@ test('총통으로 끝난 판은 스냅샷에서도 settle 로 보인다', () =>
   assert.strictEqual(snap.phase, 'settle');
   assert.ok(snap.result, '화면이 정산 창을 띄울 수 있어야 한다');
   assert.ok(snap.result.winnerSeat >= 0, '승자가 정해져야 한다');
+  assert.match(snap.result.finishReason, /월 4장 총통/);
   assert.ok(snap.result.rows.length >= 2, '참가자별 정산 줄이 있어야 한다');
+});
+
+test('AI 맞고는 초기 총통을 다시 딜해 발생 빈도를 낮춘다', () => {
+  const room = startWithDeck(chongtongDeck(5), () => 0.99);
+
+  assert.strictEqual(room.phase, 'play');
+  assert.ok(
+    !room.engine.state.events.some((event) => event.kind === 'chongtong'),
+    '총통 판정은 다시 섞인 뒤 총통이 없는 딜에서 시작해야 한다'
+  );
+  assert.ok(room.log.some((entry) => entry.text === '초기 총통 확률 조정으로 패를 다시 섞습니다.'));
+});
+
+test('사람끼리 하는 2인 맞고의 총통 규칙은 그대로 유지한다', () => {
+  const room = new Room('TEST04', { mode: 'multi', playerCount: 2 });
+  room.addPlayer('p0', '나');
+  room.addPlayer('p1', '상대');
+  room.deck = chongtongDeck(5);
+  room.beginPlay(0);
+
+  assert.strictEqual(room.phase, 'settle');
+  assert.ok(room.result.finishReason.includes('월 4장 총통'));
 });
