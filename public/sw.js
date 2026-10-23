@@ -9,12 +9,13 @@
  * - 오프라인에서는 캐시된 화면을 보여준다
  */
 
-var CACHE_NAME = 'gostop-v5';
+var CACHE_NAME = 'gostop-v6';
 var STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/style.css',
+  '/assets/title.png',
   '/app.js',
   '/fx.js',
   '/room-session.js',

@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 <!-- Tailwind CSS CDN (로비 디자인 의존) -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 </head>
@@ -59,8 +59,8 @@
       </div>
 
       <!-- 타이틀 & 로고 -->
-      <header class="flex flex-col items-center text-center select-none mb-2">
-        <h1 class="text-[38px] sm:text-[44px] leading-none tracking-tight font-black font-calligraphy gold-foil-title mt-1 transform scale-y-105 whitespace-nowrap">명지네고스톱</h1>
+      <header class="w-full flex flex-col items-center text-center select-none mb-2">
+        <img class="lobby-title-image mt-1" src="/assets/title.png" alt="명지네고스톱">
         <p class="text-[17px] sm:text-[18px] font-bold text-[#3d220f] tracking-tight mt-1.5 drop-shadow-sm">가족끼리 함께 치는 고스톱</p>
         <div class="mt-2.5 px-3.5 py-0.5 rounded-full bg-[#1e130c] border border-[#a17a45] shadow-inner flex items-center justify-center">
           <span class="text-xs tracking-wider text-[#e7c992] font-semibold">버전 <span id="appVersion">{{GAME_VERSION}}</span></span>
