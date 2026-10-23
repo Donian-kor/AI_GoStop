@@ -7,9 +7,11 @@ const fourplayer = require('../engine/fourplayer');
 
 /** 카드 종류별 개수 (획득 요약판용). */
 function countKinds(cards) {
-  const out = { bright: 0, animal: 0, ribbon: 0, junk: 0, doubleJunk: 0, bonus: 0, total: cards.length };
+  const out = { bright: 0, animal: 0, ribbon: 0, junk: 0, doubleJunk: 0, bonus: 0, bonusValue: 0, total: cards.length };
   for (const c of cards) {
     if (out[c.kind] !== undefined) out[c.kind]++;
+    // 보너스패는 2피/3피로 계산되므로 실제 피값을 따로 기록한다
+    if (c.kind === 'bonus') out.bonusValue += (c.junkValue || 1);
   }
   return out;
 }

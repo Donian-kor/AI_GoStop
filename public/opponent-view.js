@@ -12,7 +12,7 @@
         ['guang', '광', sum.bright],
         ['', '열', sum.animal],
         ['ribbon', '띠', sum.ribbon],
-        ['junk', '피', sum.junk + sum.doubleJunk + sum.bonus]
+        ['junk', '피', sum.junk + sum.doubleJunk + (sum.bonusValue || sum.bonus)]
       ];
       for (var i = 0; i < items.length; i++) {
         var cls = items[i][0];
