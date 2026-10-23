@@ -578,6 +578,7 @@
     img.className = 'card-img';
     img.src = cardImg(card);
     img.alt = '';
+    img.decoding = 'async';
     d.appendChild(img);
     if (card.month >= 1 && card.month <= 12) {
       d.className += ' m' + (card.month < 10 ? '0' + card.month : String(card.month));

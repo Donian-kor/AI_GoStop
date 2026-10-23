@@ -9,7 +9,7 @@
  * - 오프라인에서는 캐시된 화면을 보여준다
  */
 
-var CACHE_NAME = 'gostop-v6';
+var CACHE_NAME = 'gostop-v7';
 var STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -69,6 +69,25 @@ self.addEventListener('fetch', function (event) {
       fetch(event.request).catch(function () {
         // 오프라인 — 캐시된 응답이 있으면 반환
         return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // 카드 이미지(화투 패)는 캐시 우선 — 외부 접속 시 매번 네트워크로 받아오지 않게 한다
+  if (url.pathname.indexOf('/assets/hwatu/png/') === 0) {
+    event.respondWith(
+      caches.match(event.request).then(function (cached) {
+        if (cached) return cached;
+        return fetch(event.request).then(function (response) {
+          if (response && response.status === 200 && response.type === 'basic') {
+            var clone = response.clone();
+            caches.open(CACHE_NAME).then(function (cache) {
+              cache.put(event.request, clone);
+            });
+          }
+          return response;
+        });
       })
     );
     return;

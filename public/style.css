@@ -448,6 +448,9 @@ select option {
   background: #fffcf5;
   border: 2px solid #8e1818;
   box-shadow: 1px 2px 5px rgba(0, 0, 0, .45);
+  /* 카드 이동 연출 시 그리는 속도 개선 — GPU 하드웨어 가속 */
+  transform: translateZ(0);
+  will-change: transform;
 }
 .card::before {
   content: attr(data-month-label);
@@ -468,6 +471,9 @@ select option {
   display: block; width: 100%; height: 100%;
   object-fit: fill; border-radius: 4px;
   -webkit-user-drag: none; user-select: none;
+  /* 외부 접속 시 이미지 그리는 속도 개선 — GPU 하드웨어 가속 */
+  transform: translateZ(0);
+  will-change: transform;
 }
 .card.small { --card-w: 54px; --band-h: 15px; --band-fs: 11px; --kind-fs: 11px; }
 .card.tiny { width: 34px; height: 55px; --band-h: 10px; --band-fs: 8px; --kind-fs: 8px; }
