@@ -33,27 +33,12 @@
   }
   var CARD_IMG = 'assets/hwatu/png/';
   var buildVersion = '1';
-  var roomCode = null;
-  var mySeat = -1;
-  var lastFxSeq = 0;
-  var lastVersion = -1;
-  var pollTimer = null;
-  var watchdogTimer = null;
-  var pollPending = false;
-  var lastUpdateAt = 0;
-  var lastState = null;
-  // 방에 새로 들어온 직후의 첫 응답 — 지난 이벤트를 다시 재생하지 않는다
-  var freshJoin = true;
   // 정산 창을 한 번만 띄우기 위해 직전 phase 를 기억한다
   var prevPhase = '';
-  var busy = false;
   // 상대 먹은 패 보기 방식: 'text' = 숫자만 / 'image' = 종류별 그림 (기본 그림)
   var oppView = 'image';
   try { oppView = localStorage.getItem('gs_opp_view') === 'text' ? 'text' : 'image'; } catch (e) { oppView = 'image'; }
   var Fx = window.GostopFx;
-  var apiClient = window.GostopApiClient();
-  var getJson = apiClient.getJson;
-  var postJson = apiClient.postJson;
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -112,12 +97,29 @@
     overlay: $('overlay')
   };
 
-  var roomBrowser = window.GostopRoomBrowser({
+  var roomBrowser = null;
+  var settingsView = null;
+  var opponentCardMotion = null;
+  var roomSession = window.GostopRoomSession({
+    el: el,
+    fx: Fx,
+    render: render,
+    seatEl: seatEl,
+    closeRoomBrowser: function () { if (roomBrowser) roomBrowser.close(); },
+    onEnter: function () { prevPhase = ''; },
+    onLeave: resetRoomView,
+    getSavedName: savedName,
+    playOpponentMoves: function (moveFx) { opponentCardMotion.play(moveFx); }
+  });
+  var getJson = roomSession.getJson;
+  var postJson = roomSession.postJson;
+
+  roomBrowser = window.GostopRoomBrowser({
     el: el,
     getJson: getJson,
     postJson: postJson,
     currentName: currentName,
-    enterRoom: enterRoom
+    enterRoom: roomSession.enterRoom
   });
 
   var KIND_LABEL = {
@@ -152,27 +154,27 @@
     setColor: SET_COLOR,
     escapeHtml: esc,
     fitTableCards: fitTableCards,
-    mySeat: function () { return mySeat; }
+    mySeat: function () { return roomSession.getMySeat(); }
   });
 
   var resultView = window.GostopResultView({
     el: el,
     escapeHtml: esc,
     formatMoney: won,
-    mySeat: function () { return mySeat; }
+    mySeat: function () { return roomSession.getMySeat(); }
   });
 
   var phaseViews = window.GostopPhaseViews({
     el: el,
-    mySeat: function () { return mySeat; },
+    mySeat: function () { return roomSession.getMySeat(); },
     escapeHtml: esc,
     makeCardEl: makeCardEl,
-    act: act
+    act: roomSession.act
   });
 
   var opponentView = window.GostopOpponentView({
     el: el,
-    mySeat: function () { return mySeat; },
+    mySeat: function () { return roomSession.getMySeat(); },
     oppView: function () { return oppView; },
     formatMoney: won,
     makeCardEl: makeCardEl,
@@ -185,7 +187,7 @@
 
   var handView = window.GostopHandView({
     el: el,
-    mySeat: function () { return mySeat; },
+    mySeat: function () { return roomSession.getMySeat(); },
     fitHandCards: fitHandCards,
     makeCardEl: makeCardEl,
     playCard: playCard
@@ -277,28 +279,20 @@
     var diff = el.diffSelect.value;
     // 로비 ⚙ 에서 저장한 새 방 기본값 (점당 금액 · 시간 제한)
     var lobbySet = settingsView.getRoomDefaults();
-    postJson('/api/room', {
+    roomSession.createRoom({
       name: name,
       mode: mode,
       playerCount: count,
       aiDifficulty: diff,
       moneyPerPoint: lobbySet.moneyPerPoint,
       timeLimit: lobbySet.timeLimit
-    },
-      function (res) {
-        if (!res || !res.code) {
-          el.lobbyError.textContent = (res && res.error) || '방을 만들지 못했습니다.';
-          return;
-        }
-        enterRoom(res.code, res.seat);
-      },
-      function () { el.lobbyError.textContent = '서버에 연결할 수 없습니다.'; });
+    }, function (message) { el.lobbyError.textContent = message; });
   });
 
   el.codeChip.addEventListener('click', function () {
     var done = function () { Fx.showBanner('방 코드 복사됨', 'plain', 900); };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(roomCode || '').then(done, function () { done(); });
+      navigator.clipboard.writeText(roomSession.getRoomCode() || '').then(done, function () { done(); });
     } else { done(); }
   });
 
@@ -325,19 +319,20 @@
   if (el.lobbySoundBtn) el.lobbySoundBtn.addEventListener('click', toggleMute);
 
   // ── 게임 설정 (방장 · 판 시작 전에만) ────────────────────────────────────
-  var settingsView = window.GostopSettingsView({
+  settingsView = window.GostopSettingsView({
     el: el,
-    getState: function () { return lastState; },
-    act: act,
+    getState: function () { return roomSession.getLastState(); },
+    act: roomSession.act,
     fx: Fx
   });
 
-  el.startBtn.addEventListener('click', function () { act('start'); });
-  if (el.flipBtn) el.flipBtn.addEventListener('click', function () { act('flipOnly'); });
+  el.startBtn.addEventListener('click', function () { roomSession.act('start'); });
+  if (el.flipBtn) el.flipBtn.addEventListener('click', function () { roomSession.act('flipOnly'); });
   if (el.shakeBtn) el.shakeBtn.addEventListener('click', function () {
-    var me2 = lastState ? lastState.players[mySeat] : null;
+    var lastState = roomSession.getLastState();
+    var me2 = lastState ? lastState.players[roomSession.getMySeat()] : null;
     var months = (me2 && me2.shakableMonths) || [];
-    if (months.length) act('shake', { month: months[0] });
+    if (months.length) roomSession.act('shake', { month: months[0] });
   });
   if (el.rulesBtn) el.rulesBtn.addEventListener('click', function () {
     if (el.rulesOverlay) el.rulesOverlay.className = 'overlay';
@@ -348,19 +343,7 @@
 
   // ── 나가기 ──────────────────────────────────────────────────────────────
 
-  /** 방 화면을 정리하고 대기실로 돌아간다. (방이 닫혔을 때도 같은 경로를 쓴다) */
-  function backToLobby(message) {
-    try {
-      sessionStorage.removeItem('gs_room');
-      sessionStorage.removeItem('gs_name');
-    } catch (e) {}
-    roomCode = null;
-    mySeat = -1;
-    lastState = null;
-    lastFxSeq = 0;
-    lastVersion = -1;
-    busy = false;
-    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  function resetRoomView(message) {
     el.room.className = 'screen hidden';
     el.lobby.className = 'screen';
     el.overlay.className = 'overlay hidden';
@@ -383,150 +366,9 @@
     if (message) el.lobbyError.textContent = message;
   }
 
-  el.leaveBtn.addEventListener('click', function () {
-    var code = roomCode;
-    // 서버에는 '접속 끊김' 으로 알리고, 방 복귀 정보는 지운다
-    if (code) {
-      postJson('/api/room/' + code + '/action', { type: 'leave', payload: {} }, function () {}, function () {});
-    }
-    backToLobby('');
-  });
+  el.leaveBtn.addEventListener('click', roomSession.leave);
 
-  function enterRoom(code, seat) {
-    roomBrowser.close();
-    roomCode = code;
-    mySeat = seat;
-    lastFxSeq = 0;
-    freshJoin = true;
-    prevPhase = '';
-    // 새로고침해도 방으로 돌아올 수 있게 방 코드와 이름을 기억한다
-    try {
-      sessionStorage.setItem('gs_room', code);
-      sessionStorage.setItem('gs_name', el.nameInput.value.replace(/^\s+|\s+$/g, ''));
-    } catch (e) {}
-    el.lobby.className = 'screen hidden';
-    el.room.className = 'screen';
-    el.codeChip.innerHTML = code;
-    document.title = '명지네고스톱 ' + code;
-    startPolling();
-  }
-
-  // 새로고침 후 방으로 자동 복귀 (기존 참가자라면 쿠키로 자리도 복원된다)
-  function restoreRoom() {
-    var saved = null;
-    try { saved = sessionStorage.getItem('gs_room'); } catch (e) { saved = null; }
-    if (!saved) return;
-    var savedName2 = savedName();
-    postJson('/api/room/' + saved + '/join', { name: savedName2 }, function (res) {
-      if (res && res.code) {
-        enterRoom(res.code, res.seat);
-      } else {
-        try { sessionStorage.removeItem('gs_room'); } catch (e) {}
-      }
-    }, function () {
-      try { sessionStorage.removeItem('gs_room'); } catch (e) {}
-    });
-  }
-  restoreRoom();
-
-  // ── 폴링 (긴 폴링: 서버가 상태 변경 시 즉시 응답) ───────────────────────
-
-  function startPolling() {
-    if (pollTimer) clearTimeout(pollTimer);
-    var loop = function () {
-      pollNow(function () {
-        if (roomCode) pollTimer = setTimeout(loop, 50);
-      });
-    };
-    loop();
-    if (!watchdogTimer) {
-      watchdogTimer = setInterval(watchdog, 2000);
-    }
-  }
-
-  function pollNow(done) {
-    if (!roomCode || pollPending) { if (done) done(); return; }
-    pollPending = true;
-    getJson('/api/room/' + roomCode + '/state?since=' + lastFxSeq + '&v=' + lastVersion,
-      function (res) {
-        pollPending = false;
-        if (done) done();
-        if (!res || !res.ok) return;
-        lastUpdateAt = new Date().getTime();
-        if (typeof res.version === 'number') lastVersion = res.version;
-        var fx = res.fx || [];
-        var moveFx = []; // 상대가 낸 패·먹은 패 연출에 쓸 이벤트
-        if (freshJoin) {
-          // 새로고침·재입장 직후에는 지난 이벤트를 재생하지 않고 위치만 맞춘다
-          for (var f = 0; f < fx.length; f++) {
-            if (fx[f].seq > lastFxSeq) lastFxSeq = fx[f].seq;
-          }
-          freshJoin = false;
-        } else {
-          for (var i = 0; i < fx.length; i++) {
-            if (fx[i].seq > lastFxSeq) lastFxSeq = fx[i].seq;
-            moveFx.push(fx[i]);
-            try {
-              if (Fx) Fx.handleFx(fx[i], { seatEl: seatEl, mySeat: mySeat });
-            } catch (e) { /* 이펙트 오류가 게임을 멈추지 않게 */ }
-          }
-        }
-        lastState = res.state;
-        try {
-          render(res.state);
-        } catch (e) {
-          // 화면을 그리는 중 오류가 나도 대국은 계속된다
-          if (!window.console || !console.error) return;
-          console.error('[render]', e);
-        }
-        // 화면을 그린 뒤 — 상대가 낸 패·먹은 패가 날아가는 연출
-        try {
-          opponentCardMotion.play(moveFx);
-        } catch (e) { /* 연출 오류가 게임을 멈추지 않게 */ }
-      },
-      function (xhr) {
-        pollPending = false;
-        if (done) done();
-        // 방이 닫혔다면(방장이 나가서 방이 사라짐) 대기실로 돌아간다
-        if (xhr && xhr.status === 404) {
-          backToLobby('방이 닫혔습니다. 방장이 방을 나갔을 수 있습니다.');
-        }
-      });
-  }
-
-  // 상태 갱신이 멈췄다면(폴링 루프가 죽었거나 연결이 꼬였으면) 자동으로 새로고침한다
-  function watchdog() {
-    if (!roomCode) return;
-    if (new Date().getTime() - lastUpdateAt > 12000) {
-      location.reload();
-      return;
-    }
-    setTimeout(watchdog, 2000);
-  }
-
-  // ── 액션 ────────────────────────────────────────────────────────────────
-
-  function act(type, payload) {
-    if (!roomCode || busy) return;
-    busy = true;
-    var body = {
-      requestId: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
-      type: type,
-      payload: payload || {}
-    };
-    postJson('/api/room/' + roomCode + '/action', body, function (res) {
-      busy = false;
-      if (res && res.ok === false) Fx.showBanner(res.error || '처리할 수 없습니다.', 'red', 1400);
-      pollNow(function () {});
-    }, function (xhr) {
-      busy = false;
-      if (xhr && xhr.status === 404) {
-        backToLobby('방이 닫혔습니다. 방장이 방을 나갔을 수 있습니다.');
-        return;
-      }
-      Fx.showBanner('연결이 끊겼습니다', 'red', 1400);
-    });
-  }
+  roomSession.restoreRoom();
 
   // ── 렌더링 ──────────────────────────────────────────────────────────────
 
@@ -616,6 +458,7 @@
     oppView = v === 'text' ? 'text' : 'image';
     try { localStorage.setItem('gs_opp_view', oppView); } catch (e) {}
     updateOppViewButtons();
+    var lastState = roomSession.getLastState();
     if (lastState) opponentView.render(lastState);
   }
 
@@ -636,10 +479,10 @@
   var prevCardRects = {};
   // 상대가 내는 중인 카드 — 바닥에 먼저 도착하지 않게 잠시 가려둔다
   var flyingCards = {};
-  var opponentCardMotion = window.GostopOpponentCardMotion({
+  opponentCardMotion = window.GostopOpponentCardMotion({
     el: el,
     fx: Fx,
-    mySeat: function () { return mySeat; },
+    mySeat: function () { return roomSession.getMySeat(); },
     seatEl: seatEl,
     getPreviousCardRects: function () { return prevCardRects; },
     getFlyingCards: function () { return flyingCards; },
@@ -660,6 +503,7 @@
   function renderState(state) {
     var phaseBefore = prevPhase;
     prevPhase = state.phase;
+    var mySeat = roomSession.getMySeat();
     var me = state.players[mySeat];
     el.moneyChip.innerHTML = won(me ? me.money : 0);
 
@@ -756,7 +600,9 @@
   }
 
   function playCard(cardEl, index) {
-    if (busy) return;
+    if (roomSession.isBusy()) return;
+    var lastState = roomSession.getLastState();
+    var mySeat = roomSession.getMySeat();
     if (!lastState || lastState.currentSeat !== mySeat || lastState.prompt) return;
     var cardId = cardEl.getAttribute('data-card-id');
     Fx.animateCardFlight(cardEl, el.table, -6, 260);
@@ -769,7 +615,7 @@
         if (node) node.style.opacity = '';
       }, 320);
     }
-    setTimeout(function () { act('playCard', { handIndex: index }); }, 120);
+    setTimeout(function () { roomSession.act('playCard', { handIndex: index }); }, 120);
   }
 
   function seatEl(seat) {
@@ -781,7 +627,7 @@
   // ── 타이머 ──────────────────────────────────────────────────────────────
 
   setInterval(function () {
-    var s = lastState;
+    var s = roomSession.getLastState();
     if (!s || !s.deadline) { el.timer.innerHTML = ''; return; }
     var remain = Math.max(0, Math.round((s.deadline - Date.now()) / 1000));
     el.timer.innerHTML = remain + '초';
@@ -791,6 +637,7 @@
   // 화면을 돌리거나 창 크기가 바뀌면 손패 크기를 다시 맞춘다
   window.addEventListener('resize', function () {
     try {
+      var lastState = roomSession.getLastState();
       if (lastState && lastState.myHand && lastState.myHand.length) {
         fitHandCards(lastState.myHand.length);
         fitTableCards();

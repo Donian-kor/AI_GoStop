@@ -1,6 +1,6 @@
 # 명지네고스톱 (gostop-game) — 구현 계획서
 
-> 상태: **구현 완료 (1차)** — 엔진·서버·AI·화면 전부 동작, 테스트 126개 통과. 남은 일: 실제 폰 3대 실전 점검(새로고침·연결 끊김), 구형 안드로이드 4.4.4 확인
+> 상태: **구현 완료 (1차)** — 엔진·서버·AI·화면 전부 동작, 테스트 134개 통과. 남은 일: 실제 폰 3대 실전 점검(새로고침·연결 끊김), 구형 안드로이드 4.4.4 확인
 > 작성일: 2026-10-21
 > 대상 폴더: `<프로젝트 루트>/gostop-game/`
 > 벤치마킹 정리: [`BENCHMARK.md`](./BENCHMARK.md) · 자산 라이선스: [`ATTRIBUTION.md`](./ATTRIBUTION.md)
@@ -28,9 +28,9 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
 | 사운드 | Kenney CC0 효과음 30종 |
 | 시작 순서 | **엔진부터** (서버·UI는 검증된 엔진 위에 올림) |
 
-### 현재 상태 기준선 (2026-10-23 · 5차 갱신)
+### 현재 상태 기준선 (2026-10-23 · 6차 갱신)
 
-- `engine/` 9개 모듈 + `tests/` 19개 파일이 구현되어 있다. **테스트 126개 전부 통과.**
+- `engine/` 9개 모듈 + `tests/` 19개 파일이 구현되어 있다. **테스트 134개 전부 통과.**
   - `node tests/engine_test.js` → 45개 (규칙 단위, 정본 소스에서 직접 도출)
   - `node tests/contract_test.js` → 10개 (itsent-lab 규약과의 교차 검증: 카드 매핑·점수 라인·정산 단계·지급면제)
   - `node tests/replay_test.js` → 3개 (참조 레코드 6개 스모크 + 정산 불변식)
@@ -41,7 +41,7 @@ PC는 서버 역할을 겸하고, 각자의 브라우저에서 자기 패만 보
   - `node tests/jokbo_test.js` → 4개 (족보 그림 타일)
   - `node tests/deal_finish_test.js` → 3개 (딜 직후 총통·선 후보 덱 보존)
   - `node tests/fx_test.js` → 7개 (카드 연출 연결 · 이벤트 카드 id)
-  - `node --test tests/api_client_test.js` → 5개 (HTTP 요청·응답 처리)
+  - `node --test tests/room_session_test.js` → 13개 (HTTP 요청·방 세션·폴링·액션)
   - `node tests/score_panel_test.js` → 2개 (족보·획득 카드 점수판)
   - `node tests/result_view_test.js` → 2개 (정산 결과 화면)
   - `node --test tests/phase_views_test.js` → 3개 (협상·선 결정·턴 프롬프트)
@@ -208,7 +208,7 @@ gostop-game/
 │  └─ fourplayer.js      4인 광팔기 협상·광팔기 정산
 ├─ public/
 │  ├─ index.html
-│  ├─ api-client.js    XMLHttpRequest 기반 JSON 통신
+│  ├─ room-session.js  HTTP 통신·방 입장·폴링·액션·세션 상태
 │  ├─ room-browser.js   로비 방 목록·참가 처리
 │  ├─ score-panel.js    족보·획득 카드 점수판 렌더링
 │  ├─ result-view.js    정산 결과 화면
@@ -647,7 +647,7 @@ easeOutCubic, easeInOutCubic, easeOutBack, easeOutBounce, easeOutElastic
 - `node --test tests/table_deck_view_test.js` → **3개 통과** (바닥·뒷패 더미 렌더링)
 - `node --test tests/settings_view_test.js` → **4개 통과** (로비·게임 설정 저장 및 권한)
 - `node --test tests/opponent_card_motion_test.js` → **4개 통과** (상대 카드 이동 연출)
-- `npm test` → 위 19개 연속 실행, **전부 통과해야 성공** (총 126개)
+- `npm test` → 위 19개 연속 실행, **전부 통과해야 성공** (총 134개)
 - `npm run check:es5` → `public/` 의 ES6+ 문법이 없음을 확인 (구형 안드로이드 4.4.4 호환)
 - `.rec` 완전 재현은 형식상 불가능(§2-2). 따라서 리플레이는 "예외 없이 진행 + 정산 불변식"까지만 검증하고, 규칙 정합성은 앞의 두 테스트가 담당한다.
 - 스냅샷은 일반 테스트 중 자동 생성하지 않는다. `update-snapshots` 같은 별도 명령으로만 생성하고 기준 파일을 저장소에 보관한다.
