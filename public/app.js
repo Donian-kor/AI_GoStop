@@ -586,6 +586,8 @@
       d.setAttribute('data-kind', '');
     } else {
       d.className += ' m' + (card.month < 10 ? '0' + card.month : String(card.month));
+      var defaults = settingsView ? settingsView.getRoomDefaults() : { showMonth: true };
+      if (defaults.showMonth === false) d.className += ' hide-month';
       d.setAttribute('data-month-label', card.month + '월');
       d.setAttribute('data-kind', KIND_LABEL[card.kind] || '');
     }
