@@ -12,6 +12,8 @@ class Element {
     this.attributes = {};
     this.listeners = {};
     this.className = '';
+    this.parentNode = null;
+    this.onclick = null;
     this._innerHTML = '';
   }
 
@@ -25,7 +27,16 @@ class Element {
   }
 
   appendChild(child) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    child.parentNode = this;
     this.children.push(child);
+    return child;
+  }
+
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    if (index >= 0) this.children.splice(index, 1);
+    child.parentNode = null;
     return child;
   }
 
@@ -37,8 +48,35 @@ class Element {
     this.attributes[name] = String(value);
   }
 
+  getAttribute(name) {
+    return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null;
+  }
+
+  descendants() {
+    const found = [];
+    for (const child of this.children) {
+      found.push(child);
+      found.push(...child.descendants());
+    }
+    return found;
+  }
+
+  querySelectorAll(selector) {
+    if (selector !== '[data-card-id]') return [];
+    return this.descendants().filter((el) => el.getAttribute('data-card-id') !== null);
+  }
+
+  getElementsByClassName(className) {
+    const matches = () => this.descendants().filter((el) => el.className.split(' ').includes(className));
+    const collection = {};
+    Object.defineProperty(collection, 'length', { get: () => matches().length });
+    Object.defineProperty(collection, '0', { get: () => matches()[0] });
+    return collection;
+  }
+
   click() {
     (this.listeners.click || []).forEach((listener) => listener());
+    if (this.onclick) this.onclick();
   }
 }
 
@@ -56,6 +94,11 @@ function createHandView(mySeat) {
     fitHandCards: (count) => fitCalls.push(count),
     makeCardEl: (card, className, showMonth) => {
       const element = new Element('div');
+      element.className = 'card ' + className + (showMonth === false ? ' hide-month' : '');
+      element.card = card;
+      return element;
+    },
+    updateCardEl: (element, card, className, showMonth) => {
       element.className = 'card ' + className + (showMonth === false ? ' hide-month' : '');
       element.card = card;
       return element;
@@ -149,4 +192,27 @@ test('빈 손패도 크기 조정 후 손패 영역을 비운다', () => {
   assert.deepStrictEqual(fitCalls, [0]);
   assert.strictEqual(hand.children.length, 0);
   assert.strictEqual(hand.className, 'hand');
+});
+
+test('같은 손패 카드는 다시 그려도 요소를 재사용한다', () => {
+  const { view, hand } = createHandView(0);
+  const card = { id: 'reuse-hand', month: 3 };
+  const state = {
+    currentSeat: 1,
+    phase: 'play',
+    prompt: null,
+    settings: { showMonth: true },
+    table: [],
+    myHand: [card],
+  };
+  view.render(state);
+  const first = hand.children[0];
+
+  view.render(state);
+  assert.strictEqual(hand.children[0], first);
+
+  state.currentSeat = 0;
+  view.render(state);
+  assert.strictEqual(hand.children[0], first);
+  assert.strictEqual(first.className, 'card pick ');
 });

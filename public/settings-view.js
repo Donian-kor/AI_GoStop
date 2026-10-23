@@ -118,7 +118,12 @@
         el.bonusPackSelect.value = String(bp);
       }
 
-      if (el.showMonthSelect) el.showMonthSelect.value = state.settings.showMonth === false ? 'off' : 'on';
+      if (el.showMonthSelect) {
+        var currentMonthSetting = (state.settings && typeof state.settings.showMonth === 'boolean')
+          ? state.settings.showMonth
+          : getLobbySettings().showMonth;
+        el.showMonthSelect.value = currentMonthSetting === false ? 'off' : 'on';
+      }
 
       if (el.settingsOverlay) el.settingsOverlay.className = 'overlay';
     }
@@ -137,6 +142,24 @@
     if (el.settingsBtn) el.settingsBtn.addEventListener('click', openRoomSettings);
     if (el.lobbySettingsBtn) el.lobbySettingsBtn.addEventListener('click', openLobbySettings);
     if (el.settingsCloseBtn) el.settingsCloseBtn.addEventListener('click', close);
+    if (el.showMonthSelect) el.showMonthSelect.addEventListener('change', function () {
+      var isHide = el.showMonthSelect.value === 'off';
+      try {
+        var allCards = (root.document && root.document.querySelectorAll) ? root.document.querySelectorAll('.card:not(.bonus-card)') : [];
+        for (var i = 0; i < allCards.length; i++) {
+          if (isHide) {
+            if (allCards[i].className.indexOf('hide-month') === -1) allCards[i].className += ' hide-month';
+            allCards[i].removeAttribute('data-month-label');
+          } else {
+            allCards[i].className = allCards[i].className.replace(/\s*hide-month\b/g, '');
+          }
+        }
+      } catch (e1) {}
+      try {
+        var current = getLobbySettings();
+        saveLobbySettings(current.moneyPerPoint, current.timeKey, current.bonusPack, !isHide);
+      } catch (e2) {}
+    });
     if (el.settingsSaveBtn) el.settingsSaveBtn.addEventListener('click', function () {
       var preset = timePresets[el.timeSelect.value] || timePresets.off;
       var money = Number(el.pointSelect.value);
@@ -144,11 +167,26 @@
       var showMonth = el.showMonthSelect ? el.showMonthSelect.value !== 'off' : true;
       if (bonusPack !== 48 && bonusPack !== 50 && bonusPack !== 51) bonusPack = 50;
       close();
+      try {
+        var allCards = root.document.querySelectorAll ? root.document.querySelectorAll('.card:not(.bonus-card)') : [];
+        for (var c = 0; c < allCards.length; c++) {
+          if (!showMonth) {
+            if (allCards[c].className.indexOf('hide-month') === -1) {
+              allCards[c].className += ' hide-month';
+              allCards[c].removeAttribute('data-month-label');
+            }
+          } else {
+            allCards[c].className = allCards[c].className.replace(/\s*hide-month\b/g, '');
+          }
+        }
+      } catch (e) {}
       if (settingsMode === 'lobby') {
         saveLobbySettings(money, el.timeSelect.value, bonusPack, showMonth);
         if (deps.fx) deps.fx.showBanner('새 방 설정을 저장했습니다', 'plain', 1100);
         return;
       }
+      var lobbyCurrent = getLobbySettings();
+      saveLobbySettings(lobbyCurrent.moneyPerPoint, lobbyCurrent.timeKey, lobbyCurrent.bonusPack, showMonth);
       deps.act('settings', {
         moneyPerPoint: money,
         timeLimit: { enabled: preset.enabled, base: preset.base, increment: preset.increment },

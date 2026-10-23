@@ -54,7 +54,7 @@
           label.innerHTML = '팔 패:';
           el.promptBox.appendChild(label);
           for (var i = 0; i < negotiation.mySaleCards.length; i++) {
-            el.promptBox.appendChild(deps.makeCardEl(negotiation.mySaleCards[i], 'small'));
+            el.promptBox.appendChild(deps.makeCardEl(negotiation.mySaleCards[i], 'small', state.settings && typeof state.settings.showMonth === 'boolean' ? state.settings.showMonth : undefined));
           }
         }
       } else {
@@ -87,7 +87,7 @@
       el.promptBox.appendChild(label);
       for (var i = 0; i < candidates.length; i++) {
         (function (index) {
-          var card = deps.makeCardEl(candidates[index], 'pick small');
+          var card = deps.makeCardEl(candidates[index], 'pick small', state.settings && typeof state.settings.showMonth === 'boolean' ? state.settings.showMonth : undefined);
           card.setAttribute('data-card-id', candidates[index].id);
           card.addEventListener('click', function () { deps.act('seonPick', { cardIndex: index }); });
           el.promptBox.appendChild(card);
@@ -130,7 +130,7 @@
         var options = prompt.options || [];
         for (var i = 0; i < options.length; i++) {
           (function (index) {
-            var card = deps.makeCardEl(options[index], 'pick small');
+            var card = deps.makeCardEl(options[index], 'pick small', state.settings && typeof state.settings.showMonth === 'boolean' ? state.settings.showMonth : undefined);
             card.setAttribute('data-card-id', options[index].id);
             card.addEventListener('click', function () {
               if (prompt.type === 'floorChoice') deps.act('floorChoice', { choice: index });
@@ -147,7 +147,7 @@
         var bonusOptions = prompt.options || [];
         for (var j = 0; j < bonusOptions.length; j++) {
           (function (option) {
-            var card = deps.makeCardEl(option, 'pick small');
+            var card = deps.makeCardEl(option, 'pick small', state.settings && typeof state.settings.showMonth === 'boolean' ? state.settings.showMonth : undefined);
             card.addEventListener('click', function () { deps.act('bonusDraw', { stockIndex: option.stockIndex }); });
             el.promptBox.appendChild(card);
           })(bonusOptions[j]);

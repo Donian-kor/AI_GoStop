@@ -9,7 +9,7 @@
  * - 오프라인에서는 캐시된 화면을 보여준다
  */
 
-var CACHE_NAME = 'gostop-v8';
+var CACHE_NAME = 'gostop-v10';
 var STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -93,7 +93,30 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // 정적 자산은 캐시 우선, 없으면 네트워크
+  // HTML/JS/CSS 코드는 네트워크 우선 (최신 코드 즉시 반영), 오프라인일 때만 캐시
+  var isCode = url.pathname === '/' || url.pathname.indexOf('.html') !== -1 || url.pathname.indexOf('.js') !== -1 || url.pathname.indexOf('.css') !== -1;
+  if (isCode) {
+    event.respondWith(
+      fetch(event.request).then(function (response) {
+        if (response && response.status === 200 && response.type === 'basic') {
+          var clone = response.clone();
+          caches.open(CACHE_NAME).then(function (cache) {
+            cache.put(event.request, clone);
+          });
+        }
+        return response;
+      }).catch(function () {
+        return caches.match(event.request).then(function (cached) {
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') return caches.match('/index.html');
+          return new Response('', { status: 503, statusText: 'Offline' });
+        });
+      })
+    );
+    return;
+  }
+
+  // 기타 정적 자산(아이콘 등)은 캐시 우선, 없으면 네트워크
   event.respondWith(
     caches.match(event.request).then(function (cached) {
       if (cached) return cached;

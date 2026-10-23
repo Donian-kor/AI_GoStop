@@ -278,6 +278,31 @@ test('later polls handle effects before rendering and play opponent moves afterw
   assert.deepStrictEqual(JSON.parse(JSON.stringify(h.opponentMoveStates)), [{ phase: 'play', turn: 2 }]);
 });
 
+test('상태 버전이 바뀌지 않은 응답은 다시 그리지 않는다', () => {
+  const h = createSession();
+  h.session.enterRoom('ABC123', 1);
+  h.requests[0].complete(200, JSON.stringify(stateResponse({
+    state: { phase: 'play', turn: 1 },
+    version: 5,
+  })));
+  assert.strictEqual(h.rendered.length, 1);
+
+  h.runNextTimeout(50);
+  h.requests[1].complete(200, JSON.stringify(stateResponse({
+    state: { phase: 'play', turn: 1 },
+    version: 5,
+  })));
+  assert.strictEqual(h.rendered.length, 1, '같은 버전의 하트비트는 재렌더링하지 않는다');
+
+  h.runNextTimeout(50);
+  h.requests[2].complete(200, JSON.stringify(stateResponse({
+    state: { phase: 'play', turn: 2 },
+    version: 6,
+  })));
+  assert.strictEqual(h.rendered.length, 2);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(h.rendered[1])), { phase: 'play', turn: 2 });
+});
+
 test('createRoom reports server and response errors without entering a room', () => {
   const invalidResponse = createSession();
   let responseError;

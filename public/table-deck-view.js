@@ -5,7 +5,14 @@
     var el = deps.el;
 
     function render(state) {
+      // 이미 그려진 바닥패는 재사용한다 (새 <img> 생성으로 인한 깜빡임 방지)
+      var existing = {};
+      var old = el.table.querySelectorAll('[data-card-id]');
+      for (var o = 0; o < old.length; o++) {
+        existing[old[o].getAttribute('data-card-id')] = old[o];
+      }
       el.table.innerHTML = '';
+
       var groups = [];
       for (var i = 0; i < state.table.length; i++) {
         var cardData = state.table[i];
@@ -42,8 +49,16 @@
           monthGroup.setAttribute('data-month', groups[j].month);
         }
         for (var c = 0; c < groups[j].cards.length; c++) {
-          var card = deps.makeCardEl(groups[j].cards[c], 'small', state.settings && state.settings.showMonth);
-          card.setAttribute('data-card-id', groups[j].cards[c].id);
+          var cardData = groups[j].cards[c];
+          var showMonth = state.settings && typeof state.settings.showMonth === 'boolean' ? state.settings.showMonth : undefined;
+          var card = existing[cardData.id];
+          if (card) {
+            deps.updateCardEl(card, cardData, 'small', showMonth);
+            card.style.opacity = ''; // 비행 연출이 끝난 카드는 다시 보이게 (진행 중이면 app.js가 다시 가린다)
+          } else {
+            card = deps.makeCardEl(cardData, 'small', showMonth);
+          }
+          card.setAttribute('data-card-id', cardData.id);
           monthGroup.appendChild(card);
         }
         el.table.appendChild(monthGroup);

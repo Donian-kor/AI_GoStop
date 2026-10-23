@@ -12,6 +12,7 @@
  */
 
 (function () {
+  var root = typeof window !== 'undefined' ? window : this;
   // 사용자 입력(이름 등)을 innerHTML에 안전하게 넣기 위한 이스케이프
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
@@ -345,12 +346,14 @@
     mySeat: function () { return roomSession.getMySeat(); },
     fitHandCards: fitHandCards,
     makeCardEl: makeCardEl,
+    updateCardEl: updateCardEl,
     playCard: playCard
   });
 
   var tableDeckView = window.GostopTableDeckView({
     el: el,
-    makeCardEl: makeCardEl
+    makeCardEl: makeCardEl,
+    updateCardEl: updateCardEl
   });
 
   // ── 이름 기억 ────────────────────────────────────────────────────────────
@@ -572,26 +575,50 @@
     return CARD_IMG + card.id + '.png?v=' + buildVersion;
   }
 
-  function makeCardEl(card, extraClass, showMonth) {
-    var d = document.createElement('div');
+  // 카드 요소의 클래스·속성만 갱신한다 (이미 그려진 카드를 재사용할 때 쓴다)
+  function updateCardEl(d, card, extraClass, showMonth) {
     d.className = 'card ' + (extraClass || '');
-    var img = document.createElement('img');
-    img.className = 'card-img';
-    img.src = cardImg(card);
-    img.alt = '';
-    img.decoding = 'async';
-    d.appendChild(img);
     if (card.kind === 'bonus') {
       d.className += ' bonus-card';
       d.setAttribute('data-month-label', '보너스');
       d.setAttribute('data-kind', '');
     } else {
       d.className += ' m' + (card.month < 10 ? '0' + card.month : String(card.month));
-      if (showMonth === false) d.className += ' hide-month';
-      d.setAttribute('data-month-label', card.month + '월');
+      try {
+        var storageObj = (typeof window !== 'undefined' && window.localStorage) || (typeof localStorage !== 'undefined' ? localStorage : null);
+        var _lobby = {};
+        try {
+          if (storageObj) _lobby = JSON.parse(storageObj.getItem('gs_lobby_settings') || '{}');
+        } catch (e0) {}
+        var isVisible = true;
+        if (typeof showMonth === 'boolean') {
+          isVisible = showMonth;
+        } else {
+          var last = roomSession && roomSession.getLastState ? roomSession.getLastState() : null;
+          if (last && last.settings && typeof last.settings.showMonth === 'boolean') {
+            isVisible = last.settings.showMonth;
+          } else if (typeof _lobby.showMonth === 'boolean') {
+            isVisible = _lobby.showMonth;
+          }
+        }
+        if (isVisible && _lobby.showMonth === false) isVisible = false;
+        if (isVisible === false) d.className += ' hide-month';
+      } catch (e) {}
+      if (isVisible === false) { d.removeAttribute('data-month-label'); } else { d.setAttribute('data-month-label', card.month + '월'); }
       d.setAttribute('data-kind', KIND_LABEL[card.kind] || '');
     }
     return d;
+  }
+
+  function makeCardEl(card, extraClass, showMonth) {
+    var d = document.createElement('div');
+    var img = document.createElement('img');
+    img.className = 'card-img';
+    img.src = cardImg(card);
+    img.alt = '';
+    img.decoding = 'async';
+    d.appendChild(img);
+    return updateCardEl(d, card, extraClass, showMonth);
   }
 
   function fitHandCards(count) {
@@ -891,7 +918,9 @@
 
   // ── PWA : 서비스 워커 등록 (지원하지 않는 환경에서는 조용히 건너뛴다) ──
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(function () {});
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      if (reg) reg.update().catch(function () {});
+    }).catch(function () {});
   }
 
   // ── PWA : 앱으로 설치하기 ────────────────────────────────────────────────

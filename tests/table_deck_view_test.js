@@ -11,6 +11,8 @@ class Element {
     this.children = [];
     this.attributes = {};
     this.className = '';
+    this.parentNode = null;
+    this.style = {};
     this._innerHTML = '';
   }
 
@@ -24,12 +26,39 @@ class Element {
   }
 
   appendChild(child) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    child.parentNode = this;
     this.children.push(child);
+    return child;
+  }
+
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    if (index >= 0) this.children.splice(index, 1);
+    child.parentNode = null;
     return child;
   }
 
   setAttribute(name, value) {
     this.attributes[name] = String(value);
+  }
+
+  getAttribute(name) {
+    return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null;
+  }
+
+  descendants() {
+    const found = [];
+    for (const child of this.children) {
+      found.push(child);
+      found.push(...child.descendants());
+    }
+    return found;
+  }
+
+  querySelectorAll(selector) {
+    if (selector !== '[data-card-id]') return [];
+    return this.descendants().filter((el) => el.getAttribute('data-card-id') !== null);
   }
 }
 
@@ -54,6 +83,11 @@ function createView() {
     el: { table, tableHint, deckStack },
     makeCardEl: (card, className, showMonth) => {
       const element = new Element('div');
+      element.className = 'card ' + className + (showMonth === false ? ' hide-month' : '');
+      element.card = card;
+      return element;
+    },
+    updateCardEl: (element, card, className, showMonth) => {
       element.className = 'card ' + className + (showMonth === false ? ' hide-month' : '');
       element.card = card;
       return element;
@@ -115,4 +149,14 @@ test('바닥과 뒷패가 비면 이전 내용을 모두 지운다', () => {
   assert.strictEqual(table.children.length, 0);
   assert.strictEqual(tableHint.innerHTML, '');
   assert.strictEqual(deckStack.children.length, 0);
+});
+
+test('같은 바닥패는 다시 그려도 요소를 재사용한다', () => {
+  const { view, table } = createView();
+  const card = { id: 'reuse-floor', month: 3 };
+  view.render({ settings: { showMonth: true }, table: [card], deckCount: 0 });
+  const first = table.children[0].children[0];
+
+  view.render({ settings: { showMonth: true }, table: [card], deckCount: 0 });
+  assert.strictEqual(table.children[0].children[0], first);
 });

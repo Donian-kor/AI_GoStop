@@ -132,7 +132,11 @@
           if (done) done();
           if (!res || !res.ok) return;
           lastUpdateAt = new Date().getTime();
+          var prevVersion = lastVersion;
           if (typeof res.version === 'number') lastVersion = res.version;
+          // 상태가 바뀌지 않은 하트비트 응답이면 다시 그리지 않는다
+          // (8초마다 카드 전체를 새로 그려 깜빡이던 문제 방지)
+          var unchanged = typeof res.version === 'number' && res.version === prevVersion;
           var fx = res.fx || [];
           var moveFx = [];
           if (freshJoin) {
@@ -150,11 +154,13 @@
             }
           }
           lastState = res.state;
-          try {
-            deps.render(res.state);
-          } catch (e) {
-            if (!root.console || !root.console.error) return;
-            root.console.error('[render]', e);
+          if (!unchanged) {
+            try {
+              deps.render(res.state);
+            } catch (e) {
+              if (!root.console || !root.console.error) return;
+              root.console.error('[render]', e);
+            }
           }
           try {
             deps.playOpponentMoves(moveFx, res.state);
