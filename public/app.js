@@ -575,6 +575,20 @@
     return CARD_IMG + card.id + '.png?v=' + buildVersion;
   }
 
+  // showMonth 설정값을 결정한다 (우선순위: 명시된 인자 > 방 서버 설정 > localStorage)
+  function resolveShowMonth(showMonth) {
+    if (typeof showMonth === 'boolean') return showMonth;
+    try {
+      var last = roomSession && roomSession.getLastState ? roomSession.getLastState() : null;
+      if (last && last.settings && typeof last.settings.showMonth === 'boolean') return last.settings.showMonth;
+    } catch (e1) {}
+    try {
+      var raw = window.localStorage.getItem('gs_lobby_settings');
+      if (raw) { var ls = JSON.parse(raw); if (ls && typeof ls.showMonth === 'boolean') return ls.showMonth; }
+    } catch (e2) {}
+    return true;
+  }
+
   // 카드 요소의 클래스·속성만 갱신한다 (이미 그려진 카드를 재사용할 때 쓴다)
   function updateCardEl(d, card, extraClass, showMonth) {
     d.className = 'card ' + (extraClass || '');
@@ -584,27 +598,13 @@
       d.setAttribute('data-kind', '');
     } else {
       d.className += ' m' + (card.month < 10 ? '0' + card.month : String(card.month));
-      try {
-        var storageObj = (typeof window !== 'undefined' && window.localStorage) || (typeof localStorage !== 'undefined' ? localStorage : null);
-        var _lobby = {};
-        try {
-          if (storageObj) _lobby = JSON.parse(storageObj.getItem('gs_lobby_settings') || '{}');
-        } catch (e0) {}
-        var isVisible = true;
-        if (typeof showMonth === 'boolean') {
-          isVisible = showMonth;
-        } else {
-          var last = roomSession && roomSession.getLastState ? roomSession.getLastState() : null;
-          if (last && last.settings && typeof last.settings.showMonth === 'boolean') {
-            isVisible = last.settings.showMonth;
-          } else if (typeof _lobby.showMonth === 'boolean') {
-            isVisible = _lobby.showMonth;
-          }
-        }
-        if (isVisible && _lobby.showMonth === false) isVisible = false;
-        if (isVisible === false) d.className += ' hide-month';
-      } catch (e) {}
-      if (isVisible === false) { d.removeAttribute('data-month-label'); } else { d.setAttribute('data-month-label', card.month + '월'); }
+      var visible = resolveShowMonth(showMonth);
+      if (visible === false) {
+        d.className += ' hide-month';
+        d.removeAttribute('data-month-label');
+      } else {
+        d.setAttribute('data-month-label', card.month + '월');
+      }
       d.setAttribute('data-kind', KIND_LABEL[card.kind] || '');
     }
     return d;

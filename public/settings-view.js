@@ -152,6 +152,9 @@
             allCards[i].removeAttribute('data-month-label');
           } else {
             allCards[i].className = allCards[i].className.replace(/\s*hide-month\b/g, '');
+            // data-month-label 복원: m01~m12 클래스에서 월 번호를 읽어온다
+            var monthMatch = allCards[i].className.match(/\bm(\d{2})\b/);
+            if (monthMatch) allCards[i].setAttribute('data-month-label', Number(monthMatch[1]) + '월');
           }
         }
       } catch (e1) {}
@@ -177,6 +180,8 @@
             }
           } else {
             allCards[c].className = allCards[c].className.replace(/\s*hide-month\b/g, '');
+            var monthMatch2 = allCards[c].className.match(/\bm(\d{2})\b/);
+            if (monthMatch2) allCards[c].setAttribute('data-month-label', Number(monthMatch2[1]) + '월');
           }
         }
       } catch (e) {}
