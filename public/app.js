@@ -51,6 +51,9 @@
   var oppView = 'image';
   try { oppView = localStorage.getItem('gs_opp_view') === 'text' ? 'text' : 'image'; } catch (e) { oppView = 'image'; }
   var Fx = window.GostopFx;
+  var apiClient = window.GostopApiClient();
+  var getJson = apiClient.getJson;
+  var postJson = apiClient.postJson;
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -192,39 +195,6 @@
     el: el,
     makeCardEl: makeCardEl
   });
-
-  // ── 네트워크 (XMLHttpRequest — 구형 브라우저 대응) ───────────────────────
-
-  function request(method, url, body, onOk, onErr) {
-    var xhr = new XMLHttpRequest();
-    try {
-      xhr.open(method, url, true);
-    } catch (e) {
-      if (onErr) onErr();
-      return;
-    }
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.withCredentials = true;
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4) return;
-      if (xhr.status >= 200 && xhr.status < 300) {
-        var data = null;
-        try { data = JSON.parse(xhr.responseText); } catch (e) { data = null; }
-        if (onOk) onOk(data);
-      } else if (onErr) {
-        onErr(xhr);
-      }
-    };
-    xhr.onerror = function () { if (onErr) onErr(xhr); };
-    try {
-      xhr.send(body ? JSON.stringify(body) : null);
-    } catch (e) {
-      if (onErr) onErr(xhr);
-    }
-  }
-
-  function getJson(url, onOk, onErr) { request('GET', url, null, onOk, onErr); }
-  function postJson(url, body, onOk, onErr) { request('POST', url, body, onOk, onErr); }
 
   // ── 이름 기억 ────────────────────────────────────────────────────────────
   // 한 번 입력한 이름을 저장해 두면 새로고침·재접속 때 다시 입력하지 않아도 된다.

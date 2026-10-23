@@ -137,7 +137,7 @@ AI 난이도는 쉬움 / 보통 / 어려움 / 초고수 중에서 고릅니다.
 npm test
 ```
 
-전체 **120개**가 모두 통과해야 합니다.
+전체 **126개**가 모두 통과해야 합니다.
 
 | 명령 | 내용 | 개수 |
 |---|---|---|
@@ -186,6 +186,7 @@ server/
 public/
   index.html            화면
   style.css             스타일 (모바일 우선)
+  api-client.js         XMLHttpRequest 기반 JSON 통신
   room-browser.js       로비 방 목록·참가 처리
   score-panel.js        족보·획득 카드 점수판 렌더링
   result-view.js        정산 결과 화면
