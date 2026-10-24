@@ -131,20 +131,6 @@
       <!-- 앱 설치 안내 (PWA) — 설치 시에만 표시 -->
       <p id="installGuide" class="hidden text-[#e7c992] text-xs mt-2 text-center"></p>
       
-      <!-- 방 코드 입력(기본 숨김) -->
-      <div id="joinBox" class="hidden w-full mt-3 px-1">
-        <div class="relative w-full rounded bg-[#432312] p-[3px] shadow-md">
-          <div class="relative flex items-center bg-[#decaa5] rounded border border-[#2b160b] px-3 py-1.5 shadow-inner">
-            <input id="codeInput" class="w-full bg-transparent text-center text-[#2b170c] font-bold text-lg sm:text-xl border-none focus:ring-0 p-0 placeholder-[#8b6c4b] uppercase tracking-widest" type="text" placeholder="방 코드" maxlength="6" autocapitalize="characters" spellcheck="false">
-          </div>
-        </div>
-        <button id="joinGoBtn" class="flex-1 relative btn-gold-ornate rounded-xl border-[2px] border-[#915d11] p-[1px] group transition-all mt-2" type="button">
-          <div class="relative py-2.5 sm:py-3 px-1 rounded-[10px] border border-[#ffeea1]/50 flex items-center justify-center">
-            <span class="text-[#3b1c00] font-black text-sm sm:text-base tracking-tighter whitespace-nowrap drop-shadow-[0_1px_0_rgba(255,255,255,0.6)]">참가하기</span>
-          </div>
-        </button>
-      </div>
-
       <p id="lobbyError" class="text-[#e2685f] text-sm mt-2 text-center"></p>
     </div>
 
@@ -303,8 +289,7 @@
       <button id="roomListJoinBtn" class="primary room-list-join" type="button" disabled>선택한 방 참가</button>
       <div class="row room-list-actions">
         <button id="roomListRefreshBtn" type="button">새로고침</button>
-        <button id="roomListCodeBtn" type="button">코드 직접 입력</button>
-        <button id="roomListCloseBtn" type="button">닫기</button>
+      <button id="roomListCloseBtn" type="button">닫기</button>
       </div>
     </div>
   </div>

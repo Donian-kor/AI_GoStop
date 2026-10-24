@@ -78,10 +78,6 @@
       if (el.roomListOverlay) el.roomListOverlay.className = 'overlay hidden';
     }
 
-    function setJoinBoxVisible(visible) {
-      el.joinBox.className = visible ? 'w-full mt-3 px-1' : 'hidden w-full mt-3 px-1';
-    }
-
     function joinRoomByCode(code, fromList) {
       if (!window.gostopUser) {
         el.lobbyError.textContent = '로그인 후 방에 참가할 수 있습니다.';
@@ -256,30 +252,17 @@
         return;
       }
       el.lobbyError.textContent = '';
-      setJoinBoxVisible(false);
       el.roomListOverlay.className = 'overlay';
       loadRoomList();
     }
 
     el.joinBtn.addEventListener('click', openRoomList);
 
-    el.joinGoBtn.addEventListener('click', function () {
-      var code = el.codeInput.value.replace(/^\s+|\s+$/g, '').toUpperCase();
-      if (code.length !== 6) { el.lobbyError.textContent = '방 코드는 6자리입니다.'; return; }
-      joinRoomByCode(code, false);
-    });
-
     if (el.roomListCloseBtn) el.roomListCloseBtn.addEventListener('click', closeRoomList);
     if (el.roomListRefreshBtn) el.roomListRefreshBtn.addEventListener('click', loadRoomList);
     if (el.roomListJoinBtn) el.roomListJoinBtn.addEventListener('click', function () {
       var room = roomListFind(roomListState.selectedCode);
       if (room && room.canJoin) joinRoomByCode(room.code, true);
-    });
-    if (el.roomListCodeBtn) el.roomListCodeBtn.addEventListener('click', function () {
-      closeRoomList();
-      el.lobbyError.textContent = '';
-      setJoinBoxVisible(true);
-      el.codeInput.focus();
     });
     if (el.roomListOverlay) el.roomListOverlay.addEventListener('click', function (ev) {
       if (ev.target === el.roomListOverlay) closeRoomList();

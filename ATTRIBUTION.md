@@ -14,9 +14,16 @@
 - **파일 규격**:
   - `january_hikari.svg` … `december_tanzaku.svg` — 정규 카드 48장 (월별 파일명 체계)
   - `back_red.svg` 등 — 뒷장
-  - `bonus_*.svg` — 보너스패 4장
-- **변경 이력**: 2026-10-23 Wikimedia Commons 출처의 CC BY-SA 4.0 이미지를
+  
+  - **변경 이력**: 2026-10-23 Wikimedia Commons 출처의 CC BY-SA 4.0 이미지를
   자체 제작 일러스트로 전량 교체. 더 이상 CC BY-SA 4.0 저작자 표기가 필요하지 않다.
+
+### PNG 보너스 카드
+
+- **제작**: Nano Banana 2
+- **사용 위치**: `assets/hwatu/png/`
+- **대상 파일**: `bonus_ssangpi_1.png`, `bonus_ssangpi_2.png` (보너스 쌍피),
+  `bonus_sampi.png` (삼피), `bonus_joker.png` (조커)
 
 > ※ 이미지 파일명과 실제 화투 구성이 다를 수 있습니다.
 > 규칙 데이터는 `engine/cards.js` 의 정의(11월=오동, 12월=비)를 따릅니다.
