@@ -196,21 +196,6 @@ select option {
 }
 .stakes-chip b { color: #ffd76a; margin-left: 2px; }
 
-/* 방 코드 — 눌러서 복사 */
-.code-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 9px; border-radius: 8px;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 12px; font-weight: 800; letter-spacing: .08em; white-space: nowrap;
-  color: #ffe08a; background: rgba(24, 15, 7, .95); border: 1px solid #b07d2a;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .5);
-}
-#codeChip::before {
-  content: '방'; font-family: inherit; font-size: 10px; letter-spacing: 0;
-  color: #e8bb63; background: rgba(120, 70, 20, .55);
-  border-radius: 4px; padding: 1px 4px;
-}
-
 /* 가상 머니 */
 .money-chip {
   display: inline-flex; align-items: center;

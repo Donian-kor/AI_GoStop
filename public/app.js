@@ -97,7 +97,6 @@
     leaderboardList: $('leaderboardList'),
     leaderboardRefreshBtn: $('leaderboardRefreshBtn'),
     leaderboardCloseBtn: $('leaderboardCloseBtn'),
-    codeChip: $('codeChip'),
     moneyChip: $('moneyChip'),
     stakesChip: $('stakesChip'),
     meGoBadge: $('meGoBadge'),
@@ -453,13 +452,6 @@
     }, function (message) { el.lobbyError.textContent = message; });
   });
 
-  el.codeChip.addEventListener('click', function () {
-    var done = function () { Fx.showBanner('방 코드 복사됨', 'plain', 900); };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(roomSession.getRoomCode() || '').then(done, function () { done(); });
-    } else { done(); }
-  });
-
   // 소리 — 로비와 게임 화면의 버튼이 같은 상태를 공유한다
   function updateMuteButtons() {
     var muted = Fx ? Fx.isMuted() : false;
@@ -550,7 +542,6 @@
     el.table.innerHTML = '';
     el.hand.innerHTML = '';
     el.deckStack.innerHTML = '';
-    el.codeChip.innerHTML = '------';
     el.moneyChip.innerHTML = '0원';
     if (el.stakesChip) el.stakesChip.innerHTML = '점당 —';
     if (el.meScore) el.meScore.innerHTML = '내 점수 <b>0</b>점';

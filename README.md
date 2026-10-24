@@ -55,10 +55,13 @@
 
 ### 1. 아빠 PC에서 서버 실행
 
+Node.js 18 이상을 설치하고 프로젝트 폴더에서 다음 명령을 실행합니다.
+
 ```bash
-cd gostop-game
 npm start
 ```
+
+Windows에서는 프로젝트 폴더의 `start.bat`을 실행해도 됩니다.
 
 화면에 이런 식으로 나옵니다.
 
@@ -68,15 +71,16 @@ npm start
   .local 주소      :  http://DESKTOP-XXXX.local:8787
 ```
 
-> `npm install` 은 필요 없습니다. 외부 패키지 0개입니다.
+> 외부 패키지가 없어 `npm install` 은 필요 없습니다.
 
 ### 2. 가족들이 접속
 
 - 폰·PC 브라우저로 위 주소(같은 와이파이) 를 엽니다
-- **이름**을 입력하고 방을 만듭니다 → **6자리 방 코드**가 나옵니다 (예: `HJS7K2`)
+- 상단 **계정**에서 각자 가족 계정을 만들거나 로그인합니다. 계정 이름이 게임 참가자 이름으로 쓰입니다.
+- 로그인 후 방을 만듭니다. 방은 **6자리 코드**로 구분하며, 다른 가족은 목록에서 고르거나 코드를 입력해 참가할 수 있습니다.
 - 다른 가족은 **방 참가**를 누르고 목록에서 방을 고릅니다 (한 번 누르면 선택, 두 번 누르면 참가)
 - 방 코드를 직접 입력하려면 목록 아래 **코드 직접 입력**을 누릅니다
-- 3명이 모이면 방장이 "판 시작" 을 누릅니다
+- 선택한 모드의 참가 인원이 모이면 방장이 **판 시작**을 누릅니다
 
 ### 3. 모드 고르기
 
@@ -158,31 +162,19 @@ AI 난이도는 쉬움 / 보통 / 어려움 / 초고수 중에서 고릅니다.
 npm test
 ```
 
-전체 **148개** 테스트가 있습니다. `npm test`로 실행하며, 모두 통과해야 합니다.
+`npm test`는 아래 테스트 파일들을 순서대로 실행합니다. 개별 테스트는 `npm run` 명령으로 실행할 수 있습니다.
 
-| 명령 | 내용 | 개수 |
-|---|---|---|
-| `npm run test:engine` | 규칙 엔진 단위 테스트 | 45 |
-| `npm run test:contract` | 카드·점수 계약 테스트 | 10 |
-| `npm run test:replay` | 기록 재생 스모크 테스트 | 3 |
-| `npm run test:server` | HTTP 통합 테스트 (상태 접근·인증, 중복 요청, 입력 검증, 3인 대국) | 13 |
-| `npm run test:fourplayer` | 4인 광팔기 좌석 매핑·정산 회귀 테스트 | 5 |
-| `npm run test:ai` | AI 상대 대국 테스트 | 3 |
-| `npm run test:disconnect` | 연결 끊김 자동 진행·바닥 선택 회귀 테스트 | 4 |
-| `npm run test:jokbo` | 족보 그림 타일 렌더 테스트 | 4 |
-| `npm run test:score-panel` | 족보·획득 카드 점수판 렌더 테스트 | 2 |
-| `npm run test:result-view` | 정산 결과 화면 렌더 테스트 | 3 |
-| `npm run test:phase-views` | 협상·선 결정·턴 프롬프트 렌더 테스트 | 3 |
-| `npm run test:opponent-view` | 상대 플레이어·먹은 패 렌더 테스트 | 5 |
-| `npm run test:hand-view` | 내 손패 렌더·선택 동작 테스트 | 5 |
-| `npm run test:table-deck-view` | 바닥·뒷패 더미 렌더 테스트 | 5 |
-| `npm run test:settings-view` | 로비·게임·개인 설정 저장 및 권한 테스트 | 4 |
-| `npm run test:opponent-card-motion` | 상대가 낸·먹은 카드 이동 연출 테스트 | 6 |
-| `npm run test:deal` | 딜 직후 총통 정산·선 후보 덱 보존 테스트 | 5 |
-| `npm run test:fx` | 카드 연출 연결·이벤트 카드 id 테스트 | 8 |
-| `npm run test:room-session` | 방 세션·폴링·액션 HTTP 테스트 | 15 |
+| 명령 | 내용 |
+|---|---|
+| `npm run test:engine`, `npm run test:contract`, `npm run test:replay` | 규칙 엔진, 카드·점수 계약, 재플레이 기록 |
+| `npm run test:server`, `npm run test:room-session` | HTTP 서버, 계정·방 세션·폴링·액션 |
+| `npm run test:fourplayer`, `npm run test:ai`, `npm run test:disconnect` | 광팔기, AI 대국, 연결 끊김 처리 |
+| `npm run test:deal`, `npm run test:jokbo` | 딜·총통 처리와 족보 표시 |
+| `npm run test:score-panel`, `npm run test:result-view`, `npm run test:phase-views` | 점수판, 정산 결과, 게임 단계 화면 |
+| `npm run test:opponent-view`, `npm run test:hand-view`, `npm run test:table-deck-view` | 상대·손패·바닥패 화면 |
+| `npm run test:settings-view`, `npm run test:opponent-card-motion`, `npm run test:fx` | 설정, 카드 연출, 효과음 연결 |
 
-Node.js 기본 `node:test` 를 사용하므로 외부 테스트 패키지가 필요 없습니다.
+Node.js 내장 기능을 사용하므로 별도 테스트 패키지는 필요하지 않습니다.
 
 ---
 
@@ -204,10 +196,14 @@ server/
   server.js             HTTP 서버 (폴링 API + 정적 파일)
   rooms.js              방·대국 진행·AI 자동 진행·정산
   room-snapshot.js      참가자별 공개 상태 스냅샷 생성
+  users.js              가족 계정·로그인·보유머니·순위표
   version.js            게임 버전·빌드 번호
 public/
   index.html            화면
   style.css             스타일 (모바일 우선)
+  manifest.json         PWA 앱 정보
+  sw.js                 서비스 워커 캐시
+  icons/                홈 화면·앱 아이콘
   room-session.js       HTTP 통신·방 입장·폴링·액션·세션 상태
   room-browser.js       로비 방 목록·참가 처리
   score-panel.js        족보·획득 카드 점수판 렌더링
@@ -221,10 +217,12 @@ public/
   app.js                상태 수신 → 렌더링
   fx.js                 이펙트·애니메이션·사운드
 assets/
-  hwatu/png/            화투 카드 이미지 (게임 화면용, 52장)
-  hwatu/svg/            화투 카드 원본 SVG (105개)
-  audio/                효과음 (68종)
-tests/                  테스트 9종 + 재생 기록
+  hwatu/png/            화투 카드 이미지 (52장: 일반 48장 + 보너스패 4장)
+  hwatu/svg/            일반 화투 카드 SVG (48장)
+  audio/                효과음·음악 (68개)
+  title.png             앱 제목 이미지
+tests/                  테스트 파일 19개
+  records/              재플레이 테스트 기록 6개
 tools/
   fetch-assets.js       외부 저장소에서 자산 받기
   check-es5.js          구형 브라우저용 ES6+ 문법 검사
@@ -232,6 +230,8 @@ tools/
   check-3p-live.js      3인 실전 대국 점검 스크립트
   check-4p.js           4인 광팔기 점검 스크립트
   check-rejoin.js       재접속 점검 스크립트
+data/
+  users.json            가족 계정과 보유머니 저장 파일
 ```
 
 ---

@@ -90,7 +90,6 @@
       } catch (e) {}
       deps.el.lobby.className = 'screen hidden';
       deps.el.room.className = 'screen';
-      deps.el.codeChip.innerHTML = code;
       root.document.title = '명지네고스톱 ' + code;
       deps.onEnter();
       startPolling();
