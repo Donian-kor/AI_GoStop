@@ -102,7 +102,6 @@
           return;
         }
         closeRoomList();
-        setJoinBoxVisible(false);
         enterRoom(res.code, res.seat);
       }, function (xhr) {
         var msg = '서버에 연결할 수 없습니다.';
