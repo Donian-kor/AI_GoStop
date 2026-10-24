@@ -139,11 +139,11 @@ test('나가리는 승패 문구를 바꾸고 패배 효과음과 점수 상세�
   assert.deepStrictEqual(sounds, ['sfx_money_lose.ogg', 'sfx_bak.ogg']);
 });
 
-test('총통 사유와 방장용 다음 판 시작 버튼을 표시한다', () => {
+test('총통 사유와 승자용 다음 판 시작 버튼을 표시한다', () => {
   let startCount = 0;
   const { view, overlay } = createView(0, () => { startCount += 1; });
   view.render({
-    isHost: true,
+    isHost: false,
     players: [{ name: '컴퓨터 A' }, { name: '나' }],
     result: {
       winnerSeat: 0,
@@ -162,4 +162,22 @@ test('총통 사유와 방장용 다음 판 시작 버튼을 표시한다', () =
   findTag(overlay, 'button')[0].click();
   assert.strictEqual(startCount, 1);
   assert.strictEqual(overlay.className, 'overlay hidden');
+});
+
+test('승자가 아닌 방장에게는 다음 판 시작 버튼을 표시하지 않는다', () => {
+  const { view, overlay } = createView(0, () => {});
+  view.render({
+    isHost: true,
+    players: [{ name: '방장' }, { name: '승자' }],
+    result: {
+      winnerSeat: 1,
+      nagari: false,
+      rows: [
+        { seat: 0, name: '방장', amount: -100, reasons: [], steps: [] },
+        { seat: 1, name: '승자', amount: 100, reasons: [], steps: [] },
+      ],
+    },
+  });
+
+  assert.strictEqual(findTag(overlay, 'button')[0].innerHTML, '닫기');
 });

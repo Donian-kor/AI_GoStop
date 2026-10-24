@@ -354,8 +354,8 @@ class Room {
 
   // ── 대국 진행 ────────────────────────────────────────────────────────────
 
-  /** 방장이 판을 시작한다. 선 결정 단계로 들어간다. */
-  startRound() {
+  /** 방장이 판을 시작한다. 이어하기면 지정한 참가자가 선이 된다. */
+  startRound(firstPlayerId = null) {
     // multi 모드: 연결된 사람이 줄어들었으면 좌석을 compact 하고 인원을 줄인다.
     // (3명으로 시작했다가 1명이 나간 뒤 남은 2명이 "다음 판"을 누르면 2명으로 진행)
     if (this.settings.mode === 'multi') {
@@ -372,6 +372,11 @@ class Room {
         this.settings.playerCount = humans.length;
       }
     }
+
+    const forcedSeonSeat = firstPlayerId === null
+      ? -1
+      : this.seats.findIndex((player) => player && player.id === firstPlayerId);
+    this.roundFirstSeat = forcedSeonSeat >= 0 ? forcedSeonSeat : 0;
 
     const needed = this.settings.mode === 'solo' ? 1 : this.settings.playerCount;
     if (this.humanCount < needed) {
@@ -397,12 +402,14 @@ class Room {
       this.fourFloor = dealt.floor;
       this.fourStock = dealt.stock;
       this.playSeats = null;
+      const order = [1, 2, 3].map((offset) => (this.roundFirstSeat + offset) % 4);
       this.negotiation = {
         decisions: {}, // 좌석 → 'join' | 'giveup' | 'sell'
         p2GiveUp: false,
         p3GiveUp: false,
         p4Sell: false,
-        order: [1, 2, 3], // P2 → P3 → P4 순서로 결정
+        firstSeat: this.roundFirstSeat,
+        order, // 선 다음 좌석부터 참가 여부를 결정한다
       };
       this.seonCandidates = this.seats.map(() => null);
       this.seonPicked = this.seats.map(() => -1);
@@ -438,6 +445,10 @@ class Room {
     this.autoPlayAt = 0;
     this.fx = []; // 새 판이면 이펙트 로그도 초기화
     this.log = []; // 텍스트 로그도 초기화
+    if (forcedSeonSeat >= 0) {
+      this.beginPlay(forcedSeonSeat);
+      return;
+    }
     this.phase = ROOM_PHASE.SEON;
     this.logEvent('새 판을 시작합니다. 선을 정해 주세요.');
     this.touch();
@@ -454,8 +465,8 @@ class Room {
     if (n.p2GiveUp) return -1;
     // P3 가 포기했으면 P4 자동 참가 → 협상 종료
     if (n.p3GiveUp) return -1;
-    for (const seat of n.order) {
-      if (n.decisions[seat] === undefined) return seat;
+    for (let role = 0; role < n.order.length; role++) {
+      if (n.decisions[role + 1] === undefined) return n.order[role];
     }
     return -1;
   }
@@ -471,16 +482,16 @@ class Room {
     const waiting = this.negotiateWaitingSeat();
     if (seat !== waiting) throw new EngineError('아직 내 차례가 아닙니다.');
 
-    if (seat === 1) {
+    if (seat === n.order[0]) {
       // P2: 참가 또는 포기
       if (decision !== 'join' && decision !== 'giveup') throw new EngineError('잘못된 선택입니다.');
       n.decisions[1] = decision;
       n.p2GiveUp = decision === 'giveup';
-    } else if (seat === 2) {
+    } else if (seat === n.order[1]) {
       if (decision !== 'join' && decision !== 'giveup') throw new EngineError('잘못된 선택입니다.');
       n.decisions[2] = decision;
       n.p3GiveUp = decision === 'giveup';
-    } else if (seat === 3) {
+    } else if (seat === n.order[2]) {
       // P4: 참가(그냥 빠짐) 또는 광팔기
       if (decision !== 'join' && decision !== 'sell') throw new EngineError('잘못된 선택입니다.');
       n.decisions[3] = decision;
@@ -507,7 +518,8 @@ class Room {
   /** 협상이 끝나면 3인 게임을 만든다. */
   resolveNegotiation() {
     const n = this.negotiation;
-    const sellerHand = this.seats[3] ? this.seats[3].hand || [] : [];
+    const sellerSeat = n.order[2];
+    const sellerHand = this.seats[sellerSeat] ? this.seats[sellerSeat].hand || [] : [];
     const round = fourplayer.resolve({
       p2GiveUp: n.p2GiveUp,
       p3GiveUp: n.p3GiveUp,
@@ -516,6 +528,11 @@ class Room {
       sellerHand,
       options: toScoreOptions(this.settings),
     });
+    const physicalSeat = (seat) => (n.firstSeat + seat) % 4;
+    round.playSeats = round.playSeats.map(physicalSeat);
+    round.sitOutSeat = physicalSeat(round.sitOutSeat);
+    if (round.gwang.sellerSeat >= 0) round.gwang.sellerSeat = physicalSeat(round.gwang.sellerSeat);
+    round.gwang.payerSeats = round.gwang.payerSeats.map(physicalSeat);
 
     this.playSeats = round.playSeats;
     this.lastSitOutSeat = round.sitOutSeat;
@@ -794,8 +811,18 @@ class Room {
         return this.actOnTurn(player, () => this.engine.flipOnly());
 
       case 'nextGame':
-        this.requireHost(player);
-        this.startRound();
+        if (this.phase !== ROOM_PHASE.SETTLE || !this.result) {
+          throw new EngineError('판이 끝난 뒤에 다음 판을 시작할 수 있습니다.');
+        }
+        const winnerSeat = this.result && !this.result.nagari ? this.result.winnerSeat : -1;
+        if (winnerSeat >= 0 && player.seat !== winnerSeat) {
+          throw new EngineError('이긴 사람만 다음 판을 시작할 수 있습니다.');
+        }
+        if (winnerSeat < 0) this.requireHost(player);
+        const winnerId = winnerSeat >= 0 && this.seats[winnerSeat]
+          ? this.seats[winnerSeat].id
+          : null;
+        this.startRound(winnerId);
         return { ok: true };
 
       case 'leave':

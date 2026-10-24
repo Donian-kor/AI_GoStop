@@ -75,6 +75,7 @@
     roomListRefreshBtn: $('roomListRefreshBtn'),
     roomListCloseBtn: $('roomListCloseBtn'),
     lobbySoundBtn: $('lobbySoundBtn'),
+    lobbyRefreshBtn: $('lobbyRefreshBtn'),
     lobbySettingsBtn: $('lobbySettingsBtn'),
     authBtn: $('authBtn'),
     leaderboardBtn: $('leaderboardBtn'),
@@ -313,7 +314,7 @@
     escapeHtml: esc,
     formatMoney: won,
     mySeat: function () { return roomSession.getMySeat(); },
-    startNextRound: function () { roomSession.act('start'); }
+    startNextRound: function () { roomSession.act('nextGame'); }
   });
 
   var phaseViews = window.GostopPhaseViews({
@@ -369,19 +370,12 @@
     return n || '나';
   }
 
-  // ── 자동 갱신 (구버전 화면이면 자동으로 새로고침) ────────────────────────
+  // ── 현재 빌드 버전 기록 ────────────────────────────────────────────────
 
   function checkBuild() {
     getJson('/api/version', function (res) {
       if (!res || !res.version) return;
       buildVersion = res.version;
-      var saved = null;
-      try { saved = localStorage.getItem('gs_build'); } catch (e) { saved = null; }
-      if (saved && saved !== res.version) {
-        try { localStorage.setItem('gs_build', res.version); } catch (e) {}
-        location.reload();
-        return;
-      }
       try { localStorage.setItem('gs_build', res.version); } catch (e) {}
     }, function () {});
   }
@@ -481,7 +475,10 @@
     fx: Fx
   });
 
-  el.startBtn.addEventListener('click', function () { roomSession.act('start'); });
+  el.startBtn.addEventListener('click', function () {
+    var state = roomSession.getLastState();
+    roomSession.act(state && state.phase === 'settle' ? 'nextGame' : 'start');
+  });
   if (el.flipBtn) el.flipBtn.addEventListener('click', function () { roomSession.act('flipOnly'); });
   if (el.shakeBtn) el.shakeBtn.addEventListener('click', function () {
     var lastState = roomSession.getLastState();
@@ -533,7 +530,7 @@
 
   function resetRoomView(message) {
     el.room.className = 'screen hidden';
-    el.lobby.className = 'screen relative z-10 w-full min-h-[100dvh] sm:max-h-[920px] overflow-hidden flex flex-col items-center justify-center shadow-2xl select-none';
+    el.lobby.className = 'screen relative z-10 w-full h-full overflow-hidden flex flex-col items-center justify-center shadow-2xl select-none';
     el.overlay.className = 'overlay hidden';
     el.promptBox.className = 'prompt hidden';
     el.scorePanel.innerHTML = '';
@@ -614,14 +611,14 @@
   function fitHandCards(count) {
     if (!count) return;
     // 좌우 여백(핸드 감싸는 패딩)과 부채꼴 회전으로 생기는 바깥쪽 여유까지 빼고 계산한다
-    var avail = Math.min(window.innerWidth - 56, 760);
-    var gap = 3;
+    var avail = Math.min(window.innerWidth - 40, 860);
+    var gap = 2;
     var w = Math.floor((avail - (count - 1) * gap) / count);
     // 화면 높이가 낮으면(가로 모드) 손패를 줄여 가운데 화투판 자리를 남긴다
-    var cap = 74;
-    var min = 38;
-    if (window.innerHeight < 700) cap = 64;
-    if (window.innerHeight < 560) { cap = 52; min = 36; }
+    var cap = 90;
+    var min = 42;
+    if (window.innerHeight < 700) cap = 72;
+    if (window.innerHeight < 560) { cap = 60; min = 38; }
     if (w > cap) w = cap;
     if (w < min) w = min;
     el.hand.style.setProperty('--hand-w', w + 'px');
@@ -819,6 +816,13 @@
     fitTableCards();
 
     var cur = state.players[state.currentSeat];
+    if (
+      state.phase === 'play' &&
+      state.currentSeat === mySeat &&
+      (phaseBefore === 'seon' || phaseBefore === 'negotiate' || phaseBefore === 'settle')
+    ) {
+      Fx.showBanner('당신이 선입니다', 'seon', 1800);
+    }
     if (state.phase === 'settle') el.turnInfo.innerHTML = '판이 끝났습니다.';
     else if (cur) el.turnInfo.innerHTML = cur.seat === mySeat ? '내 차례입니다' : esc(cur.name) + ' 차례';
     else el.turnInfo.innerHTML = '';
@@ -834,7 +838,12 @@
       el.shakeBtn.className = showShake ? 'chip' : 'chip hidden';
     }
 
-    var canStart = state.isHost && (state.phase === 'lobby' || state.phase === 'settle');
+    var canStart = state.phase === 'lobby' && state.isHost;
+    if (state.phase === 'settle' && state.result) {
+      canStart = state.result.nagari
+        ? state.isHost
+        : state.result.winnerSeat === mySeat;
+    }
     el.startBtn.className = canStart ? 'primary' : 'primary hidden';
     el.startBtn.innerHTML = state.phase === 'settle' ? '다음 판' : '판 시작';
 
@@ -973,6 +982,58 @@
           el.installGuide.className = 'text-[#e7c992] text-xs mt-2 text-center';
         }
       }
+    });
+  }
+
+  // 로비 새로고침 버튼 — 서비스 워커 캐시를 강제로 갱신하고 페이지를 다시 로드한다
+  if (el.lobbyRefreshBtn) {
+    el.lobbyRefreshBtn.addEventListener('click', function () {
+      el.lobbyRefreshBtn.disabled = true;
+      roomSession.getJson('/api/version', function (res) {
+        if (!res || !res.version) {
+          el.lobbyRefreshBtn.disabled = false;
+          if (Fx) Fx.showBanner('버전을 확인하지 못했습니다.', 'red', 1400);
+          return;
+        }
+
+        try { localStorage.setItem('gs_build', res.version); } catch (e) {}
+
+        function reloadPage() { window.location.reload(); }
+        function showUpdateError() {
+          el.lobbyRefreshBtn.disabled = false;
+          if (Fx) Fx.showBanner('업데이트 확인에 실패했습니다.', 'red', 1400);
+        }
+
+        if (!navigator.serviceWorker || !navigator.serviceWorker.getRegistrations) {
+          reloadPage();
+          return;
+        }
+
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          var updates = [];
+          for (var i = 0; i < registrations.length; i++) {
+            updates.push((function (registration) {
+              return registration.update().then(function () {
+                var worker = registration.installing;
+                if (!worker) return;
+
+                return new Promise(function (resolve, reject) {
+                  function checkState() {
+                    if (worker.state === 'activated') resolve();
+                    else if (worker.state === 'redundant') reject(new Error('서비스워커 업데이트에 실패했습니다.'));
+                  }
+                  worker.addEventListener('statechange', checkState);
+                  checkState();
+                });
+              });
+            })(registrations[i]));
+          }
+          return Promise.all(updates);
+        }).then(reloadPage, showUpdateError);
+      }, function () {
+        el.lobbyRefreshBtn.disabled = false;
+        if (Fx) Fx.showBanner('서버에 연결할 수 없습니다.', 'red', 1400);
+      });
     });
   }
 

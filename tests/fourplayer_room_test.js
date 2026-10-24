@@ -87,6 +87,36 @@ test('다음 판을 시작하면 이전 판의 좌석 매핑을 버린다', () =
   assert.strictEqual(room.phase, ROOM_PHASE.NEGOTIATE);
 });
 
+test('다음 판은 이전 승자가 선이 되고 4인 협상 순서도 승자 기준으로 돈다', () => {
+  const twoPlayerRoom = new Room('NEXT2P', { mode: 'multi', playerCount: 2 });
+  twoPlayerRoom.addPlayer('host', '방장');
+  twoPlayerRoom.addPlayer('winner', '이전 승자');
+  twoPlayerRoom.result = { winnerSeat: 1, nagari: false };
+  twoPlayerRoom.phase = ROOM_PHASE.SETTLE;
+
+  assert.throws(
+    () => twoPlayerRoom.act(twoPlayerRoom.seats[0], 'nextGame'),
+    /이긴 사람만 다음 판을 시작할 수 있습니다/
+  );
+  twoPlayerRoom.act(twoPlayerRoom.seats[1], 'nextGame');
+
+  assert.strictEqual(twoPlayerRoom.engine.state.current, 1);
+
+  const fourPlayerRoom = createRoom();
+  fourPlayerRoom.result = { winnerSeat: 2, nagari: false };
+  fourPlayerRoom.phase = ROOM_PHASE.SETTLE;
+  fourPlayerRoom.act(fourPlayerRoom.seats[2], 'nextGame');
+
+  assert.deepStrictEqual(fourPlayerRoom.negotiation.order, [3, 0, 1]);
+  fourPlayerRoom.negotiateDecision(3, 'join');
+  fourPlayerRoom.negotiateDecision(0, 'join');
+  fourPlayerRoom.negotiateDecision(1, 'sell');
+  assert.deepStrictEqual(fourPlayerRoom.playSeats, [2, 3, 0]);
+  assert.strictEqual(fourPlayerRoom.gwangSale.sellerSeat, 1);
+  assert.deepStrictEqual(fourPlayerRoom.gwangSale.payerSeats, [3, 0]);
+  assert.strictEqual(fourPlayerRoom.physicalSeatOf(fourPlayerRoom.engine.state.current), 2);
+});
+
 test('방 스냅샷은 상대의 흔들기 가능 월을 공개하지 않는다', () => {
   const room = new Room('SHAKEPX', { mode: 'multi', playerCount: 2 });
   room.addPlayer('p0', '플레이어0');

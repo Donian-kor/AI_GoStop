@@ -92,7 +92,11 @@
         box.appendChild(wrap);
       }
 
-      if (state.isHost && deps.startNextRound) {
+      if (
+        deps.startNextRound &&
+        ((!result.nagari && result.winnerSeat === deps.mySeat()) ||
+          (result.nagari && state.isHost))
+      ) {
         var nextRound = root.document.createElement('button');
         nextRound.className = 'primary';
         nextRound.innerHTML = '다음 판 시작';

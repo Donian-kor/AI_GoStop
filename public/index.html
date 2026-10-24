@@ -11,14 +11,14 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=32">
+<link rel="stylesheet" href="style.css?v=37">
 <!-- Tailwind CSS CDN (로비 디자인 의존) -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 </head>
 <body>
 <div id="app">
   <!-- 입장 (로비.html 디자인 적용, 기존 앱 ID 유지) -->
-  <section id="lobby" class="screen relative z-10 w-full min-h-[100dvh] sm:max-h-[920px] overflow-hidden flex flex-col items-center justify-center shadow-2xl select-none">
+  <section id="lobby" class="screen relative z-10 w-full h-full overflow-hidden flex flex-col items-center justify-center shadow-2xl select-none">
     <!-- 배경(한옥 실내) -->
     <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
       <img alt="전통 한옥 실내 배경" class="w-full h-full object-cover object-center transform scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2qxOvbkuez8v0XKwfbFbuOnZIayAOIqyeH9GqWpR7gK1IC2uIEUfvqQ4yfUa8s4QfSNlvFEvVJDNMTEf86Je_894ZYjSWvOnA2YpP52-oD5uLb8DYZa-2jmhbh8mATclKB-Jx7od8Bv4cWBRKpJCGE9a4C-Zagtnlth7IoxaMUA9yEAiUui55PcIntABFPTJH83eauZ_tMglcmvoQb0yVFUTAgaKmG4upsv5hVY4VzvkiLMQdlz93n4K66r2NzRAZJQ"/>
@@ -35,8 +35,11 @@
       <button id="installBtn" aria-label="앱으로 설치" class="hidden w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2" type="button">
         <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke-linecap="round" stroke-linejoin="round"></path></svg>
       </button>
-      <button id="authBtn" aria-label="계정" class="w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2 text-amber-300 font-bold text-xs" type="button">계정</button>
-      <button id="leaderboardBtn" aria-label="순위표" class="w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2 text-amber-300 font-bold text-xs" type="button">순위</button>
+      <button id="lobbyRefreshBtn" aria-label="업데이트" class="w-auto h-9 rounded-full bg-[#eab308] border border-[#915d11] px-3 py-1 flex items-center justify-center shadow-lg active:scale-95 transition-transform text-[#1a1005] font-bold text-xs ml-2 whitespace-nowrap" type="button" title="업데이트">
+        업데이트
+      </button>
+      <button id="authBtn" aria-label="계정" class="w-auto h-10 rounded-full bg-[#eab308] border border-[#915d11] px-4 py-1 flex items-center justify-center shadow-lg active:scale-95 transition-transform text-[#1a1005] font-bold text-sm ml-2 whitespace-nowrap" type="button">계정</button>
+      <button id="leaderboardBtn" aria-label="순위표" class="w-auto h-10 rounded-full bg-[#eab308] border border-[#915d11] px-4 py-1 flex items-center justify-center shadow-lg active:scale-95 transition-transform text-[#1a1005] font-bold text-sm ml-2 whitespace-nowrap" type="button">순위</button>
       <button id="lobbySettingsBtn" aria-label="새 방 설정" class="w-9 h-9 rounded-full bg-stone-900/75 border border-amber-600/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform backdrop-blur-sm ml-2" type="button">
         <svg class="w-4 h-4 text-amber-300" fill="currentColor" viewbox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"></path></svg>
       </button>
@@ -338,17 +341,17 @@
     </div>
   </div>
 </div>
-<script src="fx.js?v=11"></script>
-<script src="room-session.js?v=3"></script>
-<script src="room-browser.js?v=2"></script>
-<script src="score-panel.js?v=1"></script>
-<script src="result-view.js?v=2"></script>
-<script src="phase-views.js?v=2"></script>
-<script src="opponent-view.js?v=5"></script>
-<script src="hand-view.js?v=3"></script>
-<script src="table-deck-view.js?v=4"></script>
-<script src="settings-view.js?v=4"></script>
-<script src="opponent-card-motion.js?v=4"></script>
-<script src="app.js?v=45"></script>
+<script src="fx.js?v=12"></script>
+<script src="room-session.js?v=4"></script>
+<script src="room-browser.js?v=3"></script>
+<script src="score-panel.js?v=2"></script>
+<script src="result-view.js?v=3"></script>
+<script src="phase-views.js?v=3"></script>
+<script src="opponent-view.js?v=6"></script>
+<script src="hand-view.js?v=4"></script>
+<script src="table-deck-view.js?v=5"></script>
+<script src="settings-view.js?v=5"></script>
+<script src="opponent-card-motion.js?v=5"></script>
+<script src="app.js?v=51"></script>
 </body>
 </html>
