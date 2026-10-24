@@ -94,7 +94,8 @@
 
       if (
         deps.startNextRound &&
-        ((!result.nagari && result.winnerSeat === deps.mySeat()) ||
+        ((state.settings && state.settings.mode === 'solo') ||
+          (!result.nagari && result.winnerSeat === deps.mySeat()) ||
           (result.nagari && state.isHost))
       ) {
         var nextRound = root.document.createElement('button');

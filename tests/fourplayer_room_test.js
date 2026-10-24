@@ -117,6 +117,18 @@ test('다음 판은 이전 승자가 선이 되고 4인 협상 순서도 승자 
   assert.strictEqual(fourPlayerRoom.physicalSeatOf(fourPlayerRoom.engine.state.current), 2);
 });
 
+test('AI 대전은 AI가 이겨도 방장이 다음 판을 시작할 수 있고 AI가 선이 된다', () => {
+  const room = new Room('SOLOAI', { mode: 'solo', playerCount: 2 });
+  room.addPlayer('host', '방장');
+  room.result = { winnerSeat: 1, nagari: false };
+  room.phase = ROOM_PHASE.SETTLE;
+
+  room.act(room.seats[0], 'nextGame');
+
+  assert.strictEqual(room.phase, ROOM_PHASE.PLAY);
+  assert.strictEqual(room.physicalSeatOf(room.engine.state.current), 1);
+});
+
 test('방 스냅샷은 상대의 흔들기 가능 월을 공개하지 않는다', () => {
   const room = new Room('SHAKEPX', { mode: 'multi', playerCount: 2 });
   room.addPlayer('p0', '플레이어0');

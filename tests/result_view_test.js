@@ -164,10 +164,11 @@ test('총통 사유와 승자용 다음 판 시작 버튼을 표시한다', () =
   assert.strictEqual(overlay.className, 'overlay hidden');
 });
 
-test('승자가 아닌 방장에게는 다음 판 시작 버튼을 표시하지 않는다', () => {
+test('일반 대전에서 승자가 아닌 방장에게는 다음 판 시작 버튼을 표시하지 않는다', () => {
   const { view, overlay } = createView(0, () => {});
   view.render({
     isHost: true,
+    settings: { mode: 'multi' },
     players: [{ name: '방장' }, { name: '승자' }],
     result: {
       winnerSeat: 1,
@@ -180,4 +181,23 @@ test('승자가 아닌 방장에게는 다음 판 시작 버튼을 표시하지 
   });
 
   assert.strictEqual(findTag(overlay, 'button')[0].innerHTML, '닫기');
+});
+
+test('AI 대전에서는 AI가 이겨도 사용자에게 다음 판 시작 버튼을 표시한다', () => {
+  const { view, overlay } = createView(0, () => {});
+  view.render({
+    isHost: true,
+    settings: { mode: 'solo' },
+    players: [{ name: '나' }, { name: '컴퓨터 A' }],
+    result: {
+      winnerSeat: 1,
+      nagari: false,
+      rows: [
+        { seat: 0, name: '나', amount: -100, reasons: [], steps: [] },
+        { seat: 1, name: '컴퓨터 A', amount: 100, reasons: [], steps: [] },
+      ],
+    },
+  });
+
+  assert.strictEqual(findTag(overlay, 'button')[0].innerHTML, '다음 판 시작');
 });

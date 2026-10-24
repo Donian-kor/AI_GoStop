@@ -815,10 +815,13 @@ class Room {
           throw new EngineError('판이 끝난 뒤에 다음 판을 시작할 수 있습니다.');
         }
         const winnerSeat = this.result && !this.result.nagari ? this.result.winnerSeat : -1;
-        if (winnerSeat >= 0 && player.seat !== winnerSeat) {
+        const soloHostCanStart = this.settings.mode === 'solo' && player.id === this.hostId;
+        if (winnerSeat >= 0 && player.seat !== winnerSeat && !soloHostCanStart) {
           throw new EngineError('이긴 사람만 다음 판을 시작할 수 있습니다.');
         }
-        if (winnerSeat < 0) this.requireHost(player);
+        if (winnerSeat < 0 || (this.settings.mode === 'solo' && !soloHostCanStart)) {
+          this.requireHost(player);
+        }
         const winnerId = winnerSeat >= 0 && this.seats[winnerSeat]
           ? this.seats[winnerSeat].id
           : null;

@@ -840,7 +840,9 @@
 
     var canStart = state.phase === 'lobby' && state.isHost;
     if (state.phase === 'settle' && state.result) {
-      canStart = state.result.nagari
+      canStart = state.settings && state.settings.mode === 'solo'
+        ? state.isHost
+        : state.result.nagari
         ? state.isHost
         : state.result.winnerSeat === mySeat;
     }
