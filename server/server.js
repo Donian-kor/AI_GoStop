@@ -24,6 +24,7 @@ const { EngineError } = require('../engine/play');
 const IDLE_MINUTES = Number(process.env.IDLE_MINUTES || 30); // 0 = 비활성화
 const PORT = Number(process.env.PORT) || 8787;
 const HOST = process.env.HOST || '0.0.0.0';
+const SOLO_ROOM_DISCONNECT_MS = 20 * 1000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const ASSETS_DIR = path.join(__dirname, '..', 'assets');
 const MAX_FX = 200;
@@ -463,7 +464,7 @@ async function handleApi(req, res, url) {
     return sendJson(
       res,
       200,
-      { ok: true, code: room.code, seat, name, playerCount: room.playerCount },
+      { ok: true, code: room.code, seat, name, playerCount: room.playerCount, mode: room.settings.mode },
       headers
     );
   }
@@ -588,6 +589,14 @@ const server = http.createServer(async (req, res) => {
 
 setInterval(() => {
   for (const [code, room] of rooms) {
+    const soloHost = room.settings.mode === 'solo' ? room.findPlayer(room.hostId) : null;
+    if (
+      room.settings.mode === 'solo' &&
+      (!soloHost || !soloHost.connected || Date.now() - soloHost.lastSeen > SOLO_ROOM_DISCONNECT_MS)
+    ) {
+      closeRoom(room);
+      continue;
+    }
     try {
       room.checkTimeout();
       room.checkDisconnected();

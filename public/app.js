@@ -275,14 +275,14 @@
   });
 
   var KIND_LABEL = {
-    bright: '광', animal: '열꽃', ribbon: '띠', junk: '피',
+    bright: '광', animal: '열끗', ribbon: '띠', junk: '피',
     doubleJunk: '쌍피', bonus: '보너스'
   };
 
   // 먹은 패를 종류별로 묶는 기준 — 내 패널과 상대 패 그림에서 함께 쓴다
   var CAP_GROUPS = [
     { key: 'bright', label: '광', kinds: ['bright'] },
-    { key: 'animal', label: '열꽃', kinds: ['animal'] },
+    { key: 'animal', label: '열끗', kinds: ['animal'] },
     { key: 'ribbon', label: '띠', kinds: ['ribbon'] },
     { key: 'junk', label: '피', kinds: ['junk', 'doubleJunk', 'bonus'] }
   ];

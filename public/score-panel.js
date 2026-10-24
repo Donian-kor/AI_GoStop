@@ -63,7 +63,7 @@
 
     var jokboFallback = [
       ['광', 3, 'bright'], ['고도리', 3, 'godori'], ['홍단', 3, 'hongdan'],
-      ['청단', 3, 'cheongdan'], ['초단', 3, 'chodan'], ['열꽃', 5, 'animal'],
+      ['청단', 3, 'cheongdan'], ['초단', 3, 'chodan'], ['열끗', 5, 'animal'],
       ['띠', 5, 'ribbon'], ['피', 10, 'junk']
     ];
 

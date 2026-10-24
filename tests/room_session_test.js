@@ -16,6 +16,8 @@ function createSession(options) {
   const opponentMoveStates = [];
   const banners = [];
   const leftMessages = [];
+  const eventHandlers = {};
+  const beacons = [];
   let reloadCount = 0;
   let roomBrowserCloseCount = 0;
   let enterCount = 0;
@@ -59,6 +61,10 @@ function createSession(options) {
 
   const window = {
     XMLHttpRequest: FakeXMLHttpRequest,
+    navigator: {
+      sendBeacon: (url, body) => { beacons.push({ url, body }); return true; },
+    },
+    addEventListener: (name, callback) => { eventHandlers[name] = callback; },
     sessionStorage: {
       getItem: (key) => (Object.prototype.hasOwnProperty.call(storage, key) ? storage[key] : null),
       setItem: (key, value) => { storage[key] = String(value); },
@@ -133,6 +139,8 @@ function createSession(options) {
     getReloadCount: () => reloadCount,
     getRoomBrowserCloseCount: () => roomBrowserCloseCount,
     getEnterCount: () => enterCount,
+    beacons,
+    fireEvent: (name) => eventHandlers[name](),
   };
 }
 
@@ -218,6 +226,24 @@ test('createRoom enters the room, persists the session, and starts the initial p
   assert.strictEqual(h.getEnterCount(), 1);
   assert.strictEqual(h.requests[1].url, '/api/room/ABC123/state?since=0&v=-1');
   assert.strictEqual(h.intervals[0].delay, 2000);
+});
+
+test('pagehide closes solo rooms but does not close multiplayer rooms', () => {
+  const solo = createSession();
+  solo.session.createRoom({ name: '홍길동', mode: 'solo' }, () => {});
+  solo.requests[0].complete(200, '{"code":"SOLO01","seat":0,"mode":"solo"}');
+  solo.fireEvent('pagehide');
+
+  assert.deepStrictEqual(solo.beacons, [{
+    url: '/api/room/SOLO01/action',
+    body: '{"type":"leave","payload":{}}',
+  }]);
+
+  const multi = createSession();
+  multi.session.createRoom({ name: '홍길동', mode: 'multi' }, () => {});
+  multi.requests[0].complete(200, '{"code":"MULTI1","seat":0,"mode":"multi"}');
+  multi.fireEvent('pagehide');
+  assert.deepStrictEqual(multi.beacons, []);
 });
 
 test('watchdog checks on one interval without scheduling additional timers', () => {
@@ -325,7 +351,8 @@ test('restoreRoom joins the saved room and uses the remembered player name', () 
 
   assert.strictEqual(h.requests[0].url, '/api/room/REST01/join');
   assert.strictEqual(h.requests[0].body, '{"name":"이전 이름"}');
-  h.requests[0].complete(200, '{"code":"REST01","seat":2}');
+  h.requests[0].complete(200, '{"code":"REST01","seat":2,"mode":"solo"}');
+  assert.strictEqual(h.storage.gs_room_mode, 'solo');
   assert.strictEqual(h.session.getRoomCode(), 'REST01');
   assert.strictEqual(h.session.getMySeat(), 2);
   assert.strictEqual(h.requests[1].url, '/api/room/REST01/state?since=0&v=-1');

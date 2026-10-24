@@ -470,3 +470,17 @@ test('방장이 아닌 사람이 나가면 방은 그대로 남는다', async ()
     '방장이 남아 있으면 방도 남는다'
   );
 });
+
+test('AI 대전 방장이 나가면 AI 대전 방도 바로 사라진다', async () => {
+  const host = makeClient();
+  const name = `AI방${Date.now().toString().slice(-6)}`;
+  var _r = await host.post('/api/auth/register', { name, password: '1234' });
+  if (!_r.ok) await host.post('/api/auth/login', { name, password: '1234' });
+  const created = await host.post('/api/room', { name, mode: 'solo', playerCount: 2 });
+
+  const res = await host.post(`/api/room/${created.code}/action`, { type: 'leave' });
+  assert.strictEqual(res.roomClosed, true);
+
+  const list = await host.get('/api/rooms');
+  assert.ok(!list.rooms.some((room) => room.code === created.code));
+});

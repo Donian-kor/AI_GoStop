@@ -81,7 +81,7 @@ const FIXED_SETS = [
 ];
 
 const COUNT_SETS = [
-  { code: 'animal', name: '열꽃', line: 'animal', need: 5 },
+  { code: 'animal', name: '열끗', line: 'animal', need: 5 },
   { code: 'ribbon', name: '띠', line: 'ribbon', need: 5 },
   { code: 'junk', name: '피', line: 'junk', need: 10 },
 ];

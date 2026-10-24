@@ -12,11 +12,11 @@
 //   imageKey 규격: m{월 2자리}-{월 안에서 1~4번째}
 //     m01-01 1월 광 / m01-02 1월 띠 / m01-03·04 1월 피
 //     m11-01 11월 광 / m11-02 11월 쌍피 / m11-03·04 11월 피
-//     m12-01 12월 비광 / m12-02 열꽃 / m12-03 비띠 / m12-04 비쌍피
+//     m12-01 12월 비광 / m12-02 열끗 / m12-03 비띠 / m12-04 비쌍피
 
 const KIND = {
   BRIGHT: 'bright', // 광(光)
-  ANIMAL: 'animal', // 열꽃(열끗)
+  ANIMAL: 'animal', // 열끗
   RIBBON: 'ribbon', // 띠(단)
   JUNK: 'junk', // 피(껍데기)
   DOUBLE_JUNK: 'doubleJunk', // 쌍피
@@ -40,7 +40,7 @@ const STANDARD_ROWS = [
   [1, KIND.RIBBON, 1, 'm01-02', 'january_tanzaku', 0, RIBBON.HONG, false, false, false, ['ribbon', 'hongdan']],
   [1, KIND.JUNK, 1, 'm01-03', 'january_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [1, KIND.JUNK, 2, 'm01-04', 'january_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 2월 매조: 열꽃(고도리) · 홍단 · 피2
+  // 2월 매조: 열끗(고도리) · 홍단 · 피2
   [2, KIND.ANIMAL, 1, 'm02-01', 'february_tane', 0, RIBBON.NONE, true, false, false, ['animal', 'godori']],
   [2, KIND.RIBBON, 1, 'm02-02', 'february_tanzaku', 0, RIBBON.HONG, false, false, false, ['ribbon', 'hongdan']],
   [2, KIND.JUNK, 1, 'm02-03', 'february_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
@@ -50,37 +50,37 @@ const STANDARD_ROWS = [
   [3, KIND.RIBBON, 1, 'm03-02', 'march_tanzaku', 0, RIBBON.HONG, false, false, false, ['ribbon', 'hongdan']],
   [3, KIND.JUNK, 1, 'm03-03', 'march_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [3, KIND.JUNK, 2, 'm03-04', 'march_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 4월 흑싸리: 열꽃(고도리) · 초단 · 피2
+  // 4월 흑싸리: 열끗(고도리) · 초단 · 피2
   [4, KIND.ANIMAL, 1, 'm04-01', 'april_tane', 0, RIBBON.NONE, true, false, false, ['animal', 'godori']],
   [4, KIND.RIBBON, 1, 'm04-02', 'april_tanzaku', 0, RIBBON.CHO, false, false, false, ['ribbon', 'chodan']],
   [4, KIND.JUNK, 1, 'm04-03', 'april_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [4, KIND.JUNK, 2, 'm04-04', 'april_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 5월 난초: 열꽃 · 초단 · 피2
+  // 5월 난초: 열끗 · 초단 · 피2
   [5, KIND.ANIMAL, 1, 'm05-01', 'may_tane', 0, RIBBON.NONE, false, false, false, ['animal']],
   [5, KIND.RIBBON, 1, 'm05-02', 'may_tanzaku', 0, RIBBON.CHO, false, false, false, ['ribbon', 'chodan']],
   [5, KIND.JUNK, 1, 'm05-03', 'may_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [5, KIND.JUNK, 2, 'm05-04', 'may_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 6월 모란: 열꽃 · 청단 · 피2
+  // 6월 모란: 열끗 · 청단 · 피2
   [6, KIND.ANIMAL, 1, 'm06-01', 'june_tane', 0, RIBBON.NONE, false, false, false, ['animal']],
   [6, KIND.RIBBON, 1, 'm06-02', 'june_tanzaku', 0, RIBBON.CHEONG, false, false, false, ['ribbon', 'cheongdan']],
   [6, KIND.JUNK, 1, 'm06-03', 'june_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [6, KIND.JUNK, 2, 'm06-04', 'june_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 7월 홍싸리: 열꽃 · 초단 · 피2
+  // 7월 홍싸리: 열끗 · 초단 · 피2
   [7, KIND.ANIMAL, 1, 'm07-01', 'july_tane', 0, RIBBON.NONE, false, false, false, ['animal']],
   [7, KIND.RIBBON, 1, 'm07-02', 'july_tanzaku', 0, RIBBON.CHO, false, false, false, ['ribbon', 'chodan']],
   [7, KIND.JUNK, 1, 'm07-03', 'july_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [7, KIND.JUNK, 2, 'm07-04', 'july_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 8월 공산: 광 · 열꽃(고도리) · 피2
+  // 8월 공산: 광 · 열끗(고도리) · 피2
   [8, KIND.BRIGHT, 1, 'm08-01', 'august_hikari', 0, RIBBON.NONE, false, false, false, ['bright']],
   [8, KIND.ANIMAL, 1, 'm08-02', 'august_tane', 0, RIBBON.NONE, true, false, false, ['animal', 'godori']],
   [8, KIND.JUNK, 1, 'm08-03', 'august_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [8, KIND.JUNK, 2, 'm08-04', 'august_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 9월 국화: 열꽃(국진) · 청단 · 피2
+  // 9월 국화: 열끗(국진) · 청단 · 피2
   [9, KIND.ANIMAL, 1, 'm09-01', 'september_tane', 0, RIBBON.NONE, false, false, true, ['animal', 'gookjin']],
   [9, KIND.RIBBON, 1, 'm09-02', 'september_tanzaku', 0, RIBBON.CHEONG, false, false, false, ['ribbon', 'cheongdan']],
   [9, KIND.JUNK, 1, 'm09-03', 'september_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [9, KIND.JUNK, 2, 'm09-04', 'september_kasu_2', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 10월 단풍: 열꽃 · 청단 · 피2
+  // 10월 단풍: 열끗 · 청단 · 피2
   [10, KIND.ANIMAL, 1, 'm10-01', 'october_tane', 0, RIBBON.NONE, false, false, false, ['animal']],
   [10, KIND.RIBBON, 1, 'm10-02', 'october_tanzaku', 0, RIBBON.CHEONG, false, false, false, ['ribbon', 'cheongdan']],
   [10, KIND.JUNK, 1, 'm10-03', 'october_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
@@ -90,7 +90,7 @@ const STANDARD_ROWS = [
   [11, KIND.DOUBLE_JUNK, 1, 'm11-02', 'november_kasu_2', 2, RIBBON.NONE, false, false, false, ['junk', 'double-junk']],
   [11, KIND.JUNK, 1, 'm11-03', 'november_kasu_1', 1, RIBBON.NONE, false, false, false, ['junk']],
   [11, KIND.JUNK, 2, 'm11-04', 'november_kasu_3', 1, RIBBON.NONE, false, false, false, ['junk']],
-  // 12월 비: 비광 · 열꽃 · 비띠 · 비쌍피
+  // 12월 비: 비광 · 열끗 · 비띠 · 비쌍피
   [12, KIND.BRIGHT, 1, 'm12-01', 'december_hikari', 0, RIBBON.NONE, false, true, false, ['bright', 'rain-bright']],
   [12, KIND.ANIMAL, 1, 'm12-02', 'december_tane', 0, RIBBON.NONE, false, false, false, ['animal']],
   [12, KIND.RIBBON, 1, 'm12-03', 'december_tanzaku', 0, RIBBON.RAIN, false, false, false, ['ribbon', 'rain-ribbon']],
@@ -155,7 +155,7 @@ function byImageKey(key) {
   return BY_IMAGE_KEY.get(key) || null;
 }
 
-/** 사람이 읽을 카드 이름. 예: '11월 똥 피3', '9월 국화 열꽃' */
+/** 사람이 읽을 카드 이름. 예: '11월 똥 피3', '9월 국화 열끗' */
 function displayName(card) {
   if (card.kind === KIND.BONUS) {
     if (card.junkValue === 3) return '보너스 3피';
@@ -165,7 +165,7 @@ function displayName(card) {
   if (card.kind === KIND.JUNK || card.kind === KIND.DOUBLE_JUNK) {
     return `${card.month}월 ${MONTH_NAMES[card.month - 1]} 피${card.ordinal}`;
   }
-  const kindName = { bright: '광', animal: '열꽃', ribbon: '띠' }[card.kind] || '';
+  const kindName = { bright: '광', animal: '열끗', ribbon: '띠' }[card.kind] || '';
   return `${card.month}월 ${MONTH_NAMES[card.month - 1]} ${kindName}`;
 }
 

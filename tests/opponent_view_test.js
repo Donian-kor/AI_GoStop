@@ -77,7 +77,7 @@ function createView(viewMode) {
       .sort((a, b) => (a.month || 0) - (b.month || 0)),
     capGroups: [
       { key: 'bright', label: '광', kinds: ['bright'] },
-      { key: 'animal', label: '열꽃', kinds: ['animal'] },
+      { key: 'animal', label: '열끗', kinds: ['animal'] },
       { key: 'ribbon', label: '띠', kinds: ['ribbon'] },
       { key: 'junk', label: '피', kinds: ['junk', 'doubleJunk', 'bonus'] },
     ],
@@ -166,7 +166,7 @@ test('그림 보기에서는 먹은 패를 종류별로 분류하고 빈 종류�
 
   assert.strictEqual(findAll(players, 'opp-cap').length, 4);
   assert.strictEqual(findAll(players, 'opp-cap-label')[0].innerHTML, '광 <b>1</b>');
-  assert.strictEqual(findAll(players, 'opp-cap-label')[1].innerHTML, '열꽃 <b>2</b>');
+  assert.strictEqual(findAll(players, 'opp-cap-label')[1].innerHTML, '열끗 <b>2</b>');
   assert.strictEqual(findAll(players, 'opp-cap-none').length, 2);
   assert.strictEqual(findAll(players, 'card')[0].card.id, 'january_bright');
   assert.strictEqual(findAll(players, 'card')[1].card.id, 'february_tane');

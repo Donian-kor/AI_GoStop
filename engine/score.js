@@ -13,7 +13,7 @@ const DEFAULT_OPTIONS = {
   bright3WithBi: 2, // 3광 (비광 포함)
   bright4: 4, // 4광
   bright5: 15, // 5광
-  animalThreshold: 5, // 열꽃 개수 문턱
+  animalThreshold: 5, // 열끗 개수 문턱
   ribbonThreshold: 5, // 띠 개수 문턱
   junkThreshold: 10, // 피값 문턱
   godoriPoints: 5, // 고도리
@@ -24,14 +24,14 @@ const DEFAULT_OPTIONS = {
   pibakMaxJunk: 7, // 2인=7, 3인 이상=5 (정산 시 인원수로 덮어씀)
   gwangbakEnabled: true,
   meongbakEnabled: true,
-  meongbakMinAnimal: 7, // 멍박: 열꽃 7장 이상 보유
+  meongbakMinAnimal: 7, // 멍박: 열끗 7장 이상 보유
   gobakMultiplier: 2, // 고박 배수
   reverseGoEnabled: true,
   reverseGoMultiplier: 4, // 역고 배수
 };
 
 /**
- * 소유한 국진이 전환권을 잃었는지(=항상 열꽃으로만 계산) 확인.
+ * 소유한 국진이 전환권을 잃었는지(=항상 열끗으로만 계산) 확인.
  */
 function hasUnlockedGukjin(captured) {
   return captured.some((c) => c.gukjin && !c.locked);
@@ -76,7 +76,7 @@ function doEvaluate(captured, options, gukjinAsPi) {
         break;
 
       case KIND.ANIMAL:
-        // 쌍피 전환권을 잃은 국진은 항상 열꽃. 그 외 소유 국진은 호출자가 정한 해석을 따른다.
+        // 쌍피 전환권을 잃은 국진은 항상 열끗. 그 외 소유 국진은 호출자가 정한 해석을 따른다.
         if (card.gukjin && !card.locked && gukjinAsPi) {
           r.junkValue += 2;
         } else {
@@ -113,10 +113,10 @@ function doEvaluate(captured, options, gukjinAsPi) {
     r.lines.push({ code: 'bright', label, points: r.brightPoints, description });
   }
 
-  // 열꽃(개수) + 고도리
+  // 열끗(개수) + 고도리
   if (r.animalCount >= options.animalThreshold) {
     r.animalPoints = r.animalCount - (options.animalThreshold - 1);
-    r.lines.push({ code: 'animal', label: '열꽃', points: r.animalPoints, description: `열꽃 ${r.animalCount}장` });
+    r.lines.push({ code: 'animal', label: '열끗', points: r.animalPoints, description: `열끗 ${r.animalCount}장` });
   }
   if (godoriCount >= 3) {
     r.godoriPoints = options.godoriPoints;
@@ -158,7 +158,7 @@ function doEvaluate(captured, options, gukjinAsPi) {
 
 /**
  * 승자 관점 족보 내역.
- * 소유 국진은 열꽃/쌍피 중 총점이 유리한 쪽을 자동으로 고른다.
+ * 소유 국진은 열끗/쌍피 중 총점이 유리한 쪽을 자동으로 고른다.
  */
 function evaluate(captured, options = DEFAULT_OPTIONS) {
   let result = doEvaluate(captured, options, false);
@@ -179,7 +179,7 @@ function isPibakSafe(junkValue, options) {
 
 /**
  * 패자 관점 족보 내역.
- * 패자의 총점은 정산에 쓰이지 않고 피값·광 장수·열꽃 장수만 쓰이므로,
+ * 패자의 총점은 정산에 쓰이지 않고 피값·광 장수·열끗 장수만 쓰이므로,
  * 총점보다 "피박 회피"를 우선 기준으로 해석을 고른다.
  */
 function evaluateAsLoser(captured, options = DEFAULT_OPTIONS) {
@@ -245,7 +245,7 @@ function settle(winner, loser, goCount, shakeCount, options = DEFAULT_OPTIONS, r
     multiplier *= 2;
   }
 
-  // 멍박(열꽃박): 승자가 열꽃을 7장 이상 보유하고 패자는 열꽃 0장
+  // 멍박(열끗박): 승자가 열끗을 7장 이상 보유하고 패자는 열끗 0장
   let meongbak = false;
   if (options.meongbakEnabled && winner.animalCount >= options.meongbakMinAnimal && loser.animalCount === 0) {
     meongbak = true;
@@ -285,7 +285,7 @@ function settle(winner, loser, goCount, shakeCount, options = DEFAULT_OPTIONS, r
 function breakdownToString(b) {
   return (
     `총 ${b.total}점 [광 ${b.brightCount}장=${b.brightPoints}, ` +
-    `열꽃 ${b.animalCount}장=${b.animalPoints}(고도리 ${b.godoriPoints}), ` +
+    `열끗 ${b.animalCount}장=${b.animalPoints}(고도리 ${b.godoriPoints}), ` +
     `띠 ${b.ribbonCount}장=${b.ribbonPoints}(홍${b.hongdanPoints} 청${b.cheongdanPoints} 초${b.chodanPoints}), ` +
     `피값 ${b.junkValue}=${b.junkPoints}]`
   );

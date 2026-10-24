@@ -79,7 +79,7 @@ function createPanel(storageValues) {
       .sort((a, b) => (a.month || 0) - (b.month || 0)),
     capGroups: [
       { key: 'bright', label: '광', kinds: ['bright'] },
-      { key: 'animal', label: '열꽃', kinds: ['animal'] },
+      { key: 'animal', label: '열끗', kinds: ['animal'] },
       { key: 'ribbon', label: '띠', kinds: ['ribbon'] },
       { key: 'junk', label: '피', kinds: ['junk', 'doubleJunk', 'bonus'] },
     ],

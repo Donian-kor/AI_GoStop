@@ -13,6 +13,7 @@
     var lastState = null;
     var freshJoin = true;
     var busy = false;
+    var soloRoom = false;
 
     function request(method, url, body, onOk, onErr) {
       var xhr = new root.XMLHttpRequest();
@@ -53,10 +54,12 @@
     function backToLobby(message) {
       try {
         root.sessionStorage.removeItem('gs_room');
+        root.sessionStorage.removeItem('gs_room_mode');
         root.sessionStorage.removeItem('gs_name');
       } catch (e) {}
       roomCode = null;
       mySeat = -1;
+      soloRoom = false;
       lastState = null;
       lastFxSeq = 0;
       lastVersion = -1;
@@ -78,14 +81,16 @@
       }
     }
 
-    function enterRoom(code, seat) {
+    function enterRoom(code, seat, mode) {
       deps.closeRoomBrowser();
       roomCode = code;
       mySeat = seat;
+      soloRoom = mode === 'solo';
       lastFxSeq = 0;
       freshJoin = true;
       try {
         root.sessionStorage.setItem('gs_room', code);
+        root.sessionStorage.setItem('gs_room_mode', soloRoom ? 'solo' : 'multi');
         root.sessionStorage.setItem('gs_name', deps.el.nameInput.value.replace(/^\s+|\s+$/g, ''));
       } catch (e) {}
       deps.el.lobby.className = 'screen hidden';
@@ -101,7 +106,7 @@
           onError((res && res.error) || '방을 만들지 못했습니다.');
           return;
         }
-        enterRoom(res.code, res.seat);
+        enterRoom(res.code, res.seat, res.mode || options.mode);
       }, function () {
         onError('서버에 연결할 수 없습니다.');
       });
@@ -111,16 +116,46 @@
       var saved = null;
       try { saved = root.sessionStorage.getItem('gs_room'); } catch (e) { saved = null; }
       if (!saved) return;
+      try { soloRoom = root.sessionStorage.getItem('gs_room_mode') === 'solo'; } catch (e) { soloRoom = false; }
       postJson('/api/room/' + saved + '/join', { name: deps.getSavedName() }, function (res) {
         if (res && res.code) {
-          enterRoom(res.code, res.seat);
+          enterRoom(res.code, res.seat, res.mode);
         } else {
-          try { root.sessionStorage.removeItem('gs_room'); } catch (e) {}
+          try {
+            root.sessionStorage.removeItem('gs_room');
+            root.sessionStorage.removeItem('gs_room_mode');
+          } catch (e) {}
         }
       }, function () {
-        try { root.sessionStorage.removeItem('gs_room'); } catch (e) {}
+        try {
+          root.sessionStorage.removeItem('gs_room');
+          root.sessionStorage.removeItem('gs_room_mode');
+        } catch (e) {}
       });
     }
+
+    function leaveSoloRoomOnPageHide() {
+      if (!roomCode || !soloRoom) return;
+      var url = '/api/room/' + roomCode + '/action';
+      var body = JSON.stringify({ type: 'leave', payload: {} });
+      var sent = false;
+      try {
+        if (root.navigator && root.navigator.sendBeacon) {
+          sent = root.navigator.sendBeacon(url, body);
+        }
+      } catch (e) {}
+      if (!sent && root.fetch) {
+        root.fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: body,
+          credentials: 'include',
+          keepalive: true
+        }).catch(function () {});
+      }
+    }
+
+    root.addEventListener('pagehide', leaveSoloRoomOnPageHide);
 
     function pollNow(done) {
       if (!roomCode || pollPending) { if (done) done(); return; }

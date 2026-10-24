@@ -138,7 +138,7 @@ class TurnEngine {
     return res;
   }
 
-  /** 획득 우선순위: 광 > 열꽃 > 띠 > 피(쌍피>피). */
+  /** 획득 우선순위: 광 > 열끗 > 띠 > 피(쌍피>피). */
   captureRank(card) {
     switch (card.kind) {
       case KIND.BRIGHT: return 100;
@@ -201,7 +201,7 @@ class TurnEngine {
 
   /**
    * 패자에게서 낼 피 1장을 뺏는다.
-   * 낼 일반 피가 하나도 없으면 국진도 넘기지 않고, 대신 그 국진이 열꽃 고정(전환권 상실)된다.
+   * 낼 일반 피가 하나도 없으면 국진도 넘기지 않고, 대신 그 국진이 열끗 고정(전환권 상실)된다.
    */
   stealOnePi(winnerSeat, victimSeat) {
     if (winnerSeat === victimSeat) return false;
@@ -227,7 +227,7 @@ class TurnEngine {
           EVENT.PI_STEAL,
           winnerSeat,
           0,
-          `${victim.name}: 낼 피가 없어 국진이 열꽃 고정(쌍피 전환 불가)`,
+          `${victim.name}: 낼 피가 없어 국진이 열끗 고정(쌍피 전환 불가)`,
           victimSeat
         );
       }
