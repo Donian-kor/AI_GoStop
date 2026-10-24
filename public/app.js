@@ -73,7 +73,6 @@
     roomListError: $('roomListError'),
     roomListJoinBtn: $('roomListJoinBtn'),
     roomListRefreshBtn: $('roomListRefreshBtn'),
-    roomListCodeBtn: $('roomListCodeBtn'),
     roomListCloseBtn: $('roomListCloseBtn'),
     lobbySoundBtn: $('lobbySoundBtn'),
     lobbySettingsBtn: $('lobbySettingsBtn'),
